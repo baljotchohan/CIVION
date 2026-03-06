@@ -378,6 +378,92 @@ def agent_create(name: str = typer.Argument(..., help="Name of the new agent")):
 
 
 @app.command()
+def setup():
+    """Interactive setup wizard for CIVION configuration."""
+    import asyncio
+    import json
+    from pathlib import Path
+    from civion.config.settings import settings
+
+    console.print("\n[bold cyan]╔════════════════════════════════════════╗[/]")
+    console.print("[bold cyan]║[/]   [bold white]CIVION Setup Wizard[/]          [bold cyan]║[/]")
+    console.print("[bold cyan]╚════════════════════════════════════════╝[/]\n")
+
+    async def run_setup():
+        # Step 1: Choose LLM Provider
+        console.print("[cyan]Step 1: Select LLM Provider[/]")
+        console.print("  [dim]1)[/] Ollama (Local, Free)")
+        console.print("  [dim]2)[/] OpenAI (GPT-4, Paid)")
+        console.print("  [dim]3)[/] Gemini (Free)")
+
+        choice = typer.prompt("Choose (1-3)")
+
+        providers = {"1": "ollama", "2": "openai", "3": "gemini"}
+        if choice not in providers:
+            console.print("[red]❌ Invalid choice[/]")
+            return
+
+        provider = providers[choice]
+        settings.llm.provider = provider
+        console.print(f"[green]✓[/] Selected: {provider.upper()}\n")
+
+        # Step 2: Create directories
+        console.print("[cyan]Step 2: Create Directories[/]")
+        console.print("[dim]This will create:[/]")
+        console.print(f"  - {settings.data.path}")
+        console.print("  - backups/ (for backups)")
+        console.print("  - exports/ (for exports)")
+
+        if typer.confirm("[cyan]Create directories?[/]", default=True):
+            Path(settings.data.path).mkdir(parents=True, exist_ok=True)
+            (Path(settings.data.path) / "backups").mkdir(exist_ok=True)
+            (Path(settings.data.path) / "exports").mkdir(exist_ok=True)
+            console.print("[green]✓[/] Directories created\n")
+
+        # Step 3: Test LLM Connection
+        console.print("[cyan]Step 3: Testing LLM Connection[/]")
+
+        try:
+            from civion.services.llm_service import llm
+            response = await llm.generate(prompt="Say OK")
+            if response:
+                console.print(f"[green]✓[/] Connection successful!\n")
+            else:
+                console.print("[yellow]⚠️  Connection test failed\n[/]")
+        except Exception as e:
+            console.print(f"[red]✗[/] Connection failed: {e}\n")
+
+        # Step 4: Save Configuration
+        console.print("[cyan]Step 4: Saving Configuration[/]")
+
+        config_file = Path(settings.data.path) / "settings.json"
+        config_data = {
+            "llm": {
+                "provider": settings.llm.provider,
+                "model": settings.llm.model or "default",
+            },
+            "server": {
+                "host": settings.server.host,
+                "port": settings.server.port,
+            },
+            "agents": {
+                "auto_start": settings.agents.auto_start,
+            },
+        }
+
+        with open(config_file, "w") as f:
+            json.dump(config_data, f, indent=2)
+
+        console.print(f"[green]✓[/] Configuration saved to {config_file}\n")
+
+        # Step 5: Complete
+        console.print("[green]✓ Setup Complete![/]")
+        console.print("[cyan]You can now run:[/] [bold]civion start[/]\n")
+
+    asyncio.run(run_setup())
+
+
+@app.command()
 def update():
     """Update CIVION system components (e.g., logo, configuration)."""
     import shutil

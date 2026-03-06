@@ -280,28 +280,124 @@
 
         <!-- ═══ PAGE: SETTINGS ═══ -->
         <div class="page" id="page-settings">
-            <div class="card" style="max-width:600px">
-                <div class="card-header"><span>⚙️ Sandbox Permissions</span></div>
-                <div class="card-body">
-                    <div class="setting-row"><label>📂 File Access</label><label class="toggle"><input type="checkbox"
-                                checked disabled /><span class="slider"></span></label></div>
-                    <div class="setting-row"><label>🌐 API Access</label><label class="toggle"><input type="checkbox"
-                                checked disabled /><span class="slider"></span></label></div>
-                    <div class="setting-row"><label>📡 Internet Access</label><label class="toggle"><input
-                                type="checkbox" checked disabled /><span class="slider"></span></label></div>
-                    <div class="setting-row"><label>💻 System Commands</label><label class="toggle"><input
-                                type="checkbox" disabled /><span class="slider"></span></label></div>
-                </div>
-            </div>
-            <div class="card" style="max-width:600px;margin-top:1.5rem">
-                <div class="card-header"><span>🔧 System</span></div>
-                <div class="card-body">
-                    <div class="setting-row"><label>Version</label><span class="setting-val">0.3.0</span></div>
-                    <div class="setting-row"><label>Database</label><span class="setting-val">SQLite (local)</span>
-                    </div>
-                    <div class="setting-row"><label>Dashboard auto-refresh</label><span class="setting-val">15s</span>
+            <div class="settings-container" style="max-width:800px">
+
+                <!-- Setup Status -->
+                <div class="card" style="border-left:4px solid #8b5cf6;margin-bottom:1.5rem">
+                    <div class="card-header"><span>📋 Setup Status</span></div>
+                    <div class="card-body" id="setupStatusContent">
+                        <div class="empty">Loading...</div>
                     </div>
                 </div>
+
+                <!-- LLM Settings -->
+                <div class="card" style="border-left:4px solid #8b5cf6;margin-bottom:1.5rem">
+                    <div class="card-header"><span>🧠 LLM Configuration</span></div>
+                    <div class="card-body">
+                        <div class="form-group"><label>LLM Provider</label>
+                            <select id="sLlmProvider">
+                                <option value="">Select provider...</option>
+                                <option value="ollama">Ollama (Local)</option>
+                                <option value="openai">OpenAI (GPT-4)</option>
+                                <option value="gemini">Gemini (Free)</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>Model</label>
+                            <input id="sLlmModel" placeholder="e.g., gpt-4 or llama3" />
+                        </div>
+                        <div class="form-group"><label>Temperature</label>
+                            <input type="number" id="sLlmTemp" min="0" max="2" step="0.1" />
+                        </div>
+                        <div style="display:flex;gap:10px;margin-top:10px">
+                            <button class="btn btn-sm btn-primary" onclick="testLLM(this)">🧪 Test Connection</button>
+                            <button class="btn btn-sm" style="background:#10b981;color:#fff"
+                                onclick="saveLLMSettings()">💾 Save LLM</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Server Settings -->
+                <div class="card" style="border-left:4px solid #06b6d4;margin-bottom:1.5rem">
+                    <div class="card-header"><span>🖥️ Server Configuration</span></div>
+                    <div class="card-body">
+                        <div class="form-group"><label>Host</label>
+                            <input id="sServerHost" placeholder="0.0.0.0" />
+                        </div>
+                        <div class="form-group"><label>Port</label>
+                            <input type="number" id="sServerPort" placeholder="8000" />
+                        </div>
+                        <button class="btn btn-sm" style="background:#10b981;color:#fff;margin-top:10px"
+                            onclick="saveServerSettings()">💾 Save Server</button>
+                    </div>
+                </div>
+
+                <!-- Agent Settings -->
+                <div class="card" style="border-left:4px solid #f59e0b;margin-bottom:1.5rem">
+                    <div class="card-header"><span>🤖 Agent Configuration</span></div>
+                    <div class="card-body">
+                        <div class="form-check" style="margin-bottom:12px">
+                            <input type="checkbox" id="sAutoStart" />
+                            <label for="sAutoStart">Auto-start agents on startup</label>
+                        </div>
+                        <div class="form-group"><label>Max Concurrent Agents</label>
+                            <input type="number" id="sMaxConcurrent" min="1" max="50" />
+                        </div>
+                        <button class="btn btn-sm" style="background:#10b981;color:#fff;margin-top:10px"
+                            onclick="saveAgentSettings()">💾 Save Agents</button>
+                    </div>
+                </div>
+
+                <!-- Data Management -->
+                <div class="card" style="border-left:4px solid #ef4444;margin-bottom:1.5rem">
+                    <div class="card-header"><span>💾 Data Management</span></div>
+                    <div class="card-body">
+                        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px">
+                            <button class="btn btn-sm btn-primary" onclick="exportData('insights','json')">📊 Insights
+                                (JSON)</button>
+                            <button class="btn btn-sm btn-primary" onclick="exportData('insights','csv')">📊 Insights
+                                (CSV)</button>
+                            <button class="btn btn-sm btn-primary" onclick="exportData('runs','json')">📈 Runs
+                                (JSON)</button>
+                            <button class="btn btn-sm btn-primary" onclick="exportData('runs','csv')">📈 Runs
+                                (CSV)</button>
+                            <button class="btn btn-sm" style="background:#f59e0b;color:#fff"
+                                onclick="createBackup(this)">🔐 Create Backup</button>
+                        </div>
+                        <h4 style="margin:0 0 10px 0;font-size:14px;color:var(--text-dim)">📁 Backups & Exports</h4>
+                        <div id="backupFilesList"
+                            style="background:var(--bg-alt);padding:12px;border-radius:8px;max-height:300px;overflow-y:auto">
+                            <div class="empty">No backups or exports yet</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sandbox Permissions -->
+                <div class="card" style="max-width:600px;margin-bottom:1.5rem">
+                    <div class="card-header"><span>⚙️ Sandbox Permissions</span></div>
+                    <div class="card-body">
+                        <div class="setting-row"><label>📂 File Access</label><label class="toggle"><input
+                                    type="checkbox" checked disabled /><span class="slider"></span></label></div>
+                        <div class="setting-row"><label>🌐 API Access</label><label class="toggle"><input
+                                    type="checkbox" checked disabled /><span class="slider"></span></label></div>
+                        <div class="setting-row"><label>📡 Internet Access</label><label class="toggle"><input
+                                    type="checkbox" checked disabled /><span class="slider"></span></label></div>
+                        <div class="setting-row"><label>💻 System Commands</label><label class="toggle"><input
+                                    type="checkbox" disabled /><span class="slider"></span></label></div>
+                    </div>
+                </div>
+
+                <!-- System Info -->
+                <div class="card" style="max-width:600px">
+                    <div class="card-header"><span>🔧 System</span></div>
+                    <div class="card-body">
+                        <div class="setting-row"><label>Version</label><span class="setting-val">0.3.0</span></div>
+                        <div class="setting-row"><label>Database</label><span class="setting-val">SQLite (local)</span>
+                        </div>
+                        <div class="setting-row"><label>Dashboard auto-refresh</label><span
+                                class="setting-val">15s</span></div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </main>
@@ -335,6 +431,7 @@
             if (page === 'providers') loadProviders();
             if (page === 'goals') loadGoals();
             if (page === 'signals') loadSignals();
+            if (page === 'settings') loadSettings();
             // Close sidebar on mobile
             document.getElementById('sidebar').classList.remove('open');
         }
@@ -829,6 +926,148 @@
                 t.classList.remove('show');
                 setTimeout(() => t.remove(), 500);
             }, 4000);
+        }
+
+        // ── Settings Page ───────────────────────────────────────────
+
+        async function loadSettings() {
+            try {
+                const data = await fetchJSON('/api/settings/get');
+                document.getElementById('sLlmProvider').value = data.llm.provider || '';
+                document.getElementById('sLlmModel').value = data.llm.model || '';
+                document.getElementById('sLlmTemp').value = data.llm.temperature || 0.7;
+                document.getElementById('sServerHost').value = data.server.host || '';
+                document.getElementById('sServerPort').value = data.server.port || 8000;
+                document.getElementById('sAutoStart').checked = data.agents.auto_start;
+                document.getElementById('sMaxConcurrent').value = data.agents.max_concurrent || 5;
+            } catch (e) { console.error('Error loading settings:', e); }
+
+            // Load setup status
+            try {
+                const status = await fetchJSON('/api/setup/status');
+                document.getElementById('setupStatusContent').innerHTML = `
+                    <p style="margin:0 0 10px 0;font-weight:bold;color:${status.is_configured ? '#22c55e' : '#f59e0b'}">
+                        ${status.is_configured ? '✅ System Configured' : '⚠️ Configuration Incomplete'}
+                    </p>
+                    <ul style="list-style:none;padding:0;margin:0">
+                        <li style="padding:4px 0">LLM Provider: ${status.checks.llm_provider ? '✅' : '❌'}</li>
+                        <li style="padding:4px 0">LLM Model: ${status.checks.llm_model ? '✅' : '❌'}</li>
+                        <li style="padding:4px 0">Data Path: ${status.checks.data_path_exists ? '✅' : '❌'}</li>
+                        <li style="padding:4px 0">Database: ${status.checks.database_exists ? '✅' : '❌'}</li>
+                        <li style="padding:4px 0">Server: ${status.checks.server_configured ? '✅' : '❌'}</li>
+                    </ul>
+                `;
+            } catch (e) { console.error('Error loading status:', e); }
+
+            loadBackupFiles();
+        }
+
+        async function testLLM(btn) {
+            btn.disabled = true; btn.textContent = '⟳ Testing…';
+            try {
+                const resp = await fetch(API + '/api/setup/test-llm', { method: 'POST' });
+                const data = await resp.json();
+                if (resp.ok) { showToast('✅ ' + data.message); }
+                else { showToast('❌ ' + (data.error || 'Test failed')); }
+            } catch (e) { showToast('❌ Connection error'); }
+            btn.disabled = false; btn.textContent = '🧪 Test Connection';
+        }
+
+        async function saveLLMSettings() {
+            const resp = await fetch(API + '/api/settings/update', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    llm: {
+                        provider: document.getElementById('sLlmProvider').value,
+                        model: document.getElementById('sLlmModel').value,
+                        temperature: parseFloat(document.getElementById('sLlmTemp').value),
+                    }
+                })
+            });
+            showToast(resp.ok ? '✅ LLM settings saved!' : '❌ Failed to save');
+        }
+
+        async function saveServerSettings() {
+            const resp = await fetch(API + '/api/settings/update', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    server: {
+                        host: document.getElementById('sServerHost').value,
+                        port: parseInt(document.getElementById('sServerPort').value),
+                    }
+                })
+            });
+            showToast(resp.ok ? '✅ Server settings saved!' : '❌ Failed to save');
+        }
+
+        async function saveAgentSettings() {
+            const resp = await fetch(API + '/api/settings/update', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    agents: {
+                        auto_start: document.getElementById('sAutoStart').checked,
+                        max_concurrent: parseInt(document.getElementById('sMaxConcurrent').value),
+                    }
+                })
+            });
+            showToast(resp.ok ? '✅ Agent settings saved!' : '❌ Failed to save');
+        }
+
+        async function exportData(type, format) {
+            const resp = await fetch(API + `/api/export/${type}?format=${format}`);
+            const data = await resp.json();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `${type}_export.${format}`; a.click();
+            URL.revokeObjectURL(url);
+            showToast(`✅ ${type} exported as ${format.toUpperCase()}`);
+        }
+
+        async function createBackup(btn) {
+            btn.disabled = true; btn.textContent = '⟳ Backing up…';
+            const resp = await fetch(API + '/api/backup/create', { method: 'POST' });
+            const data = await resp.json();
+            if (resp.ok) { showToast('✅ Backup created!'); loadBackupFiles(); }
+            else { showToast('❌ ' + (data.error || 'Backup failed')); }
+            btn.disabled = false; btn.textContent = '🔐 Create Backup';
+        }
+
+        async function loadBackupFiles() {
+            try {
+                const files = await fetchJSON('/api/backup/files/list');
+                const el = document.getElementById('backupFilesList');
+                let html = '';
+                if (files.backups && files.backups.length > 0) {
+                    html += '<div style="font-size:12px;color:var(--text-dim);margin-bottom:6px">Backups:</div>';
+                    files.backups.forEach(f => {
+                        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--bg);margin:4px 0;border-radius:6px;border-left:3px solid #8b5cf6">
+                            <span style="font-size:13px">${esc(f.name)} <span class="text-muted">(${f.size_mb}MB)</span></span>
+                            <button class="btn btn-sm btn-danger" style="padding:2px 8px;font-size:11px" onclick="deleteBackupFile('${esc(f.path)}')">🗑️</button>
+                        </div>`;
+                    });
+                }
+                if (files.exports && files.exports.length > 0) {
+                    html += '<div style="font-size:12px;color:var(--text-dim);margin:10px 0 6px 0">Exports:</div>';
+                    files.exports.forEach(f => {
+                        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--bg);margin:4px 0;border-radius:6px;border-left:3px solid #3b82f6">
+                            <span style="font-size:13px">${esc(f.name)} <span class="text-muted">(${f.size_mb}MB)</span></span>
+                            <button class="btn btn-sm btn-danger" style="padding:2px 8px;font-size:11px" onclick="deleteBackupFile('${esc(f.path)}')">🗑️</button>
+                        </div>`;
+                    });
+                }
+                el.innerHTML = html || '<div class="empty">No backups or exports yet</div>';
+            } catch (e) { console.error('Error loading backup files:', e); }
+        }
+
+        async function deleteBackupFile(path) {
+            if (!confirm('Delete this file?')) return;
+            const resp = await fetch(API + '/api/backup/files/delete', {
+                method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ file_path: path })
+            });
+            if (resp.ok) { showToast('✅ File deleted'); loadBackupFiles(); }
+            else { showToast('❌ Failed to delete'); }
         }
 
         // ── Boot ────────────────────────────────────────────────────

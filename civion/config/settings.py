@@ -18,6 +18,7 @@ import yaml
 class ServerSettings:
     host: str = "0.0.0.0"
     port: int = 8000
+    debug: bool = False
 
 
 @dataclass
@@ -27,17 +28,25 @@ class LLMSettings:
     ollama_url: str = "http://localhost:11434"
     openai_api_key: str = ""
     gemini_api_key: str = ""
+    temperature: float = 0.7
+    max_tokens: int = 2048
 
 
 @dataclass
 class AgentSettings:
     default_interval: int = 3600
     auto_start: bool = True
+    max_concurrent: int = 5
 
 
 @dataclass
 class DatabaseSettings:
     path: str = "data/civion.db"
+
+
+@dataclass
+class DataSettings:
+    path: str = "data"
 
 
 # ── Top-level settings ───────────────────────────────────────
@@ -48,6 +57,7 @@ class Settings:
     llm: LLMSettings = field(default_factory=LLMSettings)
     agents: AgentSettings = field(default_factory=AgentSettings)
     database: DatabaseSettings = field(default_factory=DatabaseSettings)
+    data: DataSettings = field(default_factory=DataSettings)
 
 
 # ── Loader ────────────────────────────────────────────────────
@@ -99,6 +109,7 @@ def load_settings(config_path: str | Path | None = None) -> Settings:
         llm=LLMSettings(**raw.get("llm", {})),
         agents=AgentSettings(**raw.get("agents", {})),
         database=DatabaseSettings(**raw.get("database", {})),
+        data=DataSettings(**raw.get("data", {})),
     )
 
 

@@ -606,3 +606,327 @@ async def get_dashboard_summary():
             status_code=500,
             content={"error": "Failed to retrieve dashboard summary"}
         )
+
+
+# ── Settings ─────────────────────────────────────────────────
+
+@app.get("/api/settings/get")
+async def get_all_settings():
+    """Get all current CIVION settings."""
+    from civion.config.settings import settings
+
+    return {
+        "llm": {
+            "provider": settings.llm.provider,
+            "model": settings.llm.model,
+            "temperature": settings.llm.temperature,
+            "max_tokens": settings.llm.max_tokens,
+        },
+        "server": {
+            "host": settings.server.host,
+            "port": settings.server.port,
+            "debug": settings.server.debug,
+        },
+        "agents": {
+            "auto_start": settings.agents.auto_start,
+            "max_concurrent": settings.agents.max_concurrent,
+        },
+        "data": {
+            "path": str(settings.data.path),
+            "database": str(Path(settings.data.path) / "civion.db"),
+        },
+    }
+
+
+@app.post("/api/settings/update")
+async def update_settings(request: Request):
+    """Update CIVION settings and save to file."""
+    import json as _json
+
+    try:
+        from civion.config.settings import settings
+        settings_data = await request.json()
+
+        # Update LLM settings
+        if "llm" in settings_data:
+            for key, value in settings_data["llm"].items():
+                if hasattr(settings.llm, key):
+                    setattr(settings.llm, key, value)
+
+        # Update server settings
+        if "server" in settings_data:
+            for key, value in settings_data["server"].items():
+                if hasattr(settings.server, key):
+                    setattr(settings.server, key, value)
+
+        # Update agent settings
+        if "agents" in settings_data:
+            for key, value in settings_data["agents"].items():
+                if hasattr(settings.agents, key):
+                    setattr(settings.agents, key, value)
+
+        # Save to file
+        config_file = Path(settings.data.path) / "settings.json"
+        config_file.parent.mkdir(parents=True, exist_ok=True)
+
+        config_data = {
+            "llm": settings_data.get("llm", {}),
+            "server": settings_data.get("server", {}),
+            "agents": settings_data.get("agents", {}),
+        }
+
+        with open(config_file, "w") as f:
+            _json.dump(config_data, f, indent=2)
+
+        return {
+            "status": "success",
+            "message": "Settings updated and saved",
+            "settings": await get_all_settings(),
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to update settings: {e}")
+        return JSONResponse(
+            status_code=400,
+            content={"error": str(e)},
+        )
+
+
+# ── Setup ─────────────────────────────────────────────────────
+
+@app.get("/api/setup/status")
+async def get_setup_status():
+    """Check if CIVION is properly configured."""
+    from civion.config.settings import settings
+    from civion.storage.database import DB_PATH
+
+    checks = {
+        "llm_provider": settings.llm.provider is not None and settings.llm.provider != "",
+        "llm_model": settings.llm.model is not None and settings.llm.model != "",
+        "data_path_exists": Path(settings.data.path).exists(),
+        "database_exists": DB_PATH.exists(),
+        "server_configured": settings.server.host is not None and settings.server.host != "",
+    }
+
+    all_good = all(checks.values())
+
+    return {
+        "is_configured": all_good,
+        "checks": checks,
+        "message": "Ready to use" if all_good else "Please run setup first",
+    }
+
+
+@app.post("/api/setup/test-llm")
+async def test_llm_connection():
+    """Test LLM connection before saving settings."""
+    try:
+        from civion.config.settings import settings
+        from civion.services.llm_service import llm
+
+        response = await llm.generate(prompt="Say OK")
+
+        if response:
+            return {
+                "status": "success",
+                "message": f"{settings.llm.provider.upper()} connection works!",
+                "response": response[:100],
+            }
+        else:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "LLM test failed - no response"},
+            )
+
+    except Exception as e:
+        return JSONResponse(
+            status_code=400,
+            content={"error": f"Connection failed: {str(e)}"},
+        )
+
+
+# ── Export ─────────────────────────────────────────────────────
+
+@app.get("/api/export/insights")
+async def export_insights(format: str = "json"):
+    """Export all insights as JSON or CSV."""
+    from datetime import datetime
+
+    try:
+        insights = await get_insights(limit=1000)
+
+        if format == "json":
+            return {
+                "exported_at": datetime.now().isoformat(),
+                "total": len(insights),
+                "insights": insights,
+            }
+
+        elif format == "csv":
+            csv_lines = ["timestamp,agent,title,content"]
+            for insight in insights:
+                csv_lines.append(
+                    f"{insight.get('timestamp', '')},{insight.get('agent_name', '')},"
+                    f"\"{insight.get('title', '')}\",\"{insight.get('content', '')[:100]}\""
+                )
+            return {"format": "csv", "data": "\n".join(csv_lines)}
+
+        else:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Format must be 'json' or 'csv'"},
+            )
+
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)},
+        )
+
+
+@app.get("/api/export/runs")
+async def export_runs(format: str = "json"):
+    """Export all agent runs as JSON or CSV."""
+    from datetime import datetime
+
+    try:
+        runs = await get_runs(limit=1000)
+
+        if format == "json":
+            return {
+                "exported_at": datetime.now().isoformat(),
+                "total": len(runs),
+                "runs": runs,
+            }
+
+        elif format == "csv":
+            csv_lines = ["timestamp,agent,status,result"]
+            for run in runs:
+                csv_lines.append(
+                    f"{run.get('start_time', '')},{run.get('agent_name', '')},"
+                    f"\"{run.get('status', '')}\",\"{run.get('result', '')[:50]}\""
+                )
+            return {"format": "csv", "data": "\n".join(csv_lines)}
+
+        else:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Format must be 'json' or 'csv'"},
+            )
+
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)},
+        )
+
+
+# ── Backup ────────────────────────────────────────────────────
+
+@app.post("/api/backup/create")
+async def create_backup():
+    """Create complete backup of all CIVION data."""
+    import json as _json
+    from datetime import datetime
+
+    try:
+        from civion.config.settings import settings
+
+        backup_dir = Path(settings.data.path) / "backups"
+        backup_dir.mkdir(parents=True, exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_file = backup_dir / f"backup_{timestamp}.json"
+
+        backup_data = {
+            "timestamp": timestamp,
+            "insights": await get_insights(limit=10000),
+            "runs": await get_runs(limit=10000),
+            "agents": engine.list_agents(),
+        }
+
+        with open(backup_file, "w") as f:
+            _json.dump(backup_data, f, indent=2, default=str)
+
+        return {
+            "status": "success",
+            "message": "Backup created",
+            "file": str(backup_file),
+            "size_mb": round(backup_file.stat().st_size / (1024 * 1024), 2),
+        }
+
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)},
+        )
+
+
+@app.get("/api/backup/files/list")
+async def list_backup_files():
+    """List all exported files and backups."""
+    try:
+        from civion.config.settings import settings
+
+        data_path = Path(settings.data.path)
+        backup_path = data_path / "backups"
+        export_path = data_path / "exports"
+
+        files = {"backups": [], "exports": []}
+
+        if backup_path.exists():
+            for f in sorted(backup_path.glob("*.json"), reverse=True):
+                files["backups"].append({
+                    "name": f.name,
+                    "size_mb": round(f.stat().st_size / (1024 * 1024), 2),
+                    "created": f.stat().st_mtime,
+                    "path": str(f),
+                })
+
+        if export_path.exists():
+            for f in sorted(export_path.glob("*"), reverse=True):
+                files["exports"].append({
+                    "name": f.name,
+                    "size_mb": round(f.stat().st_size / (1024 * 1024), 2),
+                    "created": f.stat().st_mtime,
+                    "path": str(f),
+                })
+
+        return files
+
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)},
+        )
+
+
+@app.delete("/api/backup/files/delete")
+async def delete_backup_file(request: Request):
+    """Delete a backup or export file."""
+    try:
+        data = await request.json()
+        file_path = data.get("file_path", "")
+        file_to_delete = Path(file_path)
+
+        # Security check — only allow deletion from backups/exports
+        if "backups" not in str(file_to_delete) and "exports" not in str(file_to_delete):
+            return JSONResponse(
+                status_code=403,
+                content={"error": "Can only delete backup and export files"},
+            )
+
+        if file_to_delete.exists():
+            file_to_delete.unlink()
+            return {"status": "success", "message": f"Deleted {file_to_delete.name}"}
+        else:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "File not found"},
+            )
+
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)},
+        )
