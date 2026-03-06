@@ -141,10 +141,16 @@ class AgentEngine:
 
     # ── Bootstrap ─────────────────────────────────────────────
 
-    async def startup(self) -> None:
+    async def startup(self, load_agents: bool = True) -> None:
         """Initialise DB, discover agents, register them."""
+        if self._is_started:
+            return
+
         await init_db()
-        await self._load_agents()
+        if load_agents:
+            await self._load_agents()
+        
+        self._is_started = True
 
     async def shutdown(self) -> None:
         """Shutdown the engine and its components."""

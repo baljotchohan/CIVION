@@ -50,7 +50,6 @@ def discover_agents() -> list["BaseAgent"]:
                 modname,
                 tb
             )
-            print(f"  [red]✗[/] Failed to import {modname}: {str(exc)[:80]}")
             continue
 
         for attr_name in dir(module):
@@ -82,7 +81,6 @@ def discover_agents() -> list["BaseAgent"]:
                     instance = attr()
                     found.append(instance)
                     seen_classes.add(attr.__name__)
-                    print(f"  ✓ Discovered agent: {attr.__name__}")
                     logger.info(
                         "Discovered agent: %s (%s) from %s",
                         instance.name,
@@ -92,7 +90,6 @@ def discover_agents() -> list["BaseAgent"]:
                     
                 except ValueError as ve:
                     logger.error("Validation error for %s: %s", attr.__name__, str(ve))
-                    print(f"  [red]✗[/] Validation failed for {attr.__name__}: {str(ve)[:80]}")
                     
                 except Exception as exc:
                     import traceback
@@ -102,8 +99,6 @@ def discover_agents() -> list["BaseAgent"]:
                         modname,
                         traceback.format_exc()
                     )
-                    print(f"  [red]✗[/] Failed to instantiate {attr.__name__}: {str(exc)[:80]}")
 
-    print(f"  ✓ Discovered agents: {[type(a).__name__ for a in found]}")
     logger.info("Agent loader: discovered %d agent(s)", len(found))
     return found

@@ -109,71 +109,51 @@ def start(
     if port == 8000:
         port = settings.server.port
 
+    # --- Port Availability Check ---
+    import socket
+    def is_port_in_use(h: str, p: int) -> bool:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            return s.connect_ex((h, p)) == 0
+
+    if is_port_in_use(host, port):
+        console.print(f"\n[red]ERROR:[/] Port {port} is already in use on {host}.")
+        console.print("[yellow]Hint:[/] Another CIVION instance might be running. Close it or use --port to specify a different port.\n")
+        raise typer.Exit(1)
+
     async def _bootstrap():
         from civion.engine.agent_engine import engine
         from civion.engine.agent_loader import discover_agents
 
         # 2. Load configuration + agents
-        # Enhanced discovery section
-        console.print("[cyan]🔍 Discovering agents from civion/agents/...[/]")
+        console.print("[cyan]🔍 Discovering and registering agents...[/]")
         discovered = discover_agents()
 
-        console.print(f"[green]✓[/] Discovered: {len(discovered)} agent(s)")
         if not discovered:
             console.print("[red]⚠️  Warning: No agents found in civion/agents/[/]")
-            console.print("[yellow]This is unusual. Check your civion/agents/ folder.[/]")
-
-        # Enhanced registration with error handling
-        console.print("[cyan]📋 Registering agents...[/]")
-        failed_agents = []
-
+            console.print("[yellow]Check your civion/agents/ folder.[/]")
+        
         for i, agent in enumerate(discovered, 1):
             try:
                 engine.register_agent(agent)
-                
-                # Get emoji for personality
                 emoji_map = {
-                    "Explorer": "🔍",
-                    "Analyst": "📊", 
-                    "Predictor": "💹",
-                    "Watcher": "🔐"
+                    "Explorer": "🔍", "Analyst": "📊", "Predictor": "💹", "Watcher": "🔐"
                 }
                 emoji = emoji_map.get(agent.personality, "🤖")
-                
-                # Special emojis for specific agents
-                if agent.name == "StartupRadar":
-                    emoji = "🚀"
-                elif agent.name == "MemoryAgent":
-                    emoji = "🧠"
+                if agent.name == "StartupRadar": emoji = "🚀"
+                elif agent.name == "MemoryAgent": emoji = "🧠"
                 
                 console.print(f"  {i}. {emoji} [cyan]{agent.name}[/] ({agent.personality})")
-                
             except Exception as e:
-                console.print(f"  {i}. [red]✗[/] [cyan]{type(agent).__name__}[/] - [red]Failed: {str(e)[:60]}[/]")
-                failed_agents.append(agent.name)
+                console.print(f"  {i}. [red]✗[/] [cyan]{agent.name}[/] - [red]Failed: {str(e)[:60]}[/]")
 
-        # Verify count
-        await engine.startup()
+        # Prepare engine (DB init, but skip re-loading)
+        await engine.startup(load_agents=False)
         
-        # Start Collective Intelligence Signal Engine
         from civion.engine.signal_engine import signal_engine
         await signal_engine.start()
-        agents = engine.list_agents()
 
-        console.print(f"\n[green]✓[/] Agent registration complete:")
-        console.print(f"  Total registered: {len(agents)}/{len(discovered)} agents")
-
-        if failed_agents:
-            console.print(f"[yellow]⚠️  Failed to register: {', '.join(failed_agents)}[/]")
-        elif len(agents) < len(discovered):
-            console.print(f"[yellow]⚠️  Only {len(agents)}/{len(discovered)} agents registered[/]")
-        else:
-            console.print(f"[green]✓[/] All agents registered successfully!")
-
-        console.print("[green]✓[/] Scheduler mapped to background lifespan")
-        console.print("[green]✓[/] Memory graph active")
-        console.print("[green]✓[/] Collaboration engine active")
-        console.print("[green]✓[/] Event engine active")
+        console.print(f"\n[green]✓[/] System initialized with {len(engine.list_agents())} agents.")
+        console.print("[dim]Scheduler, Memory Graph, and Event Engine are active.[/]")
 
     # Show startup info
     asyncio.run(_bootstrap())
@@ -186,7 +166,10 @@ def start(
     console.print(f"\n[bold green]Dashboard →[/] http://localhost:{port}\n")
 
     if not no_browser:
-        webbrowser.open(f"http://localhost:{port}")
+        try:
+            webbrowser.open(f"http://localhost:{port}")
+        except:
+            pass
 
     # 6. Open dashboard via uvicorn
     uvicorn.run(
