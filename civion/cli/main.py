@@ -393,6 +393,31 @@ def agent_create(name: str = typer.Argument(..., help="Name of the new agent")):
 
 # ── Marketplace Commands ──────────────────────────────────────
 
+
+@app.command()
+def update():
+    """Update CIVION system components (e.g., logo, configuration)."""
+    import shutil
+    from pathlib import Path
+
+    console.print("\n[bold cyan]🔄 CIVION System Update[/]")
+
+    # 1. Update Logo
+    new_logo_path = Path("/Users/baljotchohan/.gemini/antigravity/brain/35402a12-0441-4d4b-bfdc-953ed2d97790/perfect_minimalist_logo_1772791711473.png")
+    static_logo_path = Path(__file__).resolve().parent.parent / "api" / "static" / "logo.png"
+
+    if new_logo_path.exists():
+        try:
+            shutil.copy(new_logo_path, static_logo_path)
+            console.print(f"[green]✓[/] Logo updated successfully → [cyan]{static_logo_path.name}[/]")
+        except Exception as e:
+            console.print(f"[red]✗[/] Failed to update logo: {e}")
+    else:
+        console.print("[yellow]⚠️  New logo source not found. Skipping logo update.[/]")
+
+    console.print("\n[green]✓[/] Update complete! Restart the dashboard to see changes.\n")
+
+
 @marketplace_app.command("search")
 def marketplace_search(query: str = typer.Argument("", help="Search query")):
     """Search for agents in the CIVION Marketplace."""
