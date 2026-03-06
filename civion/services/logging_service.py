@@ -65,6 +65,9 @@ def configure_logging(level: str = "INFO") -> None:
     for noisy in ("httpx", "httpcore", "asyncio", "apscheduler"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
+    # Suppress uvicorn request-level access logs entirely
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+
     _configured = True
 
 

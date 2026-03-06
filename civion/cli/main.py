@@ -88,6 +88,7 @@ def start(
         host=host,
         port=port,
         log_level="info",
+        access_log=False,
         reload=False,
     )
 
