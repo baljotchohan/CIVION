@@ -38,38 +38,6 @@ marketplace_app = typer.Typer(help="Discover and install agents from the CIVION 
 app.add_typer(marketplace_app, name="marketplace")
 
 
-# ── Signal Handling ──────────────────────────────────────────
-
-def setup_signal_handlers(engine_instance):
-    """
-    Set up signal handlers for graceful shutdown.
-    
-    Args:
-        engine_instance: The agent engine instance
-    """
-    def signal_handler(sig, frame):
-        console.print("\n\n[yellow]⏱️  Shutting down CIVION gracefully...[/]")
-        
-        # Stop the engine
-        try:
-            import asyncio
-            # If we are already in an event loop, we might need to handle this differently
-            # but for a CLI command that's running uvicorn, this is usually okay if called from a thread
-            # however, uvicorn has its own signal handling. 
-            # In 'civion start', uvicorn is running.
-            
-            # For simplicity in this implementation:
-            asyncio.run(engine_instance.shutdown())
-        except Exception as e:
-            logger.error(f"Error during shutdown: {e}")
-        
-        console.print("[green]✓[/] CIVION shutdown complete")
-        console.print("[dim]Goodbye! 👋[/]\n")
-        sys.exit(0)
-    
-    # Register signal handlers
-    signal.signal(signal.SIGINT, signal_handler)  # Ctrl+C
-    signal.signal(signal.SIGTERM, signal_handler)  # Termination
 
 
 # ── civion start ──────────────────────────────────────────────
@@ -148,9 +116,6 @@ def start(
 
         # Prepare engine (DB init, but skip re-loading)
         await engine.startup(load_agents=False)
-        
-        from civion.engine.signal_engine import signal_engine
-        await signal_engine.start()
 
         console.print(f"\n[green]✓[/] System initialized with {len(engine.list_agents())} agents.")
         console.print("[dim]Scheduler, Memory Graph, and Event Engine are active.[/]")
@@ -158,9 +123,6 @@ def start(
     # Show startup info
     asyncio.run(_bootstrap())
 
-    # Setup signal handlers for graceful shutdown
-    from civion.engine.agent_engine import engine
-    setup_signal_handlers(engine)
 
     # 5. Start FastAPI server
     console.print(f"\n[bold green]Dashboard →[/] http://localhost:{port}\n")

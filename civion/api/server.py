@@ -66,6 +66,10 @@ async def lifespan(application: FastAPI):
     
     from civion.engine.scheduler import AgentScheduler
     from civion.config.settings import settings
+    from civion.engine.signal_engine import signal_engine
+    
+    # Start background components
+    await signal_engine.start()
     
     scheduler = AgentScheduler(engine)
     scheduler.schedule_agents()
@@ -77,7 +81,12 @@ async def lifespan(application: FastAPI):
         
     logger.info("CIVION server started")
     yield
+    
+    # Graceful shutdown
+    logger.info("Shutting down CIVION...")
     scheduler.stop()
+    await signal_engine.stop()
+    await engine.shutdown()
     logger.info("CIVION server stopped")
 
 

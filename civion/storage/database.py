@@ -138,6 +138,11 @@ async def init_db() -> None:
             await db.execute("ALTER TABLE memory_nodes ADD COLUMN confidence REAL NOT NULL DEFAULT 1.0")
         except Exception: pass
         
+        # Migration for collaboration_signals
+        try:
+            await db.execute("ALTER TABLE collaboration_signals ADD COLUMN supporting_insights TEXT NOT NULL DEFAULT '[]'")
+        except Exception: pass
+        
         await db.commit()
 
 
