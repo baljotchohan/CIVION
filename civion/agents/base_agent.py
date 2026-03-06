@@ -126,6 +126,17 @@ class BaseAgent(ABC):
 
     async def run(self) -> AgentResult:
         """Execute the agent's OPA loop autonomously."""
+        from civion.api.server import manager
+        import asyncio
+
+        # Broadcast start
+        try:
+            asyncio.create_task(manager.broadcast({
+                "type": "agent_started",
+                "data": {"name": self.name, "personality": self.personality}
+            }))
+        except Exception: pass
+
         try:
             # 1. Observe: Gather environment data and past memory
             context = await self.observe()
@@ -136,6 +147,18 @@ class BaseAgent(ABC):
             # 3. Act: Execute the planned tool or action
             result = await self.act(plan)
             
+            # Broadcast finish
+            try:
+                asyncio.create_task(manager.broadcast({
+                    "type": "agent_finished",
+                    "data": {
+                        "name": self.name, 
+                        "success": result.success,
+                        "title": result.title
+                    }
+                }))
+            except Exception: pass
+
             return result
         except Exception as e:
             return AgentResult(success=False, content=f"Execution loop failed: {e}")

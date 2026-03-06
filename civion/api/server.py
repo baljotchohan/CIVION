@@ -46,6 +46,7 @@ from civion.storage.database import (
     update_agent_status, delete_agent_db,
 )
 from civion.engine.planner_engine import planner_engine
+from fastapi.middleware.cors import CORSMiddleware
 
 logger = logging.getLogger("civion.server")
 
@@ -91,6 +92,14 @@ async def lifespan(application: FastAPI):
 
 
 app = FastAPI(title="CIVION", version="0.3.0", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # ── WebSocket Manager ─────────────────────────────────────────
@@ -286,7 +295,7 @@ async def api_runs(limit: int = 50):
 
 @app.get("/api/signals")
 async def api_signals(limit: int = 20):
-    from civion.engine.collaboration_engine import get_signals
+    from civion.engine.signal_engine import get_signals
     return await get_signals(limit)
 
 
@@ -463,7 +472,15 @@ async def api_delete_provider(name: str):
 
 @app.get("/api/goals")
 async def api_goals():
-    return planner_engine.list_goals()
+    return await planner_engine.list_goals()
+
+@app.get("/api/goals/{id}")
+async def api_goal_detail(id: str):
+    all_goals = await planner_engine.list_goals()
+    goal = next((g for g in all_goals if g["id"] == id), None)
+    if not goal:
+        return JSONResponse({"error": "Goal not found"}, 404)
+    return goal
 
 @app.post("/api/goals")
 async def api_create_goal(request: Request):
@@ -479,73 +496,98 @@ async def api_create_goal(request: Request):
 
 @app.post("/api/builder/generate")
 async def api_builder_generate(request: Request):
+    from civion.services.builder_service import builder_service
     data = await request.json()
-    name = data.get("name", "my_agent")
-    desc = data.get("description", "A custom CIVION agent")
-    personality = data.get("personality", "Explorer")
-    interval = data.get("interval", 3600)
-    sources = data.get("data_sources", [])
-
-    snake = name.lower().replace("-", "_").replace(" ", "_")
-    class_name = "".join(w.capitalize() for w in snake.split("_"))
-    if not class_name.endswith("Agent"):
-        class_name += "Agent"
-
-    sources_str = ", ".join(f'"{s}"' for s in sources) if sources else '"https://api.example.com/data"'
-
-    code = textwrap.dedent(f'''\
-        """
-        CIVION Agent — {class_name}
-        {desc}
-        """
-
-        from civion.agents.base_agent import BaseAgent, AgentResult
-        from civion.services.api_service import api
-        from civion.services.llm_service import llm
-
-
-        class {class_name}(BaseAgent):
-            name = "{snake}"
-            description = "{desc}"
-            interval = {interval}
-            personality = "{personality}"
-            tags = ["custom"]
-            data_sources = [{sources_str}]
-
-            async def run(self) -> AgentResult:
-                # Fetch data
-                data = await api.get(self.data_sources[0])
-
-                # Analyse with LLM
-                analysis = await llm.generate(
-                    prompt=f"Analyse this data: {{data}}",
-                    system=self.personality_prompt(),
-                )
-
-                return AgentResult(
-                    success=True,
-                    title=f"{{self.name.capitalize()}} Intelligence Update",
-                    content=analysis,
-                    agent_name=self.name,
-                    confidence=0.9,
-                    source=self.data_sources[0] if self.data_sources else "Manual",
-                )
-    ''')
     
-    # Write to agents directory
-    agents_dir = Path(__file__).resolve().parent.parent / "agents"
-    filepath = agents_dir / f"{snake}.py"
-    filepath.write_text(code)
+    success = await builder_service.build_agent(
+        name=data.get("name"),
+        description=data.get("description"),
+        personality=data.get("personality", "Explorer"),
+        interval=int(data.get("interval", 3600)),
+        prompt=data.get("prompt", ""),
+        tools=data.get("tools", []),
+        tags=data.get("tags", ["custom"])
+    )
+    
+    if success:
+        await engine.reload()
+        return {"status": "success", "message": "Agent generated and engine reloaded."}
+    else:
+        return JSONResponse({"error": "Failed to generate agent"}, 500)
 
-    # Reload engine to pick up new agent
-    try:
-        from civion.engine.agent_engine import engine
-        engine.load_agents()
-        logger.info(f"Agent {snake} generated and engine reloaded.")
-    except Exception as e:
-        logger.error(f"Failed to reload engine: {e}")
 
-    return {"name": snake, "class_name": class_name, "code": code, "path": str(filepath), "saved": True}
+@app.post("/api/system/reload")
+async def api_system_reload():
+    """Trigger a manual reload of all agents."""
+    await engine.reload()
+    return {"status": "success", "message": "Agents reloaded."}
+
+
+# ── Marketplace ───────────────────────────────────────────────
+
+@app.get("/api/market/agents")
+async def api_market_list():
+    """Return a list of featured 'marketplace' agents available for install."""
+    return [
+        {
+            "id": "m1",
+            "name": "Arxiv Researcher",
+            "description": "Deep scans Arxiv for latest AI breakthroughs.",
+            "personality": "Analyst",
+            "author": "CIVION Core",
+            "rating": 4.9,
+            "downloads": "1.2k"
+        },
+        {
+            "id": "m2",
+            "name": "Social Sentiment",
+            "description": "Monitors social media feeds for market sentiment spikes.",
+            "personality": "Predictor",
+            "author": "CIVION Core",
+            "rating": 4.7,
+            "downloads": "800"
+        },
+        {
+            "id": "m3",
+            "name": "Vulnerability Watcher",
+            "description": "Scans CVE databases and security blogs for zero-days.",
+            "personality": "Watcher",
+            "author": "SecurityTeam",
+            "rating": 4.8,
+            "downloads": "2.1k"
+        }
+    ]
+
+@app.post("/api/market/install/{id}")
+async def api_market_install(id: str):
+    """Mock install flow - for now just 'builds' a template agent."""
+    from civion.services.builder_service import builder_service
+    
+    # Template mapping
+    templates = {
+        "m1": {"name": "Arxiv Pro", "desc": "Advanced Arxiv researcher.", "personality": "Analyst", "prompt": "Search arxiv for 'Large Language Models' and summarize key papers."},
+        "m2": {"name": "Market Pulse", "desc": "Real-time market sentiment tracker.", "personality": "Predictor", "prompt": "Monitor crypto news and detect bullish/bearish patterns."},
+        "m3": {"name": "CVS Scanner", "desc": "Security vulnerability scanner.", "personality": "Watcher", "prompt": "Scan security advisories for high-severity vulnerabilities."}
+    }
+    
+    tpl = templates.get(id)
+    if not tpl:
+        return JSONResponse({"error": "Agent template not found"}, 404)
+        
+    success = await builder_service.build_agent(
+        name=tpl["name"],
+        description=tpl["desc"],
+        personality=tpl["personality"],
+        interval=3600,
+        prompt=tpl["prompt"],
+        tools=["web_search"],
+        tags=["market", tpl["personality"].lower()]
+    )
+    
+    if success:
+        await engine.reload()
+        return {"status": "success", "message": f"Installed {tpl['name']}"}
+    return JSONResponse({"error": "Installation failed"}, 500)
 
 
 @app.get("/api/agents/{name}/metrics")

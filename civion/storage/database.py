@@ -122,6 +122,26 @@ CREATE TABLE IF NOT EXISTS llm_providers (
     status      TEXT    NOT NULL DEFAULT 'disconnected',
     created_at  TEXT    NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS goals (
+    id          TEXT PRIMARY KEY,
+    title       TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    status      TEXT NOT NULL DEFAULT 'pending',
+    final_report TEXT,
+    created_at  TEXT NOT NULL,
+    completed_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS subtasks (
+    id          TEXT PRIMARY KEY,
+    goal_id     TEXT NOT NULL,
+    description TEXT NOT NULL,
+    assigned_agent TEXT,
+    status      TEXT NOT NULL DEFAULT 'pending',
+    result      TEXT,
+    FOREIGN KEY (goal_id) REFERENCES goals(id)
+);
 """
 
 
@@ -150,11 +170,57 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _to_json(data: Any) -> str:
+    return json.dumps(data)
+
+
 async def _fetch_all(query: str, params: tuple = ()) -> list[dict[str, Any]]:
     async with aiosqlite.connect(str(DB_PATH)) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(query, params) as cursor:
             return [dict(row) for row in await cursor.fetchall()]
+
+
+# ── Goals & SubTasks ──────────────────────────────────────────
+
+async def save_goal(id: str, title: str, description: str) -> None:
+    async with aiosqlite.connect(str(DB_PATH)) as db:
+        await db.execute(
+            "INSERT INTO goals (id, title, description, status, created_at) VALUES (?, ?, ?, ?, ?)",
+            (id, title, description, "pending", _now())
+        )
+        await db.commit()
+
+async def update_goal(id: str, status: str, final_report: str = None) -> None:
+    async with aiosqlite.connect(str(DB_PATH)) as db:
+        completed_at = _now() if status == "completed" else None
+        await db.execute(
+            "UPDATE goals SET status = ?, final_report = ?, completed_at = ? WHERE id = ?",
+            (status, final_report, completed_at, id)
+        )
+        await db.commit()
+
+async def save_subtask(id: str, goal_id: str, description: str, agent: str) -> None:
+    async with aiosqlite.connect(str(DB_PATH)) as db:
+        await db.execute(
+            "INSERT INTO subtasks (id, goal_id, description, assigned_agent, status) VALUES (?, ?, ?, ?, ?)",
+            (id, goal_id, description, agent, "pending")
+        )
+        await db.commit()
+
+async def update_subtask(id: str, status: str, result: str = None) -> None:
+    async with aiosqlite.connect(str(DB_PATH)) as db:
+        await db.execute(
+            "UPDATE subtasks SET status = ?, result = ? WHERE id = ?",
+            (status, result, id)
+        )
+        await db.commit()
+
+async def get_all_goals() -> list[dict[str, Any]]:
+    goals = await _fetch_all("SELECT * FROM goals ORDER BY created_at DESC")
+    for goal in goals:
+        goal['subtasks'] = await _fetch_all("SELECT * FROM subtasks WHERE goal_id = ?", (goal['id'],))
+    return goals
 
 
 # ── Agents ────────────────────────────────────────────────────

@@ -179,7 +179,7 @@ class AgentController:
 
     async def _run_collaboration(self, results: list[AgentResult]) -> None:
         try:
-            from civion.engine.collaboration_engine import generate_signals
+            from civion.engine.signal_engine import generate_signals
             agent_data = [
                 {"agent_name": r.title or "unknown", "title": r.title, "content": r.content[:500]}
                 for r in results if r.success
@@ -210,6 +210,21 @@ class AgentController:
         for name in list(self._running_tasks.keys()):
             await self.stop_agent(name)
         self._is_started = False
+
+    async def reload(self) -> None:
+        """Reload agents from the filesystem."""
+        logger.info("Reloading agents...")
+        # Cancel all running tasks first
+        for name in list(self._running_tasks.keys()):
+            await self.stop_agent(name)
+        
+        # Clear existing agent registry
+        self._agents.clear()
+        self._health_status.clear()
+        
+        # Re-discover and register
+        await self._load_agents()
+        logger.info("Agent reload complete.")
 
     async def _load_agents(self) -> None:
         """Use the agent_loader to discover and register all agents."""

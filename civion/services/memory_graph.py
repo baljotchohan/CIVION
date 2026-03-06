@@ -220,6 +220,77 @@ async def link_related_insights(node_id: int) -> int:
         return count
 
 
+# ── Semantic Linking ──────────────────────────────────────────
+
+async def link_insights_semantically(node_id: int) -> int:
+    """
+    Use LLM reasoning to link an insight to other relevant nodes
+    even if they don't share exact tags.
+    """
+    from civion.services.llm_service import llm
+    
+    # 1. Get the source node
+    async with aiosqlite.connect(str(DB_PATH)) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT * FROM memory_nodes WHERE id = ?", (node_id,)) as cur:
+            source = await cur.fetchone()
+            if not source: return 0
+            
+    # 2. Get a few recent nodes for comparison
+    async with aiosqlite.connect(str(DB_PATH)) as db:
+        async with db.execute(
+            "SELECT id, topic, content FROM memory_nodes WHERE id != ? ORDER BY id DESC LIMIT 10",
+            (node_id,)
+        ) as cur:
+            candidates = await cur.fetchall()
+            
+    if not candidates: return 0
+    
+    # 3. Ask LLM to find relations
+    candidate_list = "\n".join([f"ID {c[0]}: {c[1]}" for c in candidates])
+    prompt = f"""
+    Analyze the following new insight and identify which existing insights it is related to.
+    
+    New Insight: {source['topic']} - {source['content'][:300]}
+    
+    Existing Insights:
+    {candidate_list}
+    
+    Return a JSON list of related IDs and a one-word description of the relation (e.g., "causal", "supporting", "contradicting", "related").
+    Return ONLY JSON. Example: [{{"id": 5, "relation": "causal"}}]
+    """
+    
+    try:
+        response = await llm.generate(prompt, system="You are the CIVION Memory Weaver.")
+        response = response.strip()
+        if "```" in response: # Clean markdown
+            response = response.split("```")[1]
+            if response.startswith("json"): response = response[4:]
+            
+        import json
+        links = json.loads(response.strip())
+        
+        count = 0
+        async with aiosqlite.connect(str(DB_PATH)) as db:
+            for link in links:
+                target_id = link.get("id")
+                relation = link.get("relation", "semantic")
+                
+                # Verify target exists and avoid duplicates
+                async with db.execute(
+                    "INSERT INTO memory_links (source_id, target_id, relation) SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM memory_nodes WHERE id = ?)",
+                    (node_id, target_id, relation, target_id)
+                ) as cur:
+                    if cur.rowcount > 0:
+                        count += 1
+            await db.commit()
+        return count
+    except Exception as e:
+        import logging
+        logging.getLogger("civion.memory").error("Semantic linking failed: %s", e)
+        return 0
+
+
 # ── Retrieve Full Graph (for dashboard) ───────────────────────
 
 async def get_memory_graph(limit: int = 50) -> dict[str, Any]:
