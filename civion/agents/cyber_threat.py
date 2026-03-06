@@ -14,8 +14,9 @@ class CyberThreatAgent(BaseAgent):
     interval = 3600 * 3  # Run every 3 hours
     personality = "Watcher"
     tags = ["security", "cve", "threat-intel"]
+    tools_allowed = ["web_search"]
 
-    async def run(self) -> AgentResult:
+    async def execute_task(self) -> AgentResult:
         key = await api.get_connection_key("CIRCL")
         warning_msg = ""
         if not key:

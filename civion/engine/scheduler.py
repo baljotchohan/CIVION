@@ -13,7 +13,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 if TYPE_CHECKING:
-    from civion.engine.agent_engine import AgentEngine
+    from civion.engine.agent_engine import AgentController
 
 logger = logging.getLogger("civion.scheduler")
 
@@ -21,7 +21,7 @@ logger = logging.getLogger("civion.scheduler")
 class AgentScheduler:
     """Wraps APScheduler to execute agents on a recurring basis."""
 
-    def __init__(self, engine: "AgentEngine") -> None:
+    def __init__(self, engine: "AgentController") -> None:
         self.engine = engine
         self._scheduler = AsyncIOScheduler()
 

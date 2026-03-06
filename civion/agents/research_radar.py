@@ -16,8 +16,9 @@ class ResearchPaperAgent(BaseAgent):
     interval = 3600 * 6  # Run every 6 hours
     personality = "Analyst"
     tags = ["research", "ai", "arxiv"]
+    tools_allowed = ["arxiv"]
 
-    async def run(self) -> AgentResult:
+    async def execute_task(self) -> AgentResult:
         # Search Arxiv for AI/ML papers
         query = urllib.parse.quote('cat:cs.AI OR cat:cs.LG')
         url = f"https://export.arxiv.org/api/query?search_query={query}&start=0&max_results=5&sortBy=submittedDate&sortOrder=descending"

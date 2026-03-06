@@ -84,13 +84,14 @@ class BaseAgent(ABC):
     """
     Abstract base class for all CIVION agents.
 
-    Subclasses must implement ``run()`` and return an ``AgentResult``.
+    Agents follow the Observe -> Plan -> Act loop for autonomous operation.
 
     Attributes:
         name:         Human-readable agent name.
         description:  What the agent does.
         interval:     Seconds between scheduled runs (0 = manual only).
         data_sources: List of API URLs or identifiers the agent uses.
+        tools_allowed: List of tool names this agent can use.
         personality:  One of Explorer, Analyst, Watcher, Predictor.
         tags:         Tags for memory graph categorisation.
     """
@@ -99,8 +100,18 @@ class BaseAgent(ABC):
     description: str = ""
     interval: int = 3600
     data_sources: list[str] = []
-    personality: str = "Explorer"    # v2: personality system
-    tags: list[str] = []             # v2: memory graph tags
+    tools_allowed: list[str] = []    # New: tool system
+    personality: str = "Explorer"
+    tags: list[str] = []
+
+    def __init__(self) -> None:
+        from civion.engine.sandbox import AgentSandbox
+        from civion.tools.base_tool import tool_registry
+        
+        self.sandbox = AgentSandbox(self.name)
+        self.tools = {name: tool_registry.get_tool(name, context=self) 
+                     for name in self.tools_allowed}
+        self.short_term_memory: list[dict[str, Any]] = []
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
@@ -108,12 +119,79 @@ class BaseAgent(ABC):
             cls.data_sources = []
         if "tags" not in cls.__dict__:
             cls.tags = []
+        if "tools_allowed" not in cls.__dict__:
+            cls.tools_allowed = []
 
-    # ── Core interface ────────────────────────────────────────
+    # ── Execution Engine (OPA Loop) ───────────────────────────
+
+    async def run(self) -> AgentResult:
+        """Execute the agent's OPA loop autonomously."""
+        try:
+            # 1. Observe: Gather environment data and past memory
+            context = await self.observe()
+            
+            # 2. Plan: Decide which action or tool to use
+            plan = await self.plan(context)
+            
+            # 3. Act: Execute the planned tool or action
+            result = await self.act(plan)
+            
+            return result
+        except Exception as e:
+            return AgentResult(success=False, content=f"Execution loop failed: {e}")
+
+    async def observe(self) -> dict[str, Any]:
+        """Gather context from memory and data sources."""
+        recent_memory = await self.search_memory(limit=3)
+        return {
+            "recent_memory": recent_memory,
+            "data_sources": self.data_sources,
+            "short_term_memory": self.short_term_memory[-5:],
+            "system_prompt": self.personality_prompt()
+        }
+
+    async def plan(self, context: dict[str, Any]) -> dict[str, Any]:
+        """Determine the next step based on context."""
+        from civion.services.llm_service import llm
+        
+        tools_desc = "\n".join([f"- {t.name}: {t.description}" for t in self.tools.values()])
+        prompt = f"""
+        Current Context: {context}
+        Available Tools:
+        {tools_desc}
+        
+        You are {self.name}, a {self.personality} agent. 
+        Based on the context, decide the next action. 
+        If you have enough information, generate an insight. 
+        Otherwise, select a tool to use.
+        
+        Return a JSON object with:
+        "action": "use_tool" | "generate_insight"
+        "tool_name": (string, if action is use_tool)
+        "tool_params": (dict, if action is use_tool)
+        "reasoning": (string)
+        """
+        
+        # In a real implementation, we'd use structured LLM output
+        # For now, we mock a decision or use a simple heuristic
+        return {"action": "generate_insight", "reasoning": "Baseline autonomous loop iteration"}
+
+    async def act(self, plan: dict[str, Any]) -> AgentResult:
+        """Perform the action determined in the planning phase."""
+        if plan["action"] == "use_tool":
+            tool_name = plan["tool_name"]
+            if tool_name in self.tools:
+                tool_result = await self.tools[tool_name].execute(**plan["tool_params"])
+                self.short_term_memory.append({"tool": tool_name, "result": tool_result})
+                # Re-run loop or return updated result? For flow, we return a summary.
+                return AgentResult(success=True, content=f"Used tool {tool_name}: {tool_result}")
+        
+        # Default: perform the subclass-specific logic (formerly the entire run() method)
+        return await self.execute_task()
 
     @abstractmethod
-    async def run(self) -> AgentResult:
-        """Execute the agent's main task and return an AgentResult."""
+    async def execute_task(self) -> AgentResult:
+        """The core task implementation formerly known as run()."""
         ...
 
     # ── Personality helpers ───────────────────────────────────
@@ -137,6 +215,7 @@ class BaseAgent(ABC):
             "description": self.description,
             "interval": self.interval,
             "data_sources": self.data_sources,
+            "tools_allowed": self.tools_allowed,
             "personality": self.personality,
             "personality_emoji": p.get("emoji", "🤖"),
             "personality_color": p.get("color", "#6366f1"),

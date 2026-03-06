@@ -14,8 +14,9 @@ class StartupRadarAgent(BaseAgent):
     interval = 3600 * 4  # Run every 4 hours
     personality = "Explorer"
     tags = ["startup", "ai", "hackernews"]
+    tools_allowed = ["web_search"]
 
-    async def run(self) -> AgentResult:
+    async def execute_task(self) -> AgentResult:
         key = await api.get_connection_key("HackerNews")
         warning_msg = ""
         if not key:

@@ -26,49 +26,99 @@ from civion.services.logging_service import log_agent, log_system
 logger = logging.getLogger("civion.engine")
 
 
-class AgentEngine:
-    """Manages the lifecycle of all registered agents."""
+class AgentController:
+    """Manages the lifecycle, health, and execution of all agents."""
 
     def __init__(self) -> None:
         self._agents: dict[str, BaseAgent] = {}
+        self._running_tasks: dict[str, asyncio.Task] = {}
+        self._health_status: dict[str, str] = {}
         self._is_started = False
 
     # ── Registration ──────────────────────────────────────────
 
     def register_agent(self, agent: BaseAgent) -> None:
-        """Register an agent instance with the engine."""
+        """Register an agent instance with the controller."""
         self._agents[agent.name] = agent
+        self._health_status[agent.name] = "healthy"
         logger.info("Registered agent: %s (%s)", agent.name, agent.personality)
 
     def get_agent(self, name: str) -> BaseAgent | None:
         return self._agents.get(name)
 
     def list_agents(self) -> list[dict[str, Any]]:
-        """Return info dicts for every registered agent."""
-        return [agent.info() for agent in self._agents.values()]
+        """Return info dicts for every registered agent with health status."""
+        agents_info = []
+        for agent in self._agents.values():
+            info = agent.info()
+            info["health"] = self._health_status.get(agent.name, "unknown")
+            info["is_running"] = agent.name in self._running_tasks
+            agents_info.append(info)
+        return agents_info
+
+    # ── Lifecycle Management ──────────────────────────────────
+
+    async def start_agent(self, name: str) -> bool:
+        """Start an agent as an independent background task."""
+        agent = self._agents.get(name)
+        if not agent:
+            return False
+            
+        if name in self._running_tasks:
+            logger.info("Agent %s is already running", name)
+            return True
+
+        # For persistent agents, we might have a loop here. 
+        # For now, we allow the scheduler to handle intervals, 
+        # but the controller tracks the 'active' state.
+        task = asyncio.create_task(self.run_agent(name))
+        self._running_tasks[name] = task
+        return True
+
+    async def stop_agent(self, name: str) -> bool:
+        """Stop a running agent task."""
+        task = self._running_tasks.pop(name, None)
+        if task:
+            task.cancel()
+            logger.info("Stopped agent: %s", name)
+            return True
+        return False
+
+    def get_health(self) -> dict[str, Any]:
+        """Return system-wide health and agent status."""
+        return {
+            "controller_started": self._is_started,
+            "total_agents": len(self._agents),
+            "running_agents": len(self._running_tasks),
+            "health_map": self._health_status
+        }
 
     # ── Execution ─────────────────────────────────────────────
 
     async def run_agent(self, name: str) -> AgentResult | None:
-        """Run a single agent by name and persist results."""
+        """Run a single agent run and persist results."""
         agent = self._agents.get(name)
         if not agent:
             logger.warning("Agent '%s' not found", name)
             return None
 
-        await log_agent(agent.name, "Starting agent run …")
+        await log_agent(agent.name, "Starting autonomous agent run …")
         run_id = await save_run_start(agent.name)
 
         try:
             result = await agent.run()
             status = "success" if result.success else "failed"
+            
+            # Update health
+            if not result.success:
+                self._health_status[name] = "degraded"
+            else:
+                self._health_status[name] = "healthy"
+
             await save_run_end(run_id, status, result.content[:2000])
 
             if result.success and result.content:
-                # Store insight (auto-mirrors to memory graph)
                 await self._store_insight(agent, result)
-
-                # Store world events
                 await self._store_events(agent, result)
 
             await log_agent(agent.name, f"Run finished — {status}")
@@ -76,19 +126,20 @@ class AgentEngine:
 
         except Exception as exc:
             tb = traceback.format_exc()
+            self._health_status[name] = "error"
             await save_run_end(run_id, "error", str(exc))
             await log_agent(agent.name, f"Error: {exc}\n{tb}", level="ERROR")
             return AgentResult(success=False, content=str(exc))
+        finally:
+            self._running_tasks.pop(name, None)
 
     async def run_all_agents(self) -> list[AgentResult]:
-        """Run every registered agent concurrently, then trigger collaboration."""
+        """Run every registered agent concurrently."""
         tasks = [self.run_agent(name) for name in self._agents]
         results = await asyncio.gather(*tasks, return_exceptions=False)
         valid = [r for r in results if r is not None]
 
-        # Trigger collaboration engine
         await self._run_collaboration(valid)
-
         return valid
 
     # ── Insight Storage ───────────────────────────────────────
@@ -154,9 +205,11 @@ class AgentEngine:
         self._is_started = True
 
     async def shutdown(self) -> None:
-        """Shutdown the engine and its components."""
-        logger.info("Agent engine shutting down...")
-        # Placeholder for further cleanup if necessary
+        """Shutdown the controller and stop all tasks."""
+        logger.info("Agent controller shutting down...")
+        for name in list(self._running_tasks.keys()):
+            await self.stop_agent(name)
+        self._is_started = False
 
     async def _load_agents(self) -> None:
         """Use the agent_loader to discover and register all agents."""
@@ -166,7 +219,6 @@ class AgentEngine:
         for agent in agents:
             self.register_agent(agent)
 
-            # Persist to agents registry table
             try:
                 await register_agent_db(
                     name=agent.name,
@@ -176,8 +228,8 @@ class AgentEngine:
                     tags=getattr(agent, "tags", []),
                 )
             except Exception:
-                pass  # registry is optional
+                pass
 
 
 # Module-level singleton
-engine = AgentEngine()
+engine = AgentController()

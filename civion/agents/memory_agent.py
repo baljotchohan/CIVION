@@ -12,7 +12,7 @@ class MemoryAgent(BaseAgent):
     personality = "Analyst"
     tags = ["memory", "graph", "summary"]
 
-    async def run(self) -> AgentResult:
+    async def execute_task(self) -> AgentResult:
         return AgentResult(
             success=True,
             title="Memory Graph Optimization",

@@ -23,8 +23,9 @@ class TrendAgent(BaseAgent):
     data_sources = ["https://api.github.com/search/repositories"]
     personality = "Explorer"
     tags = ["ai", "github", "trending", "repositories", "open-source"]
+    tools_allowed = ["github"]
 
-    async def run(self) -> AgentResult:
+    async def execute_task(self) -> AgentResult:
         try:
             from datetime import datetime, timedelta, timezone
 

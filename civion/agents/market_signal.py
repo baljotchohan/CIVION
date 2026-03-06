@@ -13,8 +13,9 @@ class MarketSignalAgent(BaseAgent):
     interval = 3600 * 2  # Run every 2 hours
     personality = "Predictor"
     tags = ["market", "crypto", "ai-tokens"]
+    tools_allowed = ["web_search"]
 
-    async def run(self) -> AgentResult:
+    async def execute_task(self) -> AgentResult:
         key = await api.get_connection_key("CoinGecko")
         warning_msg = ""
         if not key:
