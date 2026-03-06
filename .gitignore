@@ -26,6 +26,9 @@ data/*.db
 
 # Reports
 data/reports/
+.coverage
+htmlcov/
+coverage.xml
 
 # Environment
 .env

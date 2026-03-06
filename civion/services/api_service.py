@@ -26,6 +26,7 @@ class APIService:
         params: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
         raw: bool = False,
+        suppress_errors: bool = True,
     ) -> dict[str, Any] | list | str:
         """Perform an async GET request and return parsed JSON (or raw text)."""
         try:
@@ -38,7 +39,14 @@ class APIService:
                     return resp.json()
                 except Exception:
                     return resp.text
+        except httpx.HTTPStatusError as e:
+            if not suppress_errors:
+                raise
+            logger.warning(f"API call to {url} failed with status {resp.status_code}. Switching to Mock Data.")
+            return self._get_mock_data(url)
         except Exception as e:
+            if not suppress_errors:
+                raise
             logger.warning(f"API call to {url} failed: {e}. Switching to Mock Data.")
             return self._get_mock_data(url)
 

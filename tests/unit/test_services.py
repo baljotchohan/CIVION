@@ -37,7 +37,7 @@ async def test_api_service_get_failure(httpx_mock):
     api = APIService()
     
     with pytest.raises(httpx.HTTPStatusError):
-        await api.get("https://api.example.com/fail")
+        await api.get("https://api.example.com/fail", suppress_errors=False)
 
 @pytest.mark.asyncio
 async def test_api_service_post_json(httpx_mock):

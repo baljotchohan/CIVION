@@ -42,7 +42,7 @@ async def test_api_get_insights(client, test_db_path):
     assert data[0]["title"] == "Title XY"
 
 @pytest.mark.asyncio
-async def test_api_system_status(client):
+async def test_api_system_status(client, test_db_path):
     """Test system status endpoint."""
     response = client.get("/api/system/status")
     assert response.status_code == 200

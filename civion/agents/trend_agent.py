@@ -38,20 +38,23 @@ class TrendAgent(BaseAgent):
             else:
                 warning_msg = "⚠️ GitHub API key missing - using public rate-limited access\n\n"
 
+            # v2: Precise search URL and params
+            url = "https://api.github.com/search/repositories"
+            params = {
+                "q": f"created:>{week_ago} topic:ai topic:machine-learning",
+                "sort": "stars",
+                "order": "desc",
+                "per_page": 10
+            }
+
             try:
                 data = await api.get(url, params=params, headers=headers)
             except Exception as e:
-                # Fallback analysis if API fails
-                fallback_content = (
-                    f"{warning_msg}❌ GitHub API error: {str(e)}\n\n"
-                    "**Fallback Analysis:** Recent trends show a surge in 'Agentic Workflow' "
-                    "repositories and 'Multi-Agent Systems' research. Projects like 'AutoGen' "
-                    "and 'CrewAI' continue to dominate the developer attention space."
-                )
+                # Fallback analysis if API fails hard
                 return AgentResult(
                     success=True,
                     title="GitHub Trends (Fallback)",
-                    content=fallback_content,
+                    content="No trending AI repositories found this week.",
                     confidence=0.4
                 )
 
