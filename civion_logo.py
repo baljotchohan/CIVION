@@ -14,12 +14,15 @@ NUM_NODES = 6
 STROKE_WIDTH = 4
 
 def create_logo(mode='RGBA', bg_color=(0, 0, 0, 0), size=CANVAS_SIZE, include_text=True):
-    """Creates a CIVION logo image."""
-    scale = size / CANVAS_SIZE
-    img = Image.new(mode, (size, size), bg_color)
+    """Creates a CIVION logo image with high-fidelity anti-aliasing."""
+    oversample = 4
+    canvas_size = size * oversample
+    scale = canvas_size / CANVAS_SIZE
+    
+    img = Image.new(mode, (canvas_size, canvas_size), bg_color)
     draw = ImageDraw.Draw(img)
     
-    center = (size // 2, size // 2 if not include_text else size // 2 - 50 * scale)
+    center = (canvas_size // 2, canvas_size // 2 if not include_text else canvas_size // 2 - 50 * scale)
     
     # Draw connections
     nodes = []
@@ -37,9 +40,11 @@ def create_logo(mode='RGBA', bg_color=(0, 0, 0, 0), size=CANVAS_SIZE, include_te
     draw_nodes(draw, nodes, NODE_RADIUS * scale, LOGO_COLOR, int((STROKE_WIDTH - 1) * scale))
     
     if include_text:
-        draw_text(draw, "CIVION", (size // 2, center[1] + (ORBIT_RADIUS + 100) * scale), 72 * scale, LOGO_COLOR)
+        draw_text(draw, "CIVION", (canvas_size // 2, center[1] + (ORBIT_RADIUS + 100) * scale), 72 * scale, LOGO_COLOR)
         
-    return img
+    # Downscale for smooth anti-aliasing
+    final_img = img.resize((size, size), resample=Image.Resampling.LANCZOS)
+    return final_img
 
 def draw_core(draw, center, radius, color, stroke):
     """Draws the central hexagon core."""
@@ -100,6 +105,12 @@ def main():
     mark = create_logo(include_text=False)
     mark.save(os.path.join(static_dir, "logo.png"), quality=95)
     mark.save("civion_logo_mark.png", quality=95)
+    
+    # Save to UI public map
+    ui_public_dir = os.path.join("ui", "public")
+    if os.path.exists("ui"):
+        os.makedirs(ui_public_dir, exist_ok=True)
+        mark.save(os.path.join(ui_public_dir, "logo.png"), quality=95)
     
     # 3. Favicons & Touch Icons
     # Standard PNG Favicon

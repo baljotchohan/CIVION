@@ -53,15 +53,15 @@ export default function Sidebar() {
                         <Link key={item.name} href={item.href}>
                             <div className={cn(
                                 "group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 relative",
-                                isActive ? "bg-indigo-500/10 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-white/5"
+                                isActive ? "bg-indigo-500/20 text-indigo-300 font-bold shadow-sm shadow-indigo-500/10" : "text-slate-400 hover:text-white hover:bg-white/5 font-medium"
                             )}>
                                 <item.icon className={cn("w-5 h-5", isActive ? "text-indigo-400" : "group-hover:scale-110 transition-transform")} />
-                                <span className="text-sm font-medium">{item.name}</span>
+                                <span className="text-sm">{item.name}</span>
 
                                 {isActive && (
                                     <motion.div
                                         layoutId="active-sidebar"
-                                        className="absolute left-0 w-1 h-6 bg-indigo-500 rounded-r-full"
+                                        className="absolute -left-4 w-1.5 h-6 bg-indigo-500 rounded-r-full shadow-[0_0_12px_rgba(99,102,241,0.6)]"
                                         transition={{ type: "spring", stiffness: 300, damping: 30 }}
                                     />
                                 )}

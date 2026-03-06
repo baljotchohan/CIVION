@@ -65,8 +65,8 @@ export default function Dashboard() {
                 <stat.icon className="w-5 h-5" />
               </div>
             </div>
-            <h3 className="text-3xl font-bold mb-1">{stat.value}</h3>
-            <p className="text-sm text-slate-400 font-medium whitespace-nowrap">{stat.label}</p>
+            <h3 className="text-3xl font-bold mb-1 truncate">{stat.value}</h3>
+            <p className="text-sm text-slate-400 font-medium truncate">{stat.label}</p>
           </motion.div>
         ))}
       </section>
