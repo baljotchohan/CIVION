@@ -58,3 +58,11 @@ async def test_agent_engine_run_all_concurrent(test_db_path, mock_agent):
     
     assert len(results) == 2
     assert all(r.success is True for r in results)
+
+@pytest.mark.asyncio
+async def test_agent_engine_startup(test_db_path):
+    """Test that the engine can start up without AttributeError."""
+    engine = AgentEngine()
+    # This should not raise AttributeError
+    await engine.startup(load_agents=False)
+    assert engine._is_started is True

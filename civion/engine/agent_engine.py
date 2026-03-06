@@ -31,6 +31,7 @@ class AgentEngine:
 
     def __init__(self) -> None:
         self._agents: dict[str, BaseAgent] = {}
+        self._is_started = False
 
     # ── Registration ──────────────────────────────────────────
 
