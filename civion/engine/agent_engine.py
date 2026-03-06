@@ -1,24 +1,29 @@
 """
 CIVION — Agent Engine
-Central engine that registers agents, executes them, logs results,
-stores to memory graph, and triggers collaboration analysis.
+Central engine that manages agent lifecycle: registration, execution,
+insight storage, event emission, and collaboration trigger.
+
+Uses the agent_loader for discovery, insights_service for
+dual-storage, and event_engine for world map events.
 """
 
 from __future__ import annotations
 
 import asyncio
+import logging
 import traceback
 from typing import Any
 
 from civion.agents.base_agent import BaseAgent, AgentResult
 from civion.storage.database import (
     init_db,
+    register_agent_db,
     save_run_start,
     save_run_end,
-    save_insight,
-    save_log,
-    save_world_event,
 )
+from civion.services.logging_service import log_agent, log_system
+
+logger = logging.getLogger("civion.engine")
 
 
 class AgentEngine:
@@ -32,6 +37,7 @@ class AgentEngine:
     def register_agent(self, agent: BaseAgent) -> None:
         """Register an agent instance with the engine."""
         self._agents[agent.name] = agent
+        logger.info("Registered agent: %s (%s)", agent.name, agent.personality)
 
     def get_agent(self, name: str) -> BaseAgent | None:
         return self._agents.get(name)
@@ -46,9 +52,10 @@ class AgentEngine:
         """Run a single agent by name and persist results."""
         agent = self._agents.get(name)
         if not agent:
+            logger.warning("Agent '%s' not found", name)
             return None
 
-        await save_log(agent.name, f"Starting agent run …")
+        await log_agent(agent.name, "Starting agent run …")
         run_id = await save_run_start(agent.name)
 
         try:
@@ -57,136 +64,105 @@ class AgentEngine:
             await save_run_end(run_id, status, result.content[:2000])
 
             if result.success and result.content:
-                await save_insight(agent.name, result.content, title=result.title)
-                await save_log(agent.name, f"Insight saved: {result.title}")
+                # Store insight (auto-mirrors to memory graph)
+                await self._store_insight(agent, result)
 
-                # v2: Store to memory graph
-                await self._store_to_memory(agent, result)
+                # Store world events
+                await self._store_events(agent, result)
 
-                # v2: Store world events
-                await self._store_world_events(agent, result)
-
-            await save_log(agent.name, f"Run finished — {status}")
+            await log_agent(agent.name, f"Run finished — {status}")
             return result
 
         except Exception as exc:
             tb = traceback.format_exc()
             await save_run_end(run_id, "error", str(exc))
-            await save_log(agent.name, f"Error: {exc}\n{tb}", level="ERROR")
+            await log_agent(agent.name, f"Error: {exc}\n{tb}", level="ERROR")
             return AgentResult(success=False, content=str(exc))
 
     async def run_all_agents(self) -> list[AgentResult]:
-        """Run every registered agent concurrently, then generate collaboration signals."""
+        """Run every registered agent concurrently, then trigger collaboration."""
         tasks = [self.run_agent(name) for name in self._agents]
         results = await asyncio.gather(*tasks, return_exceptions=False)
         valid = [r for r in results if r is not None]
 
-        # v2: Trigger collaboration engine after all agents run
+        # Trigger collaboration engine
         await self._run_collaboration(valid)
 
         return valid
 
-    # ── v2: Memory Graph Integration ──────────────────────────
+    # ── Insight Storage ───────────────────────────────────────
 
-    async def _store_to_memory(self, agent: BaseAgent, result: AgentResult) -> None:
-        """Store the agent result in the memory graph."""
+    async def _store_insight(self, agent: BaseAgent, result: AgentResult) -> None:
         try:
-            from civion.services.memory_graph import MemoryNode, store_insight, link_related_insights
-
-            node = MemoryNode(
+            from civion.services.insights_service import store_insight
+            await store_insight(
                 agent_name=agent.name,
-                topic=result.title or agent.name,
+                title=result.title,
                 content=result.content[:2000],
                 tags=getattr(agent, "tags", []),
             )
-            node_id = await store_insight(node)
-            await link_related_insights(node_id)
-            await save_log(agent.name, f"Memory graph: stored node #{node_id}")
         except Exception as exc:
-            await save_log(agent.name, f"Memory graph error: {exc}", level="WARNING")
+            logger.warning("Insight storage failed for %s: %s", agent.name, exc)
 
-    # ── v2: World Events ──────────────────────────────────────
+    # ── Event Emission ────────────────────────────────────────
 
-    async def _store_world_events(self, agent: BaseAgent, result: AgentResult) -> None:
-        """Persist any world events attached to the agent result."""
+    async def _store_events(self, agent: BaseAgent, result: AgentResult) -> None:
         try:
-            for event in result.events:
-                await save_world_event(
+            from civion.engine.event_engine import event_engine, AgentEvent
+            for e in result.events:
+                await event_engine.emit(AgentEvent(
                     agent_name=agent.name,
-                    topic=event.get("topic", ""),
-                    description=event.get("description", ""),
-                    latitude=float(event.get("latitude", 0)),
-                    longitude=float(event.get("longitude", 0)),
-                    location=event.get("location", ""),
-                )
+                    topic=e.get("topic", ""),
+                    description=e.get("description", ""),
+                    latitude=float(e.get("latitude", 0)),
+                    longitude=float(e.get("longitude", 0)),
+                    location=e.get("location", ""),
+                ))
         except Exception as exc:
-            await save_log(agent.name, f"World events error: {exc}", level="WARNING")
+            logger.warning("Event emission failed for %s: %s", agent.name, exc)
 
-    # ── v2: Collaboration ─────────────────────────────────────
+    # ── Collaboration ─────────────────────────────────────────
 
     async def _run_collaboration(self, results: list[AgentResult]) -> None:
-        """Invoke the collaboration engine to generate cross-agent signals."""
         try:
             from civion.engine.collaboration_engine import generate_signals
-
-            agent_data = []
-            for r in results:
-                if r.success:
-                    agent_data.append({
-                        "name": r.title or "unknown",
-                        "agent_name": r.title or "unknown",
-                        "title": r.title,
-                        "content": r.content[:500],
-                    })
-
+            agent_data = [
+                {"agent_name": r.title or "unknown", "title": r.title, "content": r.content[:500]}
+                for r in results if r.success
+            ]
             if agent_data:
                 signals = await generate_signals(agent_data)
                 if signals:
-                    await save_log("CIVION", f"Collaboration: generated {len(signals)} signal(s)")
+                    await log_system(f"Collaboration: generated {len(signals)} signal(s)")
         except Exception as exc:
-            await save_log("CIVION", f"Collaboration error: {exc}", level="WARNING")
+            await log_system(f"Collaboration error: {exc}", level="WARNING")
 
     # ── Bootstrap ─────────────────────────────────────────────
 
     async def startup(self) -> None:
-        """Initialise the database and auto-register built-in agents."""
+        """Initialise DB, discover agents, register them."""
         await init_db()
-        await self._register_builtins()
+        await self._load_agents()
 
-    async def _register_builtins(self) -> None:
-        """Import and register the agents that ship with CIVION."""
-        try:
-            from civion.agents.trend_agent import TrendAgent
-            self.register_agent(TrendAgent())
-        except Exception:
-            pass
+    async def _load_agents(self) -> None:
+        """Use the agent_loader to discover and register all agents."""
+        from civion.engine.agent_loader import discover_agents
 
-        await self._discover_agents()
+        agents = discover_agents()
+        for agent in agents:
+            self.register_agent(agent)
 
-    async def _discover_agents(self) -> None:
-        """Auto-discover agent modules in the agents package."""
-        import importlib
-        import pkgutil
-        import civion.agents as agents_pkg
-
-        for importer, modname, ispkg in pkgutil.iter_modules(agents_pkg.__path__):
-            if modname in ("base_agent", "__init__"):
-                continue
-            if modname in [a.name.lower().replace(" ", "_") for a in self._agents.values()]:
-                continue
+            # Persist to agents registry table
             try:
-                module = importlib.import_module(f"civion.agents.{modname}")
-                for attr_name in dir(module):
-                    attr = getattr(module, attr_name)
-                    if (
-                        isinstance(attr, type)
-                        and issubclass(attr, BaseAgent)
-                        and attr is not BaseAgent
-                        and attr_name not in [type(a).__name__ for a in self._agents.values()]
-                    ):
-                        self.register_agent(attr())
+                await register_agent_db(
+                    name=agent.name,
+                    description=agent.description,
+                    personality=agent.personality,
+                    interval=agent.interval,
+                    tags=getattr(agent, "tags", []),
+                )
             except Exception:
-                pass
+                pass  # registry is optional
 
 
 # Module-level singleton

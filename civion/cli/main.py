@@ -2,13 +2,11 @@
 CIVION — CLI Tool
 Commands:  civion start | civion agents list | civion agent create <name>
 
-v2: Upgraded agent template with personality, memory graph, sandbox, and API example.
+Uses ``asyncio.run()`` for proper async lifecycle management.
 """
 
 from __future__ import annotations
 
-import os
-import sys
 import textwrap
 from pathlib import Path
 
@@ -23,8 +21,7 @@ app = typer.Typer(
 )
 console = Console()
 
-# ── Sub-commands for agents ───────────────────────────────────
-
+# Sub-commands
 agents_app = typer.Typer(help="Manage CIVION agents")
 app.add_typer(agents_app, name="agents")
 
@@ -34,20 +31,22 @@ app.add_typer(agent_app, name="agent")
 
 # ── civion start ──────────────────────────────────────────────
 
-
 @app.command()
 def start(
     host: str = typer.Option("0.0.0.0", help="Server host"),
     port: int = typer.Option(8000, help="Server port"),
-    no_browser: bool = typer.Option(False, "--no-browser", help="Don't auto-open the dashboard"),
+    no_browser: bool = typer.Option(False, "--no-browser", help="Don't auto-open dashboard"),
 ):
     """Start the CIVION server, agent engine, and dashboard."""
     import asyncio
     import uvicorn
     import webbrowser
-    from civion.engine.agent_engine import engine
-    from civion.engine.scheduler import AgentScheduler
+
+    from civion.services.logging_service import configure_logging
     from civion.config.settings import settings
+
+    # 1. Configure structured logging
+    configure_logging()
 
     console.print("\n[bold cyan]╔══════════════════════════════════════╗[/]")
     console.print("[bold cyan]║[/]   [bold white]CIVION[/] — AI Agent OS  [dim]v2[/]       [bold cyan]║[/]")
@@ -59,6 +58,10 @@ def start(
         port = settings.server.port
 
     async def _bootstrap():
+        from civion.engine.agent_engine import engine
+        from civion.engine.scheduler import AgentScheduler
+
+        # 2. Load configuration + agents
         await engine.startup()
         agents = engine.list_agents()
         console.print(f"[green]✓[/] Registered {len(agents)} agent(s)")
@@ -66,13 +69,16 @@ def start(
             emoji = a.get("personality_emoji", "🤖")
             console.print(f"  {emoji} [cyan]{a['name']}[/] ({a.get('personality', 'Explorer')})")
 
+        # 3. Start scheduler
         scheduler = AgentScheduler(engine)
         scheduler.schedule_agents()
         scheduler.start()
-        console.print("[green]✓[/] Agent scheduler started")
+        console.print("[green]✓[/] Scheduler started")
         console.print("[green]✓[/] Memory graph active")
         console.print("[green]✓[/] Collaboration engine active")
+        console.print("[green]✓[/] Event engine active")
 
+        # 4. Run initial agent sweep
         if settings.agents.auto_start:
             console.print("[yellow]⟳[/] Running initial agent sweep …")
             results = await engine.run_all_agents()
@@ -80,13 +86,16 @@ def start(
                 status = "[green]✓[/]" if r.success else "[red]✗[/]"
                 console.print(f"  {status} {r.title or 'untitled'}")
 
-    asyncio.get_event_loop().run_until_complete(_bootstrap())
+    # FIX: Use asyncio.run() instead of get_event_loop()
+    asyncio.run(_bootstrap())
 
+    # 5. Start FastAPI server
     console.print(f"\n[bold green]Dashboard →[/] http://localhost:{port}\n")
 
     if not no_browser:
         webbrowser.open(f"http://localhost:{port}")
 
+    # 6. Open dashboard via uvicorn
     uvicorn.run(
         "civion.api.server:app",
         host=host,
@@ -98,14 +107,18 @@ def start(
 
 # ── civion agents list ────────────────────────────────────────
 
-
 @agents_app.command("list")
 def agents_list():
     """List all registered agents."""
     import asyncio
+
+    from civion.services.logging_service import configure_logging
     from civion.engine.agent_engine import engine
 
-    asyncio.get_event_loop().run_until_complete(engine.startup())
+    configure_logging()
+
+    # FIX: Use asyncio.run()
+    asyncio.run(engine.startup())
 
     agents = engine.list_agents()
     if not agents:
@@ -116,7 +129,7 @@ def agents_list():
     table.add_column("Name", style="cyan bold")
     table.add_column("Personality", style="magenta")
     table.add_column("Description", style="white")
-    table.add_column("Interval (s)", justify="right", style="green")
+    table.add_column("Interval", justify="right", style="green")
     table.add_column("Tags", style="dim")
 
     for a in agents:
@@ -125,7 +138,7 @@ def agents_list():
             a["name"],
             f"{emoji} {a.get('personality', '—')}",
             a["description"],
-            str(a["interval"]),
+            str(a["interval"]) + "s",
             ", ".join(a.get("tags", [])) or "—",
         )
 
@@ -137,7 +150,7 @@ def agents_list():
 _AGENT_TEMPLATE = textwrap.dedent('''\
     """
     CIVION Agent — {class_name}
-    Auto-generated template. Customise the run() method.
+    Auto-generated template.
 
     Personality: Explorer (change to Analyst, Watcher, or Predictor)
     """
@@ -151,23 +164,21 @@ _AGENT_TEMPLATE = textwrap.dedent('''\
     class {class_name}(BaseAgent):
         name = "{agent_name}"
         description = "A custom CIVION agent"
-        interval = 3600          # run every hour (0 = manual only)
+        interval = 3600          # seconds (0 = manual only)
         personality = "Explorer"  # Explorer | Analyst | Watcher | Predictor
         tags = ["custom"]
         data_sources = []
 
         async def run(self) -> AgentResult:
-            # ── 1. Query previous knowledge from memory graph ──
+            # ── 1. Query memory graph for past knowledge ──
             # past = await search_insights(query="AI", tags=["trending"])
-            # for node in past:
-            #     print(node["topic"], node["content"][:100])
 
-            # ── 2. Fetch data from an external API ──
+            # ── 2. Fetch data from an API ──
             # data = await api.get("https://api.example.com/data")
 
-            # ── 3. Use LLM with your personality prompt ──
+            # ── 3. Use LLM with personality prompt ──
             # analysis = await llm.generate(
-            #     prompt="Analyse this data: ...",
+            #     prompt="Analyse: ...",
             #     system=self.personality_prompt(),
             # )
 
@@ -179,9 +190,8 @@ _AGENT_TEMPLATE = textwrap.dedent('''\
                 events=[
                     # {{
                     #     "topic": "Event detected",
-                    #     "description": "Something happened here",
-                    #     "latitude": 37.77,
-                    #     "longitude": -122.42,
+                    #     "description": "Something happened",
+                    #     "latitude": 37.77, "longitude": -122.42,
                     #     "location": "San Francisco, USA",
                     # }}
                 ],
@@ -208,11 +218,10 @@ def agent_create(name: str = typer.Argument(..., help="Name of the new agent")):
     filepath.write_text(
         _AGENT_TEMPLATE.format(class_name=class_name, agent_name=snake)
     )
-    console.print(f"[green]✓[/] Created agent template → [cyan]{filepath}[/]")
+    console.print(f"[green]✓[/] Created agent → [cyan]{filepath}[/]")
     console.print(f"  Class:       [bold]{class_name}[/]")
     console.print(f"  Personality: [magenta]Explorer[/] (edit to change)")
-    console.print("  Includes:    memory graph + API + LLM examples")
-    console.print("  Edit the [bold]run()[/] method to add your logic.")
+    console.print("  Includes:    memory graph + API + LLM + events")
 
 
 # ── Entry point ───────────────────────────────────────────────

@@ -1,13 +1,14 @@
 """
 CIVION — SQLite Storage Layer
-Provides async helpers to manage agent runs, insights, logs,
-memory graph, collaboration signals, and world events.
+Async helpers for agent runs, insights, logs, memory graph,
+collaboration signals, world events, and agent registration.
+
+All tables are created idempotently via ``init_db()``.
 """
 
 from __future__ import annotations
 
 import json
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -22,14 +23,24 @@ DB_PATH = Path(settings.database.path)
 
 
 def _ensure_dir() -> None:
-    """Create the data directory if it doesn't exist."""
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 
 # ── Schema ────────────────────────────────────────────────────
 
 _SCHEMA = """
--- Original tables
+-- Registered agents (persistent registry)
+CREATE TABLE IF NOT EXISTS agents (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT    NOT NULL UNIQUE,
+    description TEXT    NOT NULL DEFAULT '',
+    personality TEXT    NOT NULL DEFAULT 'Explorer',
+    interval    INTEGER NOT NULL DEFAULT 3600,
+    tags        TEXT    NOT NULL DEFAULT '[]',
+    registered_at TEXT  NOT NULL
+);
+
+-- Execution history
 CREATE TABLE IF NOT EXISTS agent_runs (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     agent_name  TEXT    NOT NULL,
@@ -39,6 +50,7 @@ CREATE TABLE IF NOT EXISTS agent_runs (
     result      TEXT
 );
 
+-- Processed insights
 CREATE TABLE IF NOT EXISTS insights (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     agent_name  TEXT    NOT NULL,
@@ -47,6 +59,7 @@ CREATE TABLE IF NOT EXISTS insights (
     created_at  TEXT    NOT NULL
 );
 
+-- Structured logs
 CREATE TABLE IF NOT EXISTS logs (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     agent_name  TEXT    NOT NULL,
@@ -55,7 +68,7 @@ CREATE TABLE IF NOT EXISTS logs (
     created_at  TEXT    NOT NULL
 );
 
--- v2: Memory Graph
+-- Memory graph nodes
 CREATE TABLE IF NOT EXISTS memory_nodes (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     agent_name  TEXT    NOT NULL,
@@ -65,6 +78,7 @@ CREATE TABLE IF NOT EXISTS memory_nodes (
     created_at  TEXT    NOT NULL
 );
 
+-- Memory graph edges
 CREATE TABLE IF NOT EXISTS memory_links (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     source_id   INTEGER NOT NULL,
@@ -74,7 +88,7 @@ CREATE TABLE IF NOT EXISTS memory_links (
     FOREIGN KEY (target_id) REFERENCES memory_nodes(id)
 );
 
--- v2: Collaboration Signals
+-- Collaboration signals
 CREATE TABLE IF NOT EXISTS collaboration_signals (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     title           TEXT    NOT NULL,
@@ -84,7 +98,7 @@ CREATE TABLE IF NOT EXISTS collaboration_signals (
     created_at      TEXT    NOT NULL
 );
 
--- v2: World Events (for Agent World Map)
+-- World map events
 CREATE TABLE IF NOT EXISTS world_events (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     agent_name  TEXT    NOT NULL,
@@ -101,7 +115,7 @@ CREATE TABLE IF NOT EXISTS world_events (
 # ── Initialisation ────────────────────────────────────────────
 
 async def init_db() -> None:
-    """Create tables if they don't already exist."""
+    """Create all tables (idempotent)."""
     _ensure_dir()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         await db.executescript(_SCHEMA)
@@ -118,14 +132,37 @@ async def _fetch_all(query: str, params: tuple = ()) -> list[dict[str, Any]]:
     async with aiosqlite.connect(str(DB_PATH)) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(query, params) as cursor:
-            rows = await cursor.fetchall()
-            return [dict(row) for row in rows]
+            return [dict(row) for row in await cursor.fetchall()]
+
+
+# ── Agents Registry ──────────────────────────────────────────
+
+async def register_agent_db(
+    name: str, description: str, personality: str,
+    interval: int, tags: list[str],
+) -> None:
+    """Upsert an agent into the persistent registry."""
+    async with aiosqlite.connect(str(DB_PATH)) as db:
+        await db.execute(
+            """INSERT INTO agents (name, description, personality, interval, tags, registered_at)
+               VALUES (?, ?, ?, ?, ?, ?)
+               ON CONFLICT(name) DO UPDATE SET
+                 description=excluded.description,
+                 personality=excluded.personality,
+                 interval=excluded.interval,
+                 tags=excluded.tags""",
+            (name, description, personality, interval, json.dumps(tags), _now()),
+        )
+        await db.commit()
+
+
+async def get_registered_agents() -> list[dict[str, Any]]:
+    return await _fetch_all("SELECT * FROM agents ORDER BY name")
 
 
 # ── Agent Runs ────────────────────────────────────────────────
 
 async def save_run_start(agent_name: str) -> int:
-    """Insert a new run record and return its id."""
     async with aiosqlite.connect(str(DB_PATH)) as db:
         cursor = await db.execute(
             "INSERT INTO agent_runs (agent_name, started_at, status) VALUES (?, ?, ?)",
@@ -188,12 +225,8 @@ async def get_logs(limit: int = 100) -> list[dict[str, Any]]:
 # ── World Events ──────────────────────────────────────────────
 
 async def save_world_event(
-    agent_name: str,
-    topic: str,
-    description: str,
-    latitude: float,
-    longitude: float,
-    location: str = "",
+    agent_name: str, topic: str, description: str,
+    latitude: float, longitude: float, location: str = "",
 ) -> int:
     async with aiosqlite.connect(str(DB_PATH)) as db:
         cursor = await db.execute(

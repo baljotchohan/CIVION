@@ -1,12 +1,22 @@
 """
 CIVION — FastAPI Server
-REST API + Jinja2 dashboard served at http://localhost:8000
+REST API + Jinja2 dashboard at http://localhost:8000
 
-v2: New endpoints for memory graph, collaboration signals, and world events.
+Endpoints:
+  GET  /              → Dashboard
+  GET  /api/agents    → List agents
+  GET  /api/insights  → Latest insights
+  GET  /api/logs      → Structured logs
+  GET  /api/runs      → Run history
+  GET  /api/signals   → Collaboration signals
+  GET  /api/memory    → Knowledge graph data
+  GET  /api/events    → World map events
+  POST /api/agents/{name}/run → Trigger agent
 """
 
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -17,6 +27,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from civion.engine.agent_engine import engine
+from civion.services.logging_service import configure_logging
 from civion.storage.database import (
     get_insights,
     get_logs,
@@ -25,12 +36,13 @@ from civion.storage.database import (
     init_db,
 )
 
+logger = logging.getLogger("civion.server")
+
 # ── Paths ─────────────────────────────────────────────────────
 
 _DIR = Path(__file__).resolve().parent
 _TEMPLATES = _DIR / "templates"
 _STATIC = _DIR / "static"
-
 _TEMPLATES.mkdir(parents=True, exist_ok=True)
 _STATIC.mkdir(parents=True, exist_ok=True)
 
@@ -39,9 +51,12 @@ _STATIC.mkdir(parents=True, exist_ok=True)
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
+    configure_logging()
     await init_db()
     await engine.startup()
+    logger.info("CIVION server started")
     yield
+    logger.info("CIVION server stopped")
 
 
 app = FastAPI(
@@ -55,14 +70,14 @@ app.mount("/static", StaticFiles(directory=str(_STATIC)), name="static")
 templates = Jinja2Templates(directory=str(_TEMPLATES))
 
 
-# ── Dashboard (HTML) ──────────────────────────────────────────
+# ── Dashboard ─────────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
 
-# ── REST API ──────────────────────────────────────────────────
+# ── Core API ──────────────────────────────────────────────────
 
 @app.get("/api/agents")
 async def api_agents() -> list[dict[str, Any]]:
@@ -96,7 +111,7 @@ async def api_run_agent(name: str):
     }
 
 
-# ── v2: Memory Graph ─────────────────────────────────────────
+# ── Memory Graph ──────────────────────────────────────────────
 
 @app.get("/api/memory")
 async def api_memory():
@@ -110,7 +125,7 @@ async def api_memory_search(q: str = "", agent: str = "", limit: int = 20):
     return await search_insights(query=q, agent_name=agent, limit=limit)
 
 
-# ── v2: Collaboration Signals ────────────────────────────────
+# ── Collaboration Signals ────────────────────────────────────
 
 @app.get("/api/signals")
 async def api_signals(limit: int = 20):
@@ -118,7 +133,7 @@ async def api_signals(limit: int = 20):
     return await get_signals(limit)
 
 
-# ── v2: World Events ─────────────────────────────────────────
+# ── World Events ─────────────────────────────────────────────
 
 @app.get("/api/events")
 async def api_events(limit: int = 100):

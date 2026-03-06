@@ -1,11 +1,11 @@
 """
 CIVION — Agent Scheduler
 Uses APScheduler to run agents at their configured intervals.
+Properly handles async execution.
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import TYPE_CHECKING
 
@@ -35,7 +35,7 @@ class AgentScheduler:
             interval = agent_info.get("interval", 0)
 
             if interval <= 0:
-                logger.info("Agent '%s' has no schedule (interval=0).", name)
+                logger.info("Agent '%s' is manual-only (interval=0)", name)
                 continue
 
             self._scheduler.add_job(
@@ -46,9 +46,7 @@ class AgentScheduler:
                 replace_existing=True,
                 name=f"CIVION · {name}",
             )
-            logger.info(
-                "Scheduled agent '%s' every %d seconds.", name, interval
-            )
+            logger.info("Scheduled '%s' every %ds", name, interval)
 
     async def _run_agent_wrapper(self, name: str) -> None:
         """Wrapper so APScheduler can await our async run_agent."""
@@ -61,10 +59,10 @@ class AgentScheduler:
         """Start the background scheduler."""
         if not self._scheduler.running:
             self._scheduler.start()
-            logger.info("Agent scheduler started.")
+            logger.info("Scheduler started")
 
     def stop(self) -> None:
         """Gracefully shut down the scheduler."""
         if self._scheduler.running:
             self._scheduler.shutdown(wait=False)
-            logger.info("Agent scheduler stopped.")
+            logger.info("Scheduler stopped")
