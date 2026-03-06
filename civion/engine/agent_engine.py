@@ -96,7 +96,7 @@ class AgentEngine:
         try:
             from civion.services.insights_service import store_insight
             await store_insight(
-                agent_name=agent_name,
+                agent_name=agent.name,
                 title=result.title,
                 content=result.content[:2000],
                 tags=getattr(agent, "tags", []),

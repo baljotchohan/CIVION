@@ -111,6 +111,7 @@ def start(
 
     async def _bootstrap():
         from civion.engine.agent_engine import engine
+        from civion.engine.agent_loader import discover_agents
 
         # 2. Load configuration + agents
         # Enhanced discovery section

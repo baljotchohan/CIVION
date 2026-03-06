@@ -21,7 +21,8 @@
     <!-- ═══ SIDEBAR ═══ -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-logo">
-            <div class="logo-icon">C</div>
+            <img src="/static/logo.png" alt="CIVION"
+                style="width:45px; height:45px; border-radius:10px; margin-right:12px; border:1px solid var(--accent);">
             <span class="logo-text">CIVION</span>
         </div>
         <div class="sidebar-links">
@@ -31,7 +32,7 @@
             <a class="nav-link" data-page="builder" onclick="go('builder',this)"><i>🛠️</i><span>Agent
                     Builder</span></a>
             <a class="nav-link" data-page="insights" onclick="go('insights',this)"><i>💡</i><span>Insights</span></a>
-            <a class="nav-link" data-page="worldmap" onclick="go('worldmap',this)"><i>🌍</i><span>World Map</span></a>
+
             <a class="nav-link" data-page="logs" onclick="go('logs',this)"><i>📋</i><span>Logs</span></a>
             <a class="nav-link" data-page="files" onclick="go('files',this)"><i>📁</i><span>Files</span></a>
             <a class="nav-link" data-page="connections" onclick="go('connections',this)"><i>🔌</i><span>API
@@ -147,16 +148,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- ═══ PAGE: WORLD MAP ═══ -->
-        <div class="page" id="page-worldmap">
-            <div class="card" style="overflow:hidden">
-                <div class="card-header"><span>🌍 Agent World Map</span><span class="badge" id="mapEventCount">0</span>
-                </div>
-                <div id="worldMap" style="height:550px"></div>
-            </div>
-        </div>
-
         <!-- ═══ PAGE: LOGS ═══ -->
         <div class="page" id="page-logs">
             <div class="filter-bar">
@@ -280,9 +271,11 @@
 
         <!-- ═══ PAGE: RADAR ═══ -->
         <div class="page" id="page-radar">
-            <div class="card" style="height: calc(100vh - 120px); min-height: 500px;">
-                <div class="card-header"><span>🌍 Global Intelligence Radar</span></div>
-                <div id="worldMap" style="height:100%; border-radius:0 0 12px 12px"></div>
+            <div class="card"
+                style="height: calc(100vh - 120px); min-height: 500px; display: flex; flex-direction: column;">
+                <div class="card-header"><span>🌍 Global Intelligence Radar</span><span class="badge"
+                        id="mapEventCount">0</span></div>
+                <div id="radarMap" style="flex: 1; border-radius: 0 0 12px 12px; min-height: 400px;"></div>
             </div>
         </div>
 
@@ -336,14 +329,13 @@
             document.getElementById('page-' + page).classList.add('active');
             if (el) el.classList.add('active');
             document.getElementById('pageTitle').textContent = el ? el.querySelector('span').textContent : page;
-            if (page === 'worldmap' && !map) initMap();
-            if (page === 'worldmap' && map) setTimeout(() => map.invalidateSize(), 100);
+            if (page === 'radar' && !map) setTimeout(initMap, 100);
+            if (page === 'radar' && map) setTimeout(() => map.invalidateSize(), 150);
             if (page === 'files') loadFiles();
             if (page === 'connections') loadConnections();
             if (page === 'providers') loadProviders();
             if (page === 'goals') loadGoals();
             if (page === 'signals') loadSignals();
-            if (page === 'radar') setTimeout(initMap, 100);
             // Close sidebar on mobile
             document.getElementById('sidebar').classList.remove('open');
         }
@@ -534,10 +526,13 @@
             renderInsights(allInsights.filter(i => (i.title + i.content + i.agent_name).toLowerCase().includes(q)));
         }
 
-        // ── World Map ───────────────────────────────────────────────
+        // ── Radar Map ───────────────────────────────────────────────
 
         function initMap() {
-            map = L.map('worldMap', { zoomControl: true }).setView([25, 10], 2);
+            if (map) return;
+            const container = document.getElementById('radarMap');
+            if (!container) return;
+            map = L.map('radarMap', { zoomControl: true }).setView([25, 10], 2);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© CartoDB', maxZoom: 18 }).addTo(map);
             setTimeout(() => map.invalidateSize(), 200);
             loadEvents();

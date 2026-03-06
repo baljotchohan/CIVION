@@ -129,6 +129,15 @@ async def init_db() -> None:
     _ensure_dir()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         await db.executescript(_SCHEMA)
+        
+        # Simple migration for memory_nodes
+        try:
+            await db.execute("ALTER TABLE memory_nodes ADD COLUMN source TEXT NOT NULL DEFAULT ''")
+        except Exception: pass
+        try:
+            await db.execute("ALTER TABLE memory_nodes ADD COLUMN confidence REAL NOT NULL DEFAULT 1.0")
+        except Exception: pass
+        
         await db.commit()
 
 
