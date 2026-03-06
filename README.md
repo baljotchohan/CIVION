@@ -55,6 +55,11 @@ pip install -e .
 
 # Start CIVION
 civion start
+
+# Troubleshooting: If 'civion' command is not found:
+# Windows:  .\civion.bat start
+# Mac/Linux: ./civion start
+# Fallback:  python main.py start
 ```
 
 Dashboard opens at **http://localhost:8000** 🎉
@@ -231,6 +236,18 @@ Contributions are welcome! Here's how:
 4. Commit: `git commit -m 'feat: add amazing agent'`
 5. Push: `git push origin feature/amazing-agent`
 6. Open a Pull Request
+
+---
+
+## 🛠️ Troubleshooting
+
+### 'civion' is not recognized
+If you get a "command not found" error after installation, it's because the Python scripts directory is not in your system `PATH`.
+
+**Fixes:**
+1. **Use the helper scripts:** Run `.\civion.bat start` (Windows) or `./civion start` (Mac/Linux) directly from the project root.
+2. **Direct execution:** Run `python main.py start`.
+3. **Permanent Fix (Windows):** Add `C:\Users\<YourUser>\AppData\Roaming\Python\Python314\Scripts` to your Environment Variables `Path`.
 
 ---
 
