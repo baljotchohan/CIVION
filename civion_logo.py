@@ -87,23 +87,41 @@ def draw_text(draw, text, position, font_size, color):
     draw.text((position[0] - w/2, position[1] - h/2), text, font=font, fill=color)
 
 def main():
-    print("Generating CIVION logo versions...")
+    print("Generating and deploying CIVION logo versions...")
     
-    # 1. Full Logo
+    static_dir = os.path.join("civion", "api", "static")
+    os.makedirs(static_dir, exist_ok=True)
+    
+    # 1. Full Logo (For reference/high-res use)
     full = create_logo(include_text=True)
     full.save("civion_logo_full.png", quality=95)
     
-    # 2. Mark Only
+    # 2. Mark Only (Dashboard Sidebar & System)
     mark = create_logo(include_text=False)
+    mark.save(os.path.join(static_dir, "logo.png"), quality=95)
     mark.save("civion_logo_mark.png", quality=95)
     
-    # 3. Favicon
-    favicon = create_logo(size=256, include_text=False)
-    favicon.save("civion_logo_favicon.png", quality=95)
+    # 3. Favicons & Touch Icons
+    # Standard PNG Favicon
+    favicon_png = create_logo(size=32, include_text=False)
+    favicon_png.save(os.path.join(static_dir, "favicon.png"))
     
-    # 4. Monochrome Black
+    # Apple Touch Icons (180x180)
+    apple_icon = create_logo(size=180, include_text=False)
+    apple_icon.save(os.path.join(static_dir, "apple-touch-icon.png"))
+    apple_icon.save(os.path.join(static_dir, "apple-touch-icon-precomposed.png"))
+    
+    # Multi-size ICO
+    ico_sizes = [16, 32, 48, 64]
+    ico_imgs = [create_logo(size=s, include_text=False) for s in ico_sizes]
+    ico_imgs[0].save(
+        os.path.join(static_dir, "favicon.ico"),
+        format='ICO',
+        append_images=ico_imgs[1:]
+    )
+    
+    # 4. Monochrome Black (Export/System)
     black_mark = create_logo(include_text=False)
-    # Convert pixels manually or use point transform for monochrome
     pixels = black_mark.load()
     for y in range(black_mark.size[1]):
         for x in range(black_mark.size[0]):
@@ -115,7 +133,7 @@ def main():
     hires = create_logo(size=2000, include_text=True)
     hires.save("civion_logo_hires.png", quality=95)
     
-    print("All versions generated successfully.")
+    print(f"✓ All versions generated and deployed to {static_dir}")
 
 if __name__ == "__main__":
     main()

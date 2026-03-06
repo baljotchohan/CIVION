@@ -433,18 +433,16 @@ def update():
 
     console.print("\n[bold cyan]🔄 CIVION System Update[/]")
 
-    # 1. Update Logo
-    new_logo_path = Path("/Users/baljotchohan/.gemini/antigravity/brain/35402a12-0441-4d4b-bfdc-953ed2d97790/perfect_minimalist_logo_1772791711473.png")
-    static_logo_path = Path(__file__).resolve().parent.parent / "api" / "static" / "logo.png"
-
-    if new_logo_path.exists():
-        try:
-            shutil.copy(new_logo_path, static_logo_path)
-            console.print(f"[green]✓[/] Logo updated successfully → [cyan]{static_logo_path.name}[/]")
-        except Exception as e:
-            console.print(f"[red]✗[/] Failed to update logo: {e}")
-    else:
-        console.print("[yellow]⚠️  New logo source not found. Skipping logo update.[/]")
+    # 1. Update Logo Assets
+    import subprocess
+    console.print("[cyan]🎨 Regenerating brand assets...[/]")
+    try:
+        # Run civion_logo.py from the root
+        root_dir = Path(__file__).resolve().parent.parent.parent
+        subprocess.run(["python", "civion_logo.py"], cwd=root_dir, check=True, capture_output=True)
+        console.print("[green]✓[/] Standard brand assets (logos, favicons) updated successfully.")
+    except Exception as e:
+        console.print(f"[red]✗[/] Failed to update brand assets: {e}")
 
     console.print("\n[green]✓[/] Update complete! Restart the dashboard to see changes.\n")
 
