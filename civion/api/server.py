@@ -62,8 +62,21 @@ async def lifespan(application: FastAPI):
     configure_logging()
     await init_db()
     await engine.startup()
+    
+    from civion.engine.scheduler import AgentScheduler
+    from civion.config.settings import settings
+    
+    scheduler = AgentScheduler(engine)
+    scheduler.schedule_agents()
+    scheduler.start()
+    
+    if settings.agents.auto_start:
+        import asyncio
+        asyncio.create_task(engine.run_all_agents())
+        
     logger.info("CIVION server started")
     yield
+    scheduler.stop()
     logger.info("CIVION server stopped")
 
 

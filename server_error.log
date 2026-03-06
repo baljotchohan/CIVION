@@ -1,0 +1,38 @@
+
+╔══════════════════════════════════════╗
+║   CIVION — AI Agent OS  v2       ║
+╚══════════════════════════════════════╝
+
+[36m06:28:15 [INFO   ][0m [1mcivion.loader[0m — Discovered agent: cyber_threat (Watcher) from cyber_threat
+[36m06:28:15 [INFO   ][0m [1mcivion.loader[0m — Discovered agent: market_signal (Predictor) from market_signal
+[36m06:28:15 [INFO   ][0m [1mcivion.loader[0m — Discovered agent: research_radar (Analyst) from research_radar
+[36m06:28:15 [INFO   ][0m [1mcivion.loader[0m — Discovered agent: startup_radar (Watcher) from startup_radar
+[36m06:28:15 [INFO   ][0m [1mcivion.loader[0m — Discovered agent: TrendAgent (Explorer) from trend_agent
+[36m06:28:15 [INFO   ][0m [1mcivion.loader[0m — Agent loader: discovered 5 agent(s)
+[36m06:28:15 [INFO   ][0m [1mcivion.engine[0m — Registered agent: cyber_threat (Watcher)
+[36m06:28:15 [INFO   ][0m [1mcivion.engine[0m — Registered agent: market_signal (Predictor)
+[36m06:28:15 [INFO   ][0m [1mcivion.engine[0m — Registered agent: research_radar (Analyst)
+[36m06:28:15 [INFO   ][0m [1mcivion.engine[0m — Registered agent: startup_radar (Watcher)
+[36m06:28:15 [INFO   ][0m [1mcivion.engine[0m — Registered agent: TrendAgent (Explorer)
+✓ Registered 5 agent(s)
+  👁️ cyber_threat (Watcher)
+  🔮 market_signal (Predictor)
+  📊 research_radar (Analyst)
+  👁️ startup_radar (Watcher)
+  🔍 TrendAgent (Explorer)
+[36m06:28:15 [INFO   ][0m [1mcivion.scheduler[0m — Scheduled 'cyber_threat' every 10800s
+[36m06:28:15 [INFO   ][0m [1mcivion.scheduler[0m — Scheduled 'market_signal' every 7200s
+[36m06:28:15 [INFO   ][0m [1mcivion.scheduler[0m — Scheduled 'research_radar' every 21600s
+[36m06:28:15 [INFO   ][0m [1mcivion.scheduler[0m — Scheduled 'startup_radar' every 14400s
+[36m06:28:15 [INFO   ][0m [1mcivion.scheduler[0m — Scheduled 'TrendAgent' every 3600s
+[36m06:28:15 [INFO   ][0m [1mcivion.scheduler[0m — Scheduler started
+✓ Scheduler started
+✓ Memory graph active
+✓ Collaboration engine active
+✓ Event engine active
+⟳ Running initial agent sweep …
+[36m06:28:15 [INFO   ][0m [1mcivion.agent.cyber_threat[0m — Starting agent run …
+[36m06:28:15 [INFO   ][0m [1mcivion.agent.market_signal[0m — Starting agent run …
+[36m06:28:15 [INFO   ][0m [1mcivion.agent.research_radar[0m — Starting agent run …
+[36m06:28:15 [INFO   ][0m [1mcivion.agent.startup_radar[0m — Starting agent run …
+[36m06:28:15 [INFO   ][0m [1mcivion.agent.TrendAgent[0m — Starting agent run …

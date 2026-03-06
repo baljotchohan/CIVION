@@ -21,11 +21,14 @@ class APIService:
         url: str,
         params: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
+        raw: bool = False,
     ) -> dict[str, Any] | list | str:
         """Perform an async GET request and return parsed JSON (or raw text)."""
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
+        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
             resp = await client.get(url, params=params, headers=headers)
             resp.raise_for_status()
+            if raw:
+                return resp.text
             try:
                 return resp.json()
             except Exception:
@@ -38,7 +41,7 @@ class APIService:
         headers: dict[str, str] | None = None,
     ) -> dict[str, Any] | list | str:
         """Perform an async POST request."""
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
+        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
             resp = await client.post(url, json=json, headers=headers)
             resp.raise_for_status()
             try:

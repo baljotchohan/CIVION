@@ -59,7 +59,6 @@ def start(
 
     async def _bootstrap():
         from civion.engine.agent_engine import engine
-        from civion.engine.scheduler import AgentScheduler
 
         # 2. Load configuration + agents
         await engine.startup()
@@ -69,24 +68,12 @@ def start(
             emoji = a.get("personality_emoji", "🤖")
             console.print(f"  {emoji} [cyan]{a['name']}[/] ({a.get('personality', 'Explorer')})")
 
-        # 3. Start scheduler
-        scheduler = AgentScheduler(engine)
-        scheduler.schedule_agents()
-        scheduler.start()
-        console.print("[green]✓[/] Scheduler started")
+        console.print("[green]✓[/] Scheduler mapped to background lifespan")
         console.print("[green]✓[/] Memory graph active")
         console.print("[green]✓[/] Collaboration engine active")
         console.print("[green]✓[/] Event engine active")
 
-        # 4. Run initial agent sweep
-        if settings.agents.auto_start:
-            console.print("[yellow]⟳[/] Running initial agent sweep …")
-            results = await engine.run_all_agents()
-            for r in results:
-                status = "[green]✓[/]" if r.success else "[red]✗[/]"
-                console.print(f"  {status} {r.title or 'untitled'}")
-
-    # FIX: Use asyncio.run() instead of get_event_loop()
+    # Show startup info
     asyncio.run(_bootstrap())
 
     # 5. Start FastAPI server
