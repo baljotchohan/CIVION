@@ -32,7 +32,8 @@ async def test_api_service_get_raw(httpx_mock):
 async def test_api_service_get_failure(httpx_mock):
     """Test GET request failure handles gracefully by throwing error."""
     import httpx
-    httpx_mock.add_response(url="https://api.example.com/fail", status_code=500)
+    # Mock failures with reusability to satisfy retry logic (retries=2 means 3 attempts total)
+    httpx_mock.add_response(url="https://api.example.com/fail", status_code=500, is_reusable=True)
     
     api = APIService()
     

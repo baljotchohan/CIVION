@@ -1,25 +1,23 @@
-"""
-CIVION — API Service
-Reusable async HTTP helper for agents that need to call external APIs.
-"""
-
 from __future__ import annotations
-
-from typing import Any
 
 import httpx
 import random
 import logging
+from typing import Any
+
+from civion.services.llm_service import retry
+
 
 logger = logging.getLogger("civion.api")
 
 
 class APIService:
-    """Thin async HTTP wrapper for making external API calls."""
+    """Professional async HTTP wrapper with retry logic and mock fallbacks."""
 
     def __init__(self, timeout: int = 30) -> None:
         self.timeout = timeout
 
+    @retry(retries=2, delay=2.0)
     async def get(
         self,
         url: str,
@@ -27,8 +25,20 @@ class APIService:
         headers: dict[str, str] | None = None,
         raw: bool = False,
         suppress_errors: bool = True,
-    ) -> dict[str, Any] | list | str:
-        """Perform an async GET request and return parsed JSON (or raw text)."""
+    ) -> Any:
+        """
+        Perform an async GET request with retries and mock fallbacks.
+        
+        Args:
+            url: Target URL.
+            params: Query parameters.
+            headers: HTTP headers.
+            raw: If True, return text instead of JSON.
+            suppress_errors: If True, return mock data instead of raising exceptions.
+            
+        Returns:
+            Parsed JSON, raw text, or mock data.
+        """
         try:
             async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
                 resp = await client.get(url, params=params, headers=headers)
@@ -39,19 +49,37 @@ class APIService:
                     return resp.json()
                 except Exception:
                     return resp.text
-        except httpx.HTTPStatusError as e:
-            if not suppress_errors:
-                raise
-            logger.warning(f"API call to {url} failed with status {resp.status_code}. Switching to Mock Data.")
-            return self._get_mock_data(url)
-        except Exception as e:
+        except (httpx.HTTPStatusError, Exception) as e:
             if not suppress_errors:
                 raise
             logger.warning(f"API call to {url} failed: {e}. Switching to Mock Data.")
             return self._get_mock_data(url)
 
+    @retry(retries=2, delay=2.0)
+    async def post(
+        self,
+        url: str,
+        json: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        suppress_errors: bool = False,
+    ) -> Any:
+        """Perform an async POST request with retries."""
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
+                resp = await client.post(url, json=json, headers=headers)
+                resp.raise_for_status()
+                try:
+                    return resp.json()
+                except Exception:
+                    return resp.text
+        except Exception as e:
+            if not suppress_errors:
+                raise
+            logger.warning(f"POST to {url} failed: {e}")
+            return {"status": "error", "message": str(e)}
+
     def _get_mock_data(self, url: str) -> Any:
-        # High-quality mock data generator
+        """Generate high-quality mock data for fallback scenarios."""
         if "github" in url:
             return [
                 {"name": "CIVION-Core", "description": "Autonomous AI Agent OS", "stargazers_count": random.randint(1200, 5000)},
@@ -67,21 +95,6 @@ class APIService:
         
         return {"status": "success", "message": "Mock data generated for fallback.", "timestamp": "2026-03-06T15:21:00"}
 
-    async def post(
-        self,
-        url: str,
-        json: dict[str, Any] | None = None,
-        headers: dict[str, str] | None = None,
-    ) -> dict[str, Any] | list | str:
-        """Perform an async POST request."""
-        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
-            resp = await client.post(url, json=json, headers=headers)
-            resp.raise_for_status()
-            try:
-                return resp.json()
-            except Exception:
-                return resp.text
-
     async def get_connection_key(self, name: str) -> str | None:
         """Fetch API key from the database connections table."""
         try:
@@ -93,6 +106,7 @@ class APIService:
         except Exception:
             pass
         return None
+
 
 
 # Module-level singleton

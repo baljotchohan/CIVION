@@ -58,14 +58,34 @@ class AgentSandbox:
     """
 
     def __init__(self, agent_name: str) -> None:
+        """
+        Initialize the sandbox for a specific agent.
+        
+        Args:
+            agent_name: Name of the agent using this sandbox.
+        """
         self.agent_name = agent_name
         _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
     # ── Path validation ───────────────────────────────────────
 
     def _validate_path(self, path: str | Path) -> Path:
-        """Ensure the path is within the workspace and safe."""
-        resolved = Path(path).resolve()
+        """
+        Ensure the path is within the workspace and safe.
+        
+        Args:
+            path: Path to validate.
+            
+        Returns:
+            Resolved Path object.
+            
+        Raises:
+            SandboxError: If path is invalid or outside workspace.
+        """
+        try:
+            resolved = Path(path).resolve()
+        except Exception as e:
+            raise SandboxError(f"Invalid path: {path}. Error: {e}")
 
         # Check for blocked patterns in the string
         path_str = str(resolved)
@@ -88,7 +108,15 @@ class AgentSandbox:
     # ── File Operations ───────────────────────────────────────
 
     def read_file(self, path: str | Path) -> str:
-        """Read a file within the workspace."""
+        """
+        Read a file within the workspace.
+        
+        Args:
+            path: Path to the file.
+            
+        Returns:
+            File content as string.
+        """
         safe_path = self._validate_path(path)
         if not safe_path.exists():
             raise SandboxError(f"File not found: {safe_path}")
@@ -97,7 +125,15 @@ class AgentSandbox:
         return safe_path.read_text(encoding="utf-8", errors="replace")
 
     def list_files(self, directory: str | Path = ".") -> list[str]:
-        """List files in a directory within the workspace."""
+        """
+        List files in a directory within the workspace.
+        
+        Args:
+            directory: Directory to list.
+            
+        Returns:
+            List of relative filenames.
+        """
         safe_path = self._validate_path(directory)
         if not safe_path.is_dir():
             raise SandboxError(f"Not a directory: {safe_path}")
@@ -108,7 +144,13 @@ class AgentSandbox:
     def write_report(self, filename: str, content: str) -> Path:
         """
         Write a report file to data/reports/.
-        Returns the path to the written file.
+        
+        Args:
+            filename: Target filename.
+            content: Content to write.
+            
+        Returns:
+            The path to the written file.
         """
         # Sanitise filename
         safe_name = "".join(
@@ -116,7 +158,7 @@ class AgentSandbox:
             for c in filename
         )
         if not safe_name:
-            safe_name = "report.txt"
+            safe_name = f"{self.agent_name}_report.txt"
 
         filepath = _REPORTS_DIR / safe_name
         filepath.write_text(content, encoding="utf-8")
@@ -133,7 +175,20 @@ class AgentSandbox:
         headers: dict[str, str] | None = None,
         timeout: int = 30,
     ) -> dict[str, Any] | list | str:
-        """Make a sandboxed HTTP request."""
+        """
+        Make a sandboxed HTTP request.
+        
+        Args:
+            url: Target URL.
+            method: HTTP method.
+            params: Query parameters.
+            json_data: JSON request body.
+            headers: HTTP headers.
+            timeout: Request timeout.
+            
+        Returns:
+            Parsed JSON result or raw text.
+        """
         method = method.upper()
         if method not in ("GET", "POST", "PUT", "PATCH"):
             raise SandboxError(f"HTTP method '{method}' is not allowed")
@@ -159,7 +214,13 @@ class AgentSandbox:
     def run_command(self, command: list[str], timeout: int = 15) -> str:
         """
         Run a safe shell command and return stdout.
-        Only allow-listed commands can be executed.
+        
+        Args:
+            command: List of command arguments.
+            timeout: Execution timeout.
+            
+        Returns:
+            Combined stdout and stderr.
         """
         if not command:
             raise SandboxError("Empty command")
@@ -188,9 +249,11 @@ class AgentSandbox:
     # ── Info ──────────────────────────────────────────────────
 
     def info(self) -> dict[str, Any]:
+        """Return a summary of sandbox configuration."""
         return {
             "agent": self.agent_name,
             "workspace": str(_WORKSPACE),
             "reports_dir": str(_REPORTS_DIR),
             "safe_commands": sorted(_SAFE_COMMANDS),
         }
+

@@ -132,6 +132,26 @@ async def dashboard(request: Request):
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
 
+@app.get("/api/health")
+async def health_check():
+    """Return system health status."""
+    return {"status": "ok", "version": app.version}
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Global handler to ensure all errors return structured JSON."""
+    logger.error(f"Unhandled error at {request.url}: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal Server Error",
+            "message": str(exc),
+            "path": str(request.url.path)
+        }
+    )
+
+
 # ── System Status ─────────────────────────────────────────────
 
 @app.get("/api/system/status")
@@ -148,6 +168,7 @@ async def api_system_status():
     i_total = max(len(insights), 42)
 
     return {
+        "status": "healthy",
         "agents_total": len(agents),
         "agents_running": sum(1 for a in agents if True), # Everything is considered 'active' in this view
         "insights_total": i_total,
@@ -156,6 +177,7 @@ async def api_system_status():
         "errors_total": sum(1 for l in logs if l.get("level") == "ERROR"),
         "uptime": "Active",
     }
+
 
 
 # ── Agents ────────────────────────────────────────────────────
