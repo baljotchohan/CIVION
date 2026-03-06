@@ -8,7 +8,7 @@ from civion.services.api_service import api
 from civion.services.llm_service import llm
 
 class MarketSignalAgent(BaseAgent):
-    name = "market_signal"
+    name = "MarketSignal"
     description = "Detects trends in AI-related crypto markets using CoinGecko"
     interval = 3600 * 2  # Run every 2 hours
     personality = "Predictor"

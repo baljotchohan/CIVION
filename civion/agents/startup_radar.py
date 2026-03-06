@@ -9,10 +9,10 @@ from civion.services.llm_service import llm
 import random
 
 class StartupRadarAgent(BaseAgent):
-    name = "startup_radar"
+    name = "StartupRadar"
     description = "Monitors HackerNews for new AI startups and product launches"
     interval = 3600 * 4  # Run every 4 hours
-    personality = "Watcher"
+    personality = "Explorer"
     tags = ["startup", "ai", "hackernews"]
 
     async def run(self) -> AgentResult:

@@ -55,7 +55,7 @@ def configure_logging(level: str = "INFO") -> None:
         return
 
     root = logging.getLogger("civion")
-    root.setLevel(getattr(logging, level.upper(), logging.INFO))
+    root.setLevel(logging.DEBUG)
 
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(CivionFormatter())
@@ -67,6 +67,8 @@ def configure_logging(level: str = "INFO") -> None:
 
     # Suppress uvicorn request-level access logs entirely
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn").setLevel(logging.INFO)
+    logging.getLogger("asgi").setLevel(logging.WARNING)
 
     _configured = True
 

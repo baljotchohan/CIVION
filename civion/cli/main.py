@@ -61,11 +61,24 @@ def start(
         from civion.engine.agent_engine import engine
 
         # 2. Load configuration + agents
+        from civion.engine.agent_loader import discover_agents
+        
+        # Add debugging output requested by user
+        discovered = discover_agents()
+        console.print(f"[green]✓[/] Discovered agents: {[type(a).__name__ for a in discovered]}")
+        
+        for agent in discovered:
+            engine.register_agent(agent)
+            console.print(f"[green]✓[/] Registered {type(agent).__name__} ({agent.personality})")
+            
         await engine.startup()
+        
         agents = engine.list_agents()
-        console.print(f"[green]✓[/] Registered {len(agents)} agent(s)")
+        console.print(f"[green]✓[/] Total registered: {len(agents)} agent(s)")
         for a in agents:
-            emoji = a.get("personality_emoji", "🤖")
+            emoji = {"Explorer": "🔍", "Analyst": "📊", "Predictor": "💹", "Watcher": "🔐"}.get(a.get("personality", "Explorer"), "🤖")
+            if a['name'] == "StartupRadar": emoji = "🚀"
+            if a['name'] == "MemoryAgent": emoji = "🧠"
             console.print(f"  {emoji} [cyan]{a['name']}[/] ({a.get('personality', 'Explorer')})")
 
         console.print("[green]✓[/] Scheduler mapped to background lifespan")

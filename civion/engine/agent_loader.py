@@ -58,6 +58,7 @@ def discover_agents() -> list["BaseAgent"]:
                     instance = attr()
                     found.append(instance)
                     seen_classes.add(attr.__name__)
+                    print(f"  ✓ Discovered agent: {attr.__name__}")
                     logger.info(
                         "Discovered agent: %s (%s) from %s",
                         instance.name,
@@ -70,5 +71,6 @@ def discover_agents() -> list["BaseAgent"]:
                         attr.__name__, modname, exc,
                     )
 
+    print(f"  ✓ Discovered agents: {[type(a).__name__ for a in found]}")
     logger.info("Agent loader: discovered %d agent(s)", len(found))
     return found

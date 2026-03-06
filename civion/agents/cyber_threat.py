@@ -9,7 +9,7 @@ from civion.services.llm_service import llm
 import random
 
 class CyberThreatAgent(BaseAgent):
-    name = "cyber_threat"
+    name = "CyberThreat"
     description = "Detects recent cybersecurity vulnerabilities and incidents"
     interval = 3600 * 3  # Run every 3 hours
     personality = "Watcher"

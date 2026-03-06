@@ -11,7 +11,7 @@ import xml.etree.ElementTree as ET
 import random
 
 class ResearchPaperAgent(BaseAgent):
-    name = "research_radar"
+    name = "ResearchRadar"
     description = "Monitors Arxiv for new Artificial Intelligence research papers"
     interval = 3600 * 6  # Run every 6 hours
     personality = "Analyst"
