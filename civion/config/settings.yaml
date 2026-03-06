@@ -1,0 +1,21 @@
+# ─────────────────────────────────────────────────────────────
+# CIVION – Default Configuration
+# ─────────────────────────────────────────────────────────────
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+
+llm:
+  provider: "ollama"          # ollama | openai | gemini
+  model: "llama3"
+  ollama_url: "http://localhost:11434"
+  openai_api_key: ""
+  gemini_api_key: ""
+
+agents:
+  default_interval: 3600      # seconds between automatic runs
+  auto_start: true
+
+database:
+  path: "data/civion.db"

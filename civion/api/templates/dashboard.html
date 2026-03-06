@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CIVION — AI Agent Dashboard</title>
+    <meta name="description"
+        content="CIVION v2 — collaborative AI agent operating system. Monitor agents, insights, knowledge graph, world map, and collaboration signals." />
+    <link rel="stylesheet" href="/static/style.css" />
+    <!-- Leaflet for World Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+
+<body>
+
+    <!-- Header ─────────────────────────────────────────────────── -->
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">C</div>
+            <div>
+                <div class="logo-text">CIVION</div>
+                <div class="logo-sub">AI Agent OS · v2</div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn" onclick="refreshAll()" id="refreshBtn">↻ Refresh</button>
+            <button class="btn btn-primary" onclick="runAllAgents()" id="runAllBtn">▶ Run All Agents</button>
+        </div>
+    </header>
+
+    <!-- Stats Bar ──────────────────────────────────────────────── -->
+    <section class="stats-bar">
+        <div class="stat-card">
+            <div class="stat-icon agents">🤖</div>
+            <div>
+                <div class="stat-value" id="statAgents">–</div>
+                <div class="stat-label">Active Agents</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon runs">⚡</div>
+            <div>
+                <div class="stat-value" id="statRuns">–</div>
+                <div class="stat-label">Total Runs</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon insights">💡</div>
+            <div>
+                <div class="stat-value" id="statInsights">–</div>
+                <div class="stat-label">Insights</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon signals">🔗</div>
+            <div>
+                <div class="stat-value" id="statSignals">–</div>
+                <div class="stat-label">Signals</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon events-stat">🌍</div>
+            <div>
+                <div class="stat-value" id="statEvents">–</div>
+                <div class="stat-label">Events</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon errors">⚠️</div>
+            <div>
+                <div class="stat-value" id="statErrors">–</div>
+                <div class="stat-label">Errors</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tab Navigation ─────────────────────────────────────────── -->
+    <nav class="tab-nav">
+        <button class="tab-btn active" data-tab="overview" onclick="switchTab('overview', this)">📋 Overview</button>
+        <button class="tab-btn" data-tab="worldmap" onclick="switchTab('worldmap', this)">🌍 World Map</button>
+        <button class="tab-btn" data-tab="knowledge" onclick="switchTab('knowledge', this)">🧠 Knowledge Graph</button>
+        <button class="tab-btn" data-tab="history" onclick="switchTab('history', this)">📊 History</button>
+    </nav>
+
+    <!-- ═══════════ TAB: OVERVIEW ═══════════ -->
+    <main class="main tab-content active" id="tab-overview">
+
+        <!-- Active Agents -->
+        <div class="panel" id="agentsPanel">
+            <div class="panel-header">
+                <div class="panel-title"><span>🤖</span> Active Agents</div>
+                <div class="panel-badge" id="agentCount">0</div>
+            </div>
+            <div class="panel-body" id="agentsList">
+                <div class="empty-state"><span>🤖</span>
+                    <p>Loading agents…</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Collaboration Signals -->
+        <div class="panel" id="signalsPanel">
+            <div class="panel-header">
+                <div class="panel-title"><span>🔗</span> Collaboration Signals</div>
+                <div class="panel-badge" id="signalCount">0</div>
+            </div>
+            <div class="panel-body" id="signalsList">
+                <div class="empty-state"><span>🔗</span>
+                    <p>No signals yet</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Latest Insights -->
+        <div class="panel" id="insightsPanel">
+            <div class="panel-header">
+                <div class="panel-title"><span>💡</span> Latest Insights</div>
+                <div class="panel-badge" id="insightCount">0</div>
+            </div>
+            <div class="panel-body" id="insightsList">
+                <div class="empty-state"><span>💡</span>
+                    <p>No insights yet</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Agent Logs -->
+        <div class="panel" id="logsPanel">
+            <div class="panel-header">
+                <div class="panel-title"><span>📋</span> Agent Logs</div>
+                <div class="panel-badge" id="logCount">0</div>
+            </div>
+            <div class="panel-body" id="logsList">
+                <div class="empty-state"><span>📋</span>
+                    <p>No logs yet</p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ═══════════ TAB: WORLD MAP ═══════════ -->
+    <div class="tab-content" id="tab-worldmap">
+        <div class="panel panel-full">
+            <div class="panel-header">
+                <div class="panel-title"><span>🌍</span> Agent World Map</div>
+                <div class="panel-badge" id="eventCount">0</div>
+            </div>
+            <div id="worldMap" style="height:520px;border-radius:0 0 14px 14px;"></div>
+        </div>
+    </div>
+
+    <!-- ═══════════ TAB: KNOWLEDGE GRAPH ═══════════ -->
+    <div class="tab-content" id="tab-knowledge">
+        <div class="panel panel-full">
+            <div class="panel-header">
+                <div class="panel-title"><span>🧠</span> Knowledge Graph</div>
+                <div class="panel-badge" id="memoryCount">0</div>
+            </div>
+            <div class="panel-body" id="knowledgeGraph" style="min-height:400px;">
+                <canvas id="graphCanvas" width="1200" height="500"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ TAB: HISTORY ═══════════ -->
+    <div class="tab-content" id="tab-history">
+        <div class="panel panel-full">
+            <div class="panel-header">
+                <div class="panel-title"><span>📊</span> Run History</div>
+                <div class="panel-badge" id="runCount">0</div>
+            </div>
+            <div class="panel-body" id="runsList">
+                <div class="empty-state"><span>📊</span>
+                    <p>No runs yet</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Insight Modal ──────────────────────────────────────────── -->
+    <div class="modal-overlay" id="insightModal" onclick="closeModal(event)">
+        <div class="modal">
+            <h2 id="modalTitle">💡 Insight</h2>
+            <pre id="modalContent"></pre>
+        </div>
+    </div>
+
+    <!-- ═══════════ JAVASCRIPT ═══════════ -->
+    <script>
+        const API = '';
+        let map = null;
+        let eventMarkers = [];
+
+        // ── Tab Switching ────────────────────────────────────────────
+
+        function switchTab(tab, btn) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+            btn.classList.add('active');
+
+            if (tab === 'worldmap' && !map) initMap();
+            if (tab === 'knowledge') drawGraph();
+        }
+
+        // ── Fetch ────────────────────────────────────────────────────
+
+        async function fetchJSON(path) {
+            const res = await fetch(`${API}${path}`);
+            return res.json();
+        }
+
+        // ── Renderers ────────────────────────────────────────────────
+
+        function renderAgents(agents) {
+            const el = document.getElementById('agentsList');
+            document.getElementById('agentCount').textContent = agents.length;
+            document.getElementById('statAgents').textContent = agents.length;
+
+            if (!agents.length) {
+                el.innerHTML = '<div class="empty-state"><span>🤖</span><p>No agents registered</p></div>';
+                return;
+            }
+
+            el.innerHTML = agents.map(a => `
+        <div class="agent-row">
+            <div class="agent-info">
+                <div class="agent-name">
+                    <span class="personality-badge" style="background:${a.personality_color || '#6366f1'}20;color:${a.personality_color || '#6366f1'}">${a.personality_emoji || '🤖'} ${esc(a.personality || 'Explorer')}</span>
+                    ${esc(a.name)}
+                </div>
+                <div class="agent-desc">${esc(a.description)}</div>
+            </div>
+            <div class="agent-actions">
+                <span class="interval-tag">${formatInterval(a.interval)}</span>
+                <button class="run-btn" onclick="runAgent('${esc(a.name)}', this)">▶ Run</button>
+            </div>
+        </div>
+    `).join('');
+        }
+
+        function renderSignals(signals) {
+            const el = document.getElementById('signalsList');
+            document.getElementById('signalCount').textContent = signals.length;
+            document.getElementById('statSignals').textContent = signals.length;
+
+            if (!signals.length) {
+                el.innerHTML = '<div class="empty-state"><span>🔗</span><p>Run agents to generate collaboration signals</p></div>';
+                return;
+            }
+
+            el.innerHTML = signals.map(s => {
+                const conf = Math.round((s.confidence || 0.5) * 100);
+                const agents = Array.isArray(s.agents_involved) ? s.agents_involved.join(', ') : '';
+                return `
+            <div class="signal-row">
+                <div class="signal-confidence" style="--conf:${conf}%">${conf}%</div>
+                <div class="signal-info">
+                    <div class="signal-title">${esc(s.title)}</div>
+                    <div class="signal-desc">${esc(s.description).slice(0, 200)}</div>
+                    <div class="signal-meta">Agents: ${esc(agents)} · ${timeSince(s.created_at)}</div>
+                </div>
+            </div>
+        `;
+            }).join('');
+        }
+
+        function renderInsights(insights) {
+            const el = document.getElementById('insightsList');
+            document.getElementById('insightCount').textContent = insights.length;
+            document.getElementById('statInsights').textContent = insights.length;
+
+            if (!insights.length) {
+                el.innerHTML = '<div class="empty-state"><span>💡</span><p>No insights yet — run an agent!</p></div>';
+                return;
+            }
+
+            el.innerHTML = insights.map(i => `
+        <div class="insight-row" onclick="showInsight(${JSON.stringify(esc(i.title))}, ${JSON.stringify(esc(i.content))})">
+            <div class="insight-title">${esc(i.title) || 'Untitled'}</div>
+            <div class="insight-preview">${esc(i.content).slice(0, 200)}</div>
+            <div class="insight-meta">
+                <span>🤖 ${esc(i.agent_name)}</span>
+                <span>🕒 ${timeSince(i.created_at)}</span>
+            </div>
+        </div>
+    `).join('');
+        }
+
+        function renderLogs(logs) {
+            const el = document.getElementById('logsList');
+            document.getElementById('logCount').textContent = logs.length;
+            const errors = logs.filter(l => l.level === 'ERROR').length;
+            document.getElementById('statErrors').textContent = errors;
+
+            if (!logs.length) {
+                el.innerHTML = '<div class="empty-state"><span>📋</span><p>No logs yet</p></div>';
+                return;
+            }
+
+            el.innerHTML = logs.slice(0, 30).map(l => `
+        <div class="log-row">
+            <span class="log-level ${esc(l.level)}">${esc(l.level)}</span>
+            <span class="log-agent">${esc(l.agent_name)}</span>
+            <span class="log-message">${esc(l.message)}</span>
+            <span class="log-time">${timeSince(l.created_at)}</span>
+        </div>
+    `).join('');
+        }
+
+        function renderRuns(runs) {
+            const el = document.getElementById('runsList');
+            document.getElementById('runCount').textContent = runs.length;
+            document.getElementById('statRuns').textContent = runs.length;
+
+            if (!runs.length) {
+                el.innerHTML = '<div class="empty-state"><span>📊</span><p>No runs yet</p></div>';
+                return;
+            }
+
+            el.innerHTML = runs.map(r => `
+        <div class="run-row">
+            <div class="run-status ${esc(r.status)}"></div>
+            <span class="run-agent-name">${esc(r.agent_name)}</span>
+            <span class="run-result">${esc((r.result || '').slice(0, 100))}</span>
+            <span class="run-time">${timeSince(r.started_at)}</span>
+        </div>
+    `).join('');
+        }
+
+        // ── World Map (Leaflet) ──────────────────────────────────────
+
+        function initMap() {
+            map = L.map('worldMap', { zoomControl: true }).setView([25, 10], 2);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '© CartoDB',
+                maxZoom: 18,
+            }).addTo(map);
+            setTimeout(() => map.invalidateSize(), 200);
+            loadEvents();
+        }
+
+        async function loadEvents() {
+            const events = await fetchJSON('/api/events');
+            document.getElementById('eventCount').textContent = events.length;
+            document.getElementById('statEvents').textContent = events.length;
+
+            eventMarkers.forEach(m => map.removeLayer(m));
+            eventMarkers = [];
+
+            events.forEach(e => {
+                if (!e.latitude && !e.longitude) return;
+                const marker = L.circleMarker([e.latitude, e.longitude], {
+                    radius: 8,
+                    fillColor: '#6366f1',
+                    color: '#818cf8',
+                    weight: 2,
+                    opacity: 0.9,
+                    fillOpacity: 0.7,
+                }).addTo(map);
+
+                marker.bindPopup(`
+            <div style="font-family:Inter,sans-serif;font-size:13px;">
+                <strong>${esc(e.topic)}</strong><br>
+                ${esc(e.description).slice(0, 150)}<br>
+                <small style="color:#888;">📍 ${esc(e.location)} · 🤖 ${esc(e.agent_name)} · ${timeSince(e.created_at)}</small>
+            </div>
+        `);
+                eventMarkers.push(marker);
+            });
+        }
+
+        // ── Knowledge Graph (Canvas) ─────────────────────────────────
+
+        let graphData = { nodes: [], links: [] };
+
+        async function loadMemory() {
+            graphData = await fetchJSON('/api/memory');
+            document.getElementById('memoryCount').textContent = graphData.nodes.length;
+        }
+
+        function drawGraph() {
+            const canvas = document.getElementById('graphCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const W = canvas.width = canvas.parentElement.clientWidth || 1200;
+            const H = canvas.height = 500;
+
+            ctx.clearRect(0, 0, W, H);
+
+            const nodes = graphData.nodes || [];
+            const links = graphData.links || [];
+            if (!nodes.length) {
+                ctx.fillStyle = '#64748b';
+                ctx.font = '14px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('No knowledge nodes yet — run agents to populate the graph', W / 2, H / 2);
+                return;
+            }
+
+            // Layout: circular
+            const cx = W / 2, cy = H / 2;
+            const radius = Math.min(W, H) * 0.35;
+            const positions = nodes.map((n, i) => {
+                const angle = (2 * Math.PI * i) / nodes.length - Math.PI / 2;
+                return { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };
+            });
+
+            // Draw links
+            ctx.strokeStyle = 'rgba(99, 102, 241, 0.2)';
+            ctx.lineWidth = 1;
+            links.forEach(link => {
+                const si = nodes.findIndex(n => n.id === link.source_id);
+                const ti = nodes.findIndex(n => n.id === link.target_id);
+                if (si >= 0 && ti >= 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(positions[si].x, positions[si].y);
+                    ctx.lineTo(positions[ti].x, positions[ti].y);
+                    ctx.stroke();
+                }
+            });
+
+            // Draw nodes
+            const colors = { TrendAgent: '#06b6d4', default: '#6366f1' };
+            nodes.forEach((node, i) => {
+                const p = positions[i];
+                const color = colors[node.agent_name] || colors.default;
+
+                // Glow
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 18, 0, Math.PI * 2);
+                ctx.fillStyle = color + '30';
+                ctx.fill();
+
+                // Node
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+                ctx.fillStyle = color;
+                ctx.fill();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Label
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '11px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                const label = (node.topic || '').slice(0, 25);
+                ctx.fillText(label, p.x, p.y + 26);
+            });
+        }
+
+        // ── Actions ──────────────────────────────────────────────────
+
+        async function runAgent(name, btn) {
+            if (btn) { btn.disabled = true; btn.textContent = '⟳'; }
+            try {
+                await fetch(`${API}/api/agents/${encodeURIComponent(name)}/run`, { method: 'POST' });
+                await refreshAll();
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = '▶ Run'; }
+            }
+        }
+
+        async function runAllAgents() {
+            const btn = document.getElementById('runAllBtn');
+            btn.disabled = true; btn.textContent = '⟳ Running …';
+            try {
+                const agents = await fetchJSON('/api/agents');
+                for (const a of agents) {
+                    await fetch(`${API}/api/agents/${encodeURIComponent(a.name)}/run`, { method: 'POST' });
+                }
+                await refreshAll();
+            } finally {
+                btn.disabled = false; btn.textContent = '▶ Run All Agents';
+            }
+        }
+
+        function showInsight(title, content) {
+            document.getElementById('modalTitle').textContent = '💡 ' + (title || 'Insight');
+            document.getElementById('modalContent').textContent = content;
+            document.getElementById('insightModal').classList.add('active');
+        }
+
+        function closeModal(e) {
+            if (e.target === e.currentTarget) {
+                document.getElementById('insightModal').classList.remove('active');
+            }
+        }
+
+        // ── Refresh ──────────────────────────────────────────────────
+
+        async function refreshAll() {
+            const [agents, insights, logs, runs, signals] = await Promise.all([
+                fetchJSON('/api/agents'),
+                fetchJSON('/api/insights'),
+                fetchJSON('/api/logs'),
+                fetchJSON('/api/runs'),
+                fetchJSON('/api/signals'),
+            ]);
+            renderAgents(agents);
+            renderInsights(insights);
+            renderLogs(logs);
+            renderRuns(runs);
+            renderSignals(signals);
+
+            // Load memory graph data in background
+            loadMemory();
+
+            // Refresh map if active
+            if (map) loadEvents();
+        }
+
+        // ── Helpers ──────────────────────────────────────────────────
+
+        function esc(str) {
+            if (!str) return '';
+            const d = document.createElement('div');
+            d.textContent = String(str);
+            return d.innerHTML;
+        }
+
+        function formatInterval(secs) {
+            if (!secs) return 'manual';
+            if (secs < 60) return secs + 's';
+            if (secs < 3600) return Math.round(secs / 60) + 'm';
+            return Math.round(secs / 3600) + 'h';
+        }
+
+        function timeSince(iso) {
+            if (!iso) return '';
+            const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+            if (diff < 60) return 'just now';
+            if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+            if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+            return Math.floor(diff / 86400) + 'd ago';
+        }
+
+        // ── Boot ─────────────────────────────────────────────────────
+
+        refreshAll();
+        setInterval(refreshAll, 15000);
+    </script>
+
+</body>
+
+</html>
