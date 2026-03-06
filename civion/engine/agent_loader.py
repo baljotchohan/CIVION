@@ -43,7 +43,14 @@ def discover_agents() -> list["BaseAgent"]:
         try:
             module = importlib.import_module(f"civion.agents.{modname}")
         except Exception as exc:
-            logger.warning("Failed to import agents.%s: %s", modname, exc)
+            import traceback
+            tb = traceback.format_exc()
+            logger.error(
+                "Failed to import agent module %s:\n%s",
+                modname,
+                tb
+            )
+            print(f"  [red]✗[/] Failed to import {modname}: {str(exc)[:80]}")
             continue
 
         for attr_name in dir(module):
@@ -55,6 +62,23 @@ def discover_agents() -> list["BaseAgent"]:
                 and attr.__name__ not in seen_classes
             ):
                 try:
+                    # Validate required attributes before instantiation
+                    required_attributes = ['name', 'description', 'personality', 'interval']
+                    for required_attr in required_attributes:
+                        if not hasattr(attr, required_attr):
+                            raise ValueError(
+                                f"Agent {attr.__name__} missing required attribute: {required_attr}"
+                            )
+                    
+                    # Validate personality value
+                    valid_personalities = ["Explorer", "Analyst", "Watcher", "Predictor"]
+                    if attr.personality not in valid_personalities:
+                        raise ValueError(
+                            f"Agent {attr.__name__} has invalid personality: {attr.personality}. "
+                            f"Must be one of: {', '.join(valid_personalities)}"
+                        )
+                    
+                    # Instantiate agent
                     instance = attr()
                     found.append(instance)
                     seen_classes.add(attr.__name__)
@@ -65,11 +89,20 @@ def discover_agents() -> list["BaseAgent"]:
                         instance.personality,
                         modname,
                     )
+                    
+                except ValueError as ve:
+                    logger.error("Validation error for %s: %s", attr.__name__, str(ve))
+                    print(f"  [red]✗[/] Validation failed for {attr.__name__}: {str(ve)[:80]}")
+                    
                 except Exception as exc:
-                    logger.warning(
-                        "Failed to instantiate %s from %s: %s",
-                        attr.__name__, modname, exc,
+                    import traceback
+                    logger.error(
+                        "Failed to instantiate %s from %s:\n%s",
+                        attr.__name__,
+                        modname,
+                        traceback.format_exc()
                     )
+                    print(f"  [red]✗[/] Failed to instantiate {attr.__name__}: {str(exc)[:80]}")
 
     print(f"  ✓ Discovered agents: {[type(a).__name__ for a in found]}")
     logger.info("Agent loader: discovered %d agent(s)", len(found))

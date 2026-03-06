@@ -49,6 +49,18 @@ class APIService:
             except Exception:
                 return resp.text
 
+    async def get_connection_key(self, name: str) -> str | None:
+        """Fetch API key from the database connections table."""
+        try:
+            from civion.storage.database import get_connections
+            conns = await get_connections()
+            for c in conns:
+                if c['name'].lower() == name.lower() or c['name'].lower() in name.lower():
+                    return c.get('api_key')
+        except Exception:
+            pass
+        return None
+
 
 # Module-level singleton
 api = APIService()

@@ -73,6 +73,10 @@ class AgentResult:
     # Each event: {"topic": "...", "description": "...",
     #              "latitude": 0.0, "longitude": 0.0, "location": "..."}
 
+    # Enhanced Memory / Signal fields
+    source: str = ""
+    confidence: float = 1.0
+
 
 # ── Base Agent ────────────────────────────────────────────────
 
@@ -138,6 +142,30 @@ class BaseAgent(ABC):
             "personality_color": p.get("color", "#6366f1"),
             "tags": self.tags,
         }
+
+    # ── Memory helpers ────────────────────────────────────────
+
+    async def search_memory(self, query: str = "", tags: list[str] | None = None, limit: int = 5) -> list[dict[str, Any]]:
+        """Search the shared memory graph for relevant past insights."""
+        from civion.services.memory_graph import search_insights
+        return await search_insights(query=query, tags=tags, limit=limit)
+
+    async def emit_signal(self, title: str, description: str, confidence: float = 0.5) -> int:
+        """Emit a collaboration signal to the collective intelligence layer."""
+        from civion.storage.database import DB_PATH
+        import aiosqlite
+        import json
+        from datetime import datetime
+        
+        async with aiosqlite.connect(str(DB_PATH)) as db:
+            cursor = await db.execute(
+                """INSERT INTO collaboration_signals 
+                   (title, description, confidence, agents_involved, created_at)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (title, description, confidence, json.dumps([self.name]), datetime.now().isoformat())
+            )
+            await db.commit()
+            return cursor.lastrowid
 
     def __repr__(self) -> str:
         return f"<Agent:{self.name} ({self.personality})>"

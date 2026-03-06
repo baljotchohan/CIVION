@@ -104,3 +104,42 @@ def load_settings(config_path: str | Path | None = None) -> Settings:
 
 # Singleton — import and use anywhere
 settings = load_settings()
+
+
+def validate_settings() -> tuple[bool, list[str]]:
+    """
+    Validate all settings at startup.
+    
+    Returns:
+        (is_valid, error_messages)
+    """
+    errors = []
+    
+    # Check LLM provider configuration
+    if not settings.llm.provider:
+        errors.append(
+            "LLM provider not configured. "
+            "Set 'provider' in civion/config/settings.yaml to: ollama, openai, or gemini"
+        )
+    
+    if settings.llm.provider and settings.llm.provider not in ["ollama", "openai", "gemini"]:
+        errors.append(
+            f"Invalid LLM provider: {settings.llm.provider}. "
+            f"Must be one of: ollama, openai, gemini"
+        )
+    
+    # Check server settings
+    if settings.server.port < 1024 or settings.server.port > 65535:
+        errors.append(
+            f"Invalid server port: {settings.server.port}. "
+            f"Must be between 1024 and 65535"
+        )
+    
+    if not settings.server.host:
+        errors.append("Server host not configured")
+    
+    # Check agent settings
+    if settings.agents.auto_start is None:
+        errors.append("agents.auto_start not configured")
+    
+    return (len(errors) == 0, errors)

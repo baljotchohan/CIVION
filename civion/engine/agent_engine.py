@@ -96,10 +96,12 @@ class AgentEngine:
         try:
             from civion.services.insights_service import store_insight
             await store_insight(
-                agent_name=agent.name,
+                agent_name=agent_name,
                 title=result.title,
                 content=result.content[:2000],
                 tags=getattr(agent, "tags", []),
+                source=getattr(result, "source", ""),
+                confidence=getattr(result, "confidence", 1.0),
             )
         except Exception as exc:
             logger.warning("Insight storage failed for %s: %s", agent.name, exc)
@@ -143,6 +145,11 @@ class AgentEngine:
         """Initialise DB, discover agents, register them."""
         await init_db()
         await self._load_agents()
+
+    async def shutdown(self) -> None:
+        """Shutdown the engine and its components."""
+        logger.info("Agent engine shutting down...")
+        # Placeholder for further cleanup if necessary
 
     async def _load_agents(self) -> None:
         """Use the agent_loader to discover and register all agents."""

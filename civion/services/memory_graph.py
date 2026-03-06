@@ -27,7 +27,7 @@ from civion.storage.database import DB_PATH
 class MemoryNode:
     """A single insight stored in the knowledge graph."""
 
-    __slots__ = ("id", "timestamp", "agent_name", "topic", "content", "tags")
+    __slots__ = ("id", "timestamp", "agent_name", "topic", "content", "tags", "source", "confidence")
 
     def __init__(
         self,
@@ -35,6 +35,8 @@ class MemoryNode:
         topic: str,
         content: str,
         tags: list[str] | None = None,
+        source: str = "",
+        confidence: float = 1.0,
         *,
         id: int | None = None,
         timestamp: str | None = None,
@@ -45,6 +47,8 @@ class MemoryNode:
         self.topic = topic
         self.content = content
         self.tags = tags or []
+        self.source = source
+        self.confidence = confidence
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -54,6 +58,8 @@ class MemoryNode:
             "topic": self.topic,
             "content": self.content,
             "tags": self.tags,
+            "source": self.source,
+            "confidence": self.confidence,
         }
 
 
@@ -64,19 +70,43 @@ async def store_insight(node: MemoryNode) -> int:
     async with aiosqlite.connect(str(DB_PATH)) as db:
         cursor = await db.execute(
             """INSERT INTO memory_nodes
-               (agent_name, topic, content, tags, created_at)
-               VALUES (?, ?, ?, ?, ?)""",
+               (agent_name, topic, content, tags, source, confidence, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (
                 node.agent_name,
                 node.topic,
                 node.content,
                 json.dumps(node.tags),
+                node.source,
+                node.confidence,
                 node.timestamp,
             ),
         )
         await db.commit()
-        node.id = cursor.lastrowid
-        return cursor.lastrowid  # type: ignore[return-value]
+        node_id = cursor.lastrowid
+        node.id = node_id
+        
+        # Broadcast to WebSockets
+        try:
+            from civion.api.server import manager
+            import asyncio
+            # Use try_run to avoid blocking if event loop is tricky
+            asyncio.create_task(manager.broadcast({
+                "type": "new_insight",
+                "data": {
+                    "id": node_id,
+                    "title": node.topic,
+                    "content": node.content,
+                    "agent_name": node.agent_name,
+                    "created_at": node.timestamp,
+                    "confidence": node.confidence,
+                    "source": node.source
+                }
+            }))
+        except Exception:
+            pass
+
+        return node_id  # type: ignore[return-value]
 
 
 # ── Search ────────────────────────────────────────────────────

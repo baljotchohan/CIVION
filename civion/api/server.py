@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -45,6 +45,7 @@ from civion.storage.database import (
     get_providers, save_provider, update_provider_status, delete_provider,
     update_agent_status, delete_agent_db,
 )
+from civion.engine.planner_engine import planner_engine
 
 logger = logging.getLogger("civion.server")
 
@@ -81,6 +82,45 @@ async def lifespan(application: FastAPI):
 
 
 app = FastAPI(title="CIVION", version="0.3.0", lifespan=lifespan)
+
+
+# ── WebSocket Manager ─────────────────────────────────────────
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+        logger.info(f"WebSocket client connected. Total: {len(self.active_connections)}")
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+            logger.info(f"WebSocket client disconnected. Total: {len(self.active_connections)}")
+
+    async def broadcast(self, message: dict):
+        for connection in self.active_connections:
+            try:
+                await connection.send_json(message)
+            except Exception:
+                pass
+
+manager = ConnectionManager()
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            # Keep the connection open and listen for messages (currently unused)
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+        manager.disconnect(websocket)
 app.mount("/static", StaticFiles(directory=str(_STATIC)), name="static")
 templates = Jinja2Templates(directory=str(_TEMPLATES))
 
@@ -117,6 +157,40 @@ async def api_system_status():
 @app.get("/api/agents")
 async def api_agents():
     return engine.list_agents()
+
+
+@app.get("/api/agents/count")
+async def get_agents_count():
+    """Get count of registered agents and detailed list."""
+    agents = engine.list_agents()
+    
+    return {
+        "total_agents": len(agents),
+        "agents": [
+            {
+                "id": i + 1,
+                "name": a.get('name', 'Unknown'),
+                "type": a.get('type', 'Custom'),
+                "personality": a.get('personality', 'Unknown'),
+                "description": a.get('description', ''),
+                "interval": a.get('interval', 3600)
+            }
+            for i, a in enumerate(agents)
+        ]
+    }
+
+@app.get("/api/signals")
+async def api_signals():
+    """Get collective intelligence signals."""
+    from civion.storage.database import _fetch_all
+    return await _fetch_all("SELECT * FROM collaboration_signals ORDER BY id DESC LIMIT 50")
+
+
+@app.get("/api/events")
+async def api_events():
+    """Get world events for the radar map."""
+    from civion.storage.database import get_world_events
+    return await get_world_events(limit=100)
 
 @app.post("/api/agents/{name}/run")
 async def api_run_agent(name: str):
@@ -252,10 +326,26 @@ async def api_test_connection(name: str):
     conn = next((c for c in conns if c["name"] == name), None)
     if not conn:
         return JSONResponse({"error": "Connection not found"}, 404)
+    
+    test_url = conn["url"]
+    headers = {}
+    
+    # Specialized testing for common services
+    if "github" in name.lower():
+        test_url = "https://api.github.com/user" if not test_url else test_url
+        headers = {"Authorization": f"token {conn['api_key']}", "Accept": "application/vnd.github+json"}
+    elif "hackernews" in name.lower():
+        test_url = "https://hacker-news.firebaseio.com/v0/topstories.json"
+    elif "coingecko" in name.lower():
+        test_url = "https://api.coingecko.com/api/v3/ping"
+    elif "arxiv" in name.lower():
+        test_url = "https://export.arxiv.org/api/query?search_query=all:electron&start=0&max_results=1"
+    else:
+        headers = {"Authorization": f"Bearer {conn['api_key']}"} if conn["api_key"] else {}
+
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            headers = {"Authorization": f"Bearer {conn['api_key']}"} if conn["api_key"] else {}
-            resp = await client.get(conn["url"], headers=headers)
+            resp = await client.get(test_url, headers=headers)
             ok = resp.status_code < 400
         status = "connected" if ok else "error"
         await update_connection_status(name, status)
@@ -301,8 +391,12 @@ async def api_test_provider(name: str):
         elif prov["provider"] == "openai":
             from openai import AsyncOpenAI
             client = AsyncOpenAI(api_key=prov["api_key"])
-            models = await client.models.list()
+            await client.models.list()
             ok = True
+        elif prov["provider"] == "gemini":
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(f"https://generativelanguage.googleapis.com/v1beta/models?key={prov['api_key']}")
+                ok = resp.status_code == 200
         else:
             ok = False
 
@@ -317,6 +411,22 @@ async def api_test_provider(name: str):
 async def api_delete_provider(name: str):
     await delete_provider(name)
     return {"deleted": name}
+
+
+# ── Goals ─────────────────────────────────────────────────────
+
+@app.get("/api/goals")
+async def api_goals():
+    return planner_engine.list_goals()
+
+@app.post("/api/goals")
+async def api_create_goal(request: Request):
+    data = await request.json()
+    goal = await planner_engine.create_goal(
+        title=data.get("title", "Untitled Goal"),
+        description=data.get("description", "")
+    )
+    return goal
 
 
 # ── Agent Builder ─────────────────────────────────────────────
@@ -368,16 +478,94 @@ async def api_builder_generate(request: Request):
 
                 return AgentResult(
                     success=True,
-                    title="{class_name} Result",
+                    title=f"{{self.name.capitalize()}} Intelligence Update",
                     content=analysis,
-                    events=[],
+                    agent_name=self.name,
+                    confidence=0.9,
+                    source=self.data_sources[0] if self.data_sources else "Manual",
                 )
     ''')
-
+    
     # Write to agents directory
     agents_dir = Path(__file__).resolve().parent.parent / "agents"
     filepath = agents_dir / f"{snake}.py"
-    if not filepath.exists():
-        filepath.write_text(code)
+    filepath.write_text(code)
 
-    return {"name": snake, "class_name": class_name, "code": code, "path": str(filepath)}
+    # Reload engine to pick up new agent
+    try:
+        from civion.engine.agent_engine import engine
+        engine.load_agents()
+        logger.info(f"Agent {snake} generated and engine reloaded.")
+    except Exception as e:
+        logger.error(f"Failed to reload engine: {e}")
+
+    return {"name": snake, "class_name": class_name, "code": code, "path": str(filepath), "saved": True}
+
+
+@app.get("/api/agents/{name}/metrics")
+async def get_agent_metrics_endpoint(name: str):
+    """Get performance metrics for a specific agent."""
+    from civion.services.insights_service import get_agent_metrics
+    
+    metrics = await get_agent_metrics(name)
+    
+    if metrics is None:
+        return JSONResponse(
+            status_code=404,
+            content={"error": f"Agent '{name}' not found or no metrics available"}
+        )
+    
+    return metrics
+
+
+@app.get("/api/dashboard/summary")
+async def get_dashboard_summary():
+    """Get comprehensive summary for dashboard display."""
+    from civion.storage.database import get_runs, get_insights
+    from datetime import datetime, timedelta
+    
+    try:
+        agents = engine.list_agents()
+        runs = await get_runs()
+        insights = await get_insights(100)
+        
+        # Calculate statistics
+        total_runs = len(runs)
+        successful_runs = len([r for r in runs if r.get('status') == 'success'])
+        failed_runs = len([r for r in runs if r.get('status') == 'failed'])
+        success_rate = (successful_runs / total_runs * 100) if total_runs > 0 else 0
+        
+        # Recent activity (last hour)
+        one_hour_ago = datetime.now() - timedelta(hours=1)
+        recent_insights = len([
+            i for i in insights 
+            if i.get('timestamp', '').startswith(
+                one_hour_ago.strftime('%Y-%m-%d')
+            )
+        ])
+        
+        return {
+            'agents': {
+                'total': len(agents),
+                'active': len([a for a in agents if a.get('status') != 'error']),
+                'names': [a['name'] for a in agents]
+            },
+            'execution': {
+                'total_runs': total_runs,
+                'successful_runs': successful_runs,
+                'failed_runs': failed_runs,
+                'success_rate': round(success_rate, 2)
+            },
+            'insights': {
+                'total_generated': len(insights),
+                'recent_hour': recent_insights
+            },
+            'status': 'healthy' if success_rate > 80 else 'warning' if success_rate > 50 else 'error'
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get dashboard summary: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to retrieve dashboard summary"}
+        )

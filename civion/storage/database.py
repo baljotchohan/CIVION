@@ -66,6 +66,8 @@ CREATE TABLE IF NOT EXISTS memory_nodes (
     topic       TEXT    NOT NULL DEFAULT '',
     content     TEXT    NOT NULL,
     tags        TEXT    NOT NULL DEFAULT '[]',
+    source      TEXT    NOT NULL DEFAULT '',
+    confidence  REAL    NOT NULL DEFAULT 1.0,
     created_at  TEXT    NOT NULL
 );
 
@@ -84,6 +86,7 @@ CREATE TABLE IF NOT EXISTS collaboration_signals (
     description     TEXT    NOT NULL DEFAULT '',
     confidence      REAL    NOT NULL DEFAULT 0.5,
     agents_involved TEXT    NOT NULL DEFAULT '[]',
+    supporting_insights TEXT NOT NULL DEFAULT '[]',
     created_at      TEXT    NOT NULL
 );
 
