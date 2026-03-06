@@ -4,547 +4,656 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CIVION — AI Agent Dashboard</title>
+    <title>CIVION — AI Agent Command Center</title>
     <meta name="description"
-        content="CIVION v2 — collaborative AI agent operating system. Monitor agents, insights, knowledge graph, world map, and collaboration signals." />
+        content="CIVION v3 — Full AI agent management platform with dashboard, world map, knowledge graph, and agent builder." />
     <link rel="stylesheet" href="/static/style.css" />
-    <!-- Leaflet for World Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 
 <body>
 
-    <!-- Header ─────────────────────────────────────────────────── -->
-    <header class="header">
-        <div class="logo">
+    <!-- ═══ SIDEBAR ═══ -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
             <div class="logo-icon">C</div>
-            <div>
-                <div class="logo-text">CIVION</div>
-                <div class="logo-sub">AI Agent OS · v2</div>
-            </div>
+            <span class="logo-text">CIVION</span>
         </div>
-        <div class="header-actions">
-            <button class="btn" onclick="refreshAll()" id="refreshBtn">↻ Refresh</button>
-            <button class="btn btn-primary" onclick="runAllAgents()" id="runAllBtn">▶ Run All Agents</button>
+        <div class="sidebar-links">
+            <a class="nav-link active" data-page="dashboard"
+                onclick="go('dashboard',this)"><i>📊</i><span>Dashboard</span></a>
+            <a class="nav-link" data-page="agents" onclick="go('agents',this)"><i>🤖</i><span>Agents</span></a>
+            <a class="nav-link" data-page="builder" onclick="go('builder',this)"><i>🛠️</i><span>Agent
+                    Builder</span></a>
+            <a class="nav-link" data-page="insights" onclick="go('insights',this)"><i>💡</i><span>Insights</span></a>
+            <a class="nav-link" data-page="worldmap" onclick="go('worldmap',this)"><i>🌍</i><span>World Map</span></a>
+            <a class="nav-link" data-page="logs" onclick="go('logs',this)"><i>📋</i><span>Logs</span></a>
+            <a class="nav-link" data-page="files" onclick="go('files',this)"><i>📁</i><span>Files</span></a>
+            <a class="nav-link" data-page="connections" onclick="go('connections',this)"><i>🔌</i><span>API
+                    Connections</span></a>
+            <a class="nav-link" data-page="providers" onclick="go('providers',this)"><i>🧠</i><span>LLM
+                    Providers</span></a>
+            <a class="nav-link" data-page="settings" onclick="go('settings',this)"><i>⚙️</i><span>Settings</span></a>
         </div>
-    </header>
-
-    <!-- Stats Bar ──────────────────────────────────────────────── -->
-    <section class="stats-bar">
-        <div class="stat-card">
-            <div class="stat-icon agents">🤖</div>
-            <div>
-                <div class="stat-value" id="statAgents">–</div>
-                <div class="stat-label">Active Agents</div>
-            </div>
+        <div class="sidebar-footer">
+            <div class="sidebar-version">v0.3.0</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-icon runs">⚡</div>
-            <div>
-                <div class="stat-value" id="statRuns">–</div>
-                <div class="stat-label">Total Runs</div>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon insights">💡</div>
-            <div>
-                <div class="stat-value" id="statInsights">–</div>
-                <div class="stat-label">Insights</div>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon signals">🔗</div>
-            <div>
-                <div class="stat-value" id="statSignals">–</div>
-                <div class="stat-label">Signals</div>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon events-stat">🌍</div>
-            <div>
-                <div class="stat-value" id="statEvents">–</div>
-                <div class="stat-label">Events</div>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon errors">⚠️</div>
-            <div>
-                <div class="stat-value" id="statErrors">–</div>
-                <div class="stat-label">Errors</div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Tab Navigation ─────────────────────────────────────────── -->
-    <nav class="tab-nav">
-        <button class="tab-btn active" data-tab="overview" onclick="switchTab('overview', this)">📋 Overview</button>
-        <button class="tab-btn" data-tab="worldmap" onclick="switchTab('worldmap', this)">🌍 World Map</button>
-        <button class="tab-btn" data-tab="knowledge" onclick="switchTab('knowledge', this)">🧠 Knowledge Graph</button>
-        <button class="tab-btn" data-tab="history" onclick="switchTab('history', this)">📊 History</button>
     </nav>
 
-    <!-- ═══════════ TAB: OVERVIEW ═══════════ -->
-    <main class="main tab-content active" id="tab-overview">
-
-        <!-- Active Agents -->
-        <div class="panel" id="agentsPanel">
-            <div class="panel-header">
-                <div class="panel-title"><span>🤖</span> Active Agents</div>
-                <div class="panel-badge" id="agentCount">0</div>
+    <!-- ═══ MAIN CONTENT ═══ -->
+    <main class="content">
+        <div class="topbar">
+            <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+            <h1 class="page-title" id="pageTitle">Dashboard</h1>
+            <div class="topbar-actions">
+                <button class="btn btn-sm" onclick="refreshAll()">↻ Refresh</button>
+                <button class="btn btn-sm btn-primary" onclick="runAllAgents()" id="runAllBtn">▶ Run All</button>
             </div>
-            <div class="panel-body" id="agentsList">
-                <div class="empty-state"><span>🤖</span>
-                    <p>Loading agents…</p>
+        </div>
+
+        <!-- ═══ PAGE: DASHBOARD ═══ -->
+        <div class="page active" id="page-dashboard">
+            <div class="stats-grid" id="statsGrid"></div>
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-header"><span>🤖 Active Agents</span><span class="badge" id="dAgentCount">0</span>
+                    </div>
+                    <div class="card-body" id="dAgents">
+                        <div class="empty">No agents</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><span>🔗 Collaboration Signals</span><span class="badge"
+                            id="dSignalCount">0</span></div>
+                    <div class="card-body" id="dSignals">
+                        <div class="empty">No signals</div>
+                    </div>
+                </div>
+            </div>
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-header"><span>💡 Recent Insights</span></div>
+                    <div class="card-body" id="dInsights">
+                        <div class="empty">No insights</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><span>⚡ Recent Runs</span></div>
+                    <div class="card-body" id="dRuns">
+                        <div class="empty">No runs</div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Collaboration Signals -->
-        <div class="panel" id="signalsPanel">
-            <div class="panel-header">
-                <div class="panel-title"><span>🔗</span> Collaboration Signals</div>
-                <div class="panel-badge" id="signalCount">0</div>
-            </div>
-            <div class="panel-body" id="signalsList">
-                <div class="empty-state"><span>🔗</span>
-                    <p>No signals yet</p>
+        <!-- ═══ PAGE: AGENTS ═══ -->
+        <div class="page" id="page-agents">
+            <div class="agent-grid" id="agentGrid"></div>
+        </div>
+
+        <!-- ═══ PAGE: AGENT BUILDER ═══ -->
+        <div class="page" id="page-builder">
+            <div class="card" style="max-width:700px">
+                <div class="card-header"><span>🛠️ Create New Agent</span></div>
+                <div class="card-body">
+                    <form id="builderForm" onsubmit="buildAgent(event)">
+                        <div class="form-group"><label>Agent Name</label><input id="bName" placeholder="weather_monitor"
+                                required /></div>
+                        <div class="form-group"><label>Description</label><input id="bDesc"
+                                placeholder="Monitors weather alerts" /></div>
+                        <div class="form-group"><label>Personality</label>
+                            <select id="bPersonality">
+                                <option value="Explorer">🔍 Explorer</option>
+                                <option value="Analyst">📊 Analyst</option>
+                                <option value="Watcher">👁️ Watcher</option>
+                                <option value="Predictor">🔮 Predictor</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>Schedule (seconds)</label><input id="bInterval" type="number"
+                                value="3600" /></div>
+                        <div class="form-group"><label>Data Sources (comma separated)</label><input id="bSources"
+                                placeholder="https://api.example.com/data" /></div>
+                        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:1rem">Generate
+                            Agent</button>
+                    </form>
+                    <div id="builderResult" style="display:none;margin-top:1rem">
+                        <div class="card-header"><span>📄 Generated Code</span></div>
+                        <pre class="code-block" id="builderCode"></pre>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Latest Insights -->
-        <div class="panel" id="insightsPanel">
-            <div class="panel-header">
-                <div class="panel-title"><span>💡</span> Latest Insights</div>
-                <div class="panel-badge" id="insightCount">0</div>
+        <!-- ═══ PAGE: INSIGHTS ═══ -->
+        <div class="page" id="page-insights">
+            <div class="filter-bar">
+                <input id="insightSearch" placeholder="🔍 Search insights…" oninput="filterInsights()" />
             </div>
-            <div class="panel-body" id="insightsList">
-                <div class="empty-state"><span>💡</span>
-                    <p>No insights yet</p>
+            <div class="card">
+                <div class="card-body" id="insightsList">
+                    <div class="empty">No insights</div>
                 </div>
             </div>
         </div>
 
-        <!-- Agent Logs -->
-        <div class="panel" id="logsPanel">
-            <div class="panel-header">
-                <div class="panel-title"><span>📋</span> Agent Logs</div>
-                <div class="panel-badge" id="logCount">0</div>
+        <!-- ═══ PAGE: WORLD MAP ═══ -->
+        <div class="page" id="page-worldmap">
+            <div class="card" style="overflow:hidden">
+                <div class="card-header"><span>🌍 Agent World Map</span><span class="badge" id="mapEventCount">0</span>
+                </div>
+                <div id="worldMap" style="height:550px"></div>
             </div>
-            <div class="panel-body" id="logsList">
-                <div class="empty-state"><span>📋</span>
-                    <p>No logs yet</p>
+        </div>
+
+        <!-- ═══ PAGE: LOGS ═══ -->
+        <div class="page" id="page-logs">
+            <div class="filter-bar">
+                <select id="logLevelFilter" onchange="filterLogs()">
+                    <option value="">All Levels</option>
+                    <option value="INFO">INFO</option>
+                    <option value="WARNING">WARNING</option>
+                    <option value="ERROR">ERROR</option>
+                </select>
+                <input id="logAgentFilter" placeholder="Filter by agent…" oninput="filterLogs()" />
+            </div>
+            <div class="card">
+                <div class="card-body log-container" id="logsList">
+                    <div class="empty">No logs</div>
                 </div>
             </div>
         </div>
 
+        <!-- ═══ PAGE: FILES ═══ -->
+        <div class="page" id="page-files">
+            <div class="card">
+                <div class="card-header"><span>📁 Files</span></div>
+                <div class="card-body" id="filesList">
+                    <div class="empty">No files</div>
+                </div>
+            </div>
+            <div id="fileViewer" class="card" style="display:none;margin-top:1rem">
+                <div class="card-header"><span id="fileViewerName">📄 File</span><button class="btn btn-sm"
+                        onclick="closeFileViewer()">✕</button></div>
+                <pre class="code-block" id="fileViewerContent"></pre>
+            </div>
+        </div>
+
+        <!-- ═══ PAGE: API CONNECTIONS ═══ -->
+        <div class="page" id="page-connections">
+            <div class="card" style="max-width:600px;margin-bottom:1.5rem">
+                <div class="card-header"><span>➕ Add Connection</span></div>
+                <div class="card-body">
+                    <form onsubmit="addConnection(event)">
+                        <div class="form-row">
+                            <div class="form-group"><label>Name</label><input id="cName" placeholder="GitHub API"
+                                    required /></div>
+                            <div class="form-group"><label>Icon</label><input id="cIcon" value="🔌" maxlength="4"
+                                    style="width:60px" /></div>
+                        </div>
+                        <div class="form-group"><label>URL</label><input id="cUrl"
+                                placeholder="https://api.github.com" /></div>
+                        <div class="form-group"><label>API Key</label><input id="cKey" type="password"
+                                placeholder="Optional" /></div>
+                        <button type="submit" class="btn btn-primary" style="width:100%">Add Connection</button>
+                    </form>
+                </div>
+            </div>
+            <div class="conn-grid" id="connectionGrid"></div>
+        </div>
+
+        <!-- ═══ PAGE: LLM PROVIDERS ═══ -->
+        <div class="page" id="page-providers">
+            <div class="card" style="max-width:600px;margin-bottom:1.5rem">
+                <div class="card-header"><span>➕ Add Provider</span></div>
+                <div class="card-body">
+                    <form onsubmit="addProvider(event)">
+                        <div class="form-group"><label>Name</label><input id="pName" placeholder="My Ollama" required />
+                        </div>
+                        <div class="form-group"><label>Provider</label>
+                            <select id="pProvider">
+                                <option value="ollama">Ollama</option>
+                                <option value="openai">OpenAI</option>
+                                <option value="gemini">Gemini</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>Model</label><input id="pModel" placeholder="llama3.2" /></div>
+                        <div class="form-group"><label>URL (Ollama)</label><input id="pUrl"
+                                placeholder="http://localhost:11434" /></div>
+                        <div class="form-group"><label>API Key</label><input id="pKey" type="password"
+                                placeholder="Optional" /></div>
+                        <div class="form-check"><input type="checkbox" id="pDefault" /><label for="pDefault">Set as
+                                default</label></div>
+                        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:.5rem">Add
+                            Provider</button>
+                    </form>
+                </div>
+            </div>
+            <div class="conn-grid" id="providerGrid"></div>
+        </div>
+
+        <!-- ═══ PAGE: SETTINGS ═══ -->
+        <div class="page" id="page-settings">
+            <div class="card" style="max-width:600px">
+                <div class="card-header"><span>⚙️ Sandbox Permissions</span></div>
+                <div class="card-body">
+                    <div class="setting-row"><label>📂 File Access</label><label class="toggle"><input type="checkbox"
+                                checked disabled /><span class="slider"></span></label></div>
+                    <div class="setting-row"><label>🌐 API Access</label><label class="toggle"><input type="checkbox"
+                                checked disabled /><span class="slider"></span></label></div>
+                    <div class="setting-row"><label>📡 Internet Access</label><label class="toggle"><input
+                                type="checkbox" checked disabled /><span class="slider"></span></label></div>
+                    <div class="setting-row"><label>💻 System Commands</label><label class="toggle"><input
+                                type="checkbox" disabled /><span class="slider"></span></label></div>
+                </div>
+            </div>
+            <div class="card" style="max-width:600px;margin-top:1.5rem">
+                <div class="card-header"><span>🔧 System</span></div>
+                <div class="card-body">
+                    <div class="setting-row"><label>Version</label><span class="setting-val">0.3.0</span></div>
+                    <div class="setting-row"><label>Database</label><span class="setting-val">SQLite (local)</span>
+                    </div>
+                    <div class="setting-row"><label>Dashboard auto-refresh</label><span class="setting-val">15s</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
-    <!-- ═══════════ TAB: WORLD MAP ═══════════ -->
-    <div class="tab-content" id="tab-worldmap">
-        <div class="panel panel-full">
-            <div class="panel-header">
-                <div class="panel-title"><span>🌍</span> Agent World Map</div>
-                <div class="panel-badge" id="eventCount">0</div>
-            </div>
-            <div id="worldMap" style="height:520px;border-radius:0 0 14px 14px;"></div>
-        </div>
-    </div>
-
-    <!-- ═══════════ TAB: KNOWLEDGE GRAPH ═══════════ -->
-    <div class="tab-content" id="tab-knowledge">
-        <div class="panel panel-full">
-            <div class="panel-header">
-                <div class="panel-title"><span>🧠</span> Knowledge Graph</div>
-                <div class="panel-badge" id="memoryCount">0</div>
-            </div>
-            <div class="panel-body" id="knowledgeGraph" style="min-height:400px;">
-                <canvas id="graphCanvas" width="1200" height="500"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <!-- ═══════════ TAB: HISTORY ═══════════ -->
-    <div class="tab-content" id="tab-history">
-        <div class="panel panel-full">
-            <div class="panel-header">
-                <div class="panel-title"><span>📊</span> Run History</div>
-                <div class="panel-badge" id="runCount">0</div>
-            </div>
-            <div class="panel-body" id="runsList">
-                <div class="empty-state"><span>📊</span>
-                    <p>No runs yet</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Insight Modal ──────────────────────────────────────────── -->
-    <div class="modal-overlay" id="insightModal" onclick="closeModal(event)">
+    <!-- ═══ MODAL ═══ -->
+    <div class="modal-overlay" id="modal" onclick="closeModal(event)">
         <div class="modal">
-            <h2 id="modalTitle">💡 Insight</h2>
+            <h2 id="modalTitle">Detail</h2>
             <pre id="modalContent"></pre>
         </div>
     </div>
 
-    <!-- ═══════════ JAVASCRIPT ═══════════ -->
+    <!-- ═══ JS ═══ -->
     <script>
         const API = '';
-        let map = null;
-        let eventMarkers = [];
+        let map = null, markers = [];
+        let allInsights = [], allLogs = [];
 
-        // ── Tab Switching ────────────────────────────────────────────
+        // ── Navigation ──────────────────────────────────────────────
 
-        function switchTab(tab, btn) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-            document.getElementById('tab-' + tab).classList.add('active');
-            btn.classList.add('active');
-
-            if (tab === 'worldmap' && !map) initMap();
-            if (tab === 'knowledge') drawGraph();
+        function go(page, el) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            document.getElementById('page-' + page).classList.add('active');
+            if (el) el.classList.add('active');
+            document.getElementById('pageTitle').textContent = el ? el.querySelector('span').textContent : page;
+            if (page === 'worldmap' && !map) initMap();
+            if (page === 'worldmap' && map) setTimeout(() => map.invalidateSize(), 100);
+            if (page === 'files') loadFiles();
+            if (page === 'connections') loadConnections();
+            if (page === 'providers') loadProviders();
+            // Close sidebar on mobile
+            document.getElementById('sidebar').classList.remove('open');
         }
 
-        // ── Fetch ────────────────────────────────────────────────────
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
 
-        async function fetchJSON(path) {
-            const res = await fetch(`${API}${path}`);
-            return res.json();
+        // ── Fetch ───────────────────────────────────────────────────
+
+        async function fetchJSON(path) { return (await fetch(API + path)).json(); }
+
+        // ── Dashboard ───────────────────────────────────────────────
+
+        async function loadDashboard() {
+            const [status, agents, signals, insights, runs] = await Promise.all([
+                fetchJSON('/api/system/status'),
+                fetchJSON('/api/agents'),
+                fetchJSON('/api/signals'),
+                fetchJSON('/api/insights'),
+                fetchJSON('/api/runs'),
+            ]);
+
+            // Stats
+            document.getElementById('statsGrid').innerHTML = [
+                stat('🤖', 'Agents', status.agents_total, '#06b6d4'),
+                stat('⚡', 'Runs', status.runs_total, '#22c55e'),
+                stat('💡', 'Insights', status.insights_total, '#6366f1'),
+                stat('🔗', 'Signals', signals.length, '#a855f7'),
+                stat('🌍', 'Events', status.events_total, '#06b6d4'),
+                stat('⚠️', 'Errors', status.errors_total, '#ef4444'),
+            ].join('');
+
+            // Agents
+            document.getElementById('dAgentCount').textContent = agents.length;
+            document.getElementById('dAgents').innerHTML = agents.length ? agents.map(a => `
+        <div class="list-row">
+            <span class="personality-chip" style="background:${a.personality_color || '#6366f1'}20;color:${a.personality_color || '#6366f1'}">${a.personality_emoji || '🤖'} ${a.personality || 'Explorer'}</span>
+            <strong>${esc(a.name)}</strong>
+            <span class="text-muted">${esc(a.description).slice(0, 40)}</span>
+        </div>
+    `).join('') : '<div class="empty">No agents</div>';
+
+            // Signals
+            document.getElementById('dSignalCount').textContent = signals.length;
+            document.getElementById('dSignals').innerHTML = signals.length ? signals.map(s => `
+        <div class="list-row">
+            <span class="conf-chip">${Math.round((s.confidence || .5) * 100)}%</span>
+            <strong>${esc(s.title)}</strong>
+            <span class="text-muted">${timeSince(s.created_at)}</span>
+        </div>
+    `).join('') : '<div class="empty">No signals yet</div>';
+
+            // Insights
+            allInsights = insights;
+            document.getElementById('dInsights').innerHTML = insights.length ? insights.slice(0, 5).map(i => `
+        <div class="list-row clickable" onclick="showModal('💡 '+${JSON.stringify(esc(i.title))}, ${JSON.stringify(esc(i.content))})">
+            <strong>${esc(i.title || 'Untitled')}</strong>
+            <span class="text-muted">${esc(i.agent_name)} · ${timeSince(i.created_at)}</span>
+        </div>
+    `).join('') : '<div class="empty">No insights</div>';
+
+            // Runs
+            document.getElementById('dRuns').innerHTML = runs.length ? runs.slice(0, 8).map(r => `
+        <div class="list-row">
+            <span class="status-dot ${esc(r.status)}"></span>
+            <strong>${esc(r.agent_name)}</strong>
+            <span class="text-muted">${esc((r.result || '').slice(0, 60))} · ${timeSince(r.started_at)}</span>
+        </div>
+    `).join('') : '<div class="empty">No runs</div>';
         }
 
-        // ── Renderers ────────────────────────────────────────────────
+        function stat(icon, label, value, color) {
+            return `<div class="stat-card"><div class="stat-icon" style="background:${color}15;color:${color}">${icon}</div><div><div class="stat-value">${value}</div><div class="stat-label">${label}</div></div></div>`;
+        }
 
-        function renderAgents(agents) {
-            const el = document.getElementById('agentsList');
-            document.getElementById('agentCount').textContent = agents.length;
-            document.getElementById('statAgents').textContent = agents.length;
+        // ── Agents Page ─────────────────────────────────────────────
 
-            if (!agents.length) {
-                el.innerHTML = '<div class="empty-state"><span>🤖</span><p>No agents registered</p></div>';
-                return;
-            }
-
+        async function loadAgents() {
+            const agents = await fetchJSON('/api/agents');
+            const el = document.getElementById('agentGrid');
+            if (!agents.length) { el.innerHTML = '<div class="empty" style="grid-column:1/-1">No agents registered</div>'; return; }
             el.innerHTML = agents.map(a => `
-        <div class="agent-row">
-            <div class="agent-info">
-                <div class="agent-name">
-                    <span class="personality-badge" style="background:${a.personality_color || '#6366f1'}20;color:${a.personality_color || '#6366f1'}">${a.personality_emoji || '🤖'} ${esc(a.personality || 'Explorer')}</span>
-                    ${esc(a.name)}
-                </div>
-                <div class="agent-desc">${esc(a.description)}</div>
+        <div class="agent-card">
+            <div class="agent-card-head">
+                <span class="personality-chip" style="background:${a.personality_color || '#6366f1'}20;color:${a.personality_color || '#6366f1'}">${a.personality_emoji || '🤖'} ${a.personality || 'Explorer'}</span>
+                <span class="status-indicator running">● Active</span>
             </div>
-            <div class="agent-actions">
-                <span class="interval-tag">${formatInterval(a.interval)}</span>
-                <button class="run-btn" onclick="runAgent('${esc(a.name)}', this)">▶ Run</button>
+            <h3 class="agent-card-name">${esc(a.name)}</h3>
+            <p class="agent-card-desc">${esc(a.description)}</p>
+            <div class="agent-card-meta">
+                <span>⏱ ${formatInterval(a.interval)}</span>
+                <span>🏷 ${(a.tags || []).slice(0, 3).join(', ')}</span>
+            </div>
+            <div class="agent-card-actions">
+                <button class="btn btn-sm btn-primary" onclick="runAgent('${esc(a.name)}',this)">▶ Run</button>
+                <button class="btn btn-sm" onclick="stopAgent('${esc(a.name)}')">⏸ Stop</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteAgent('${esc(a.name)}')">🗑</button>
             </div>
         </div>
     `).join('');
         }
 
-        function renderSignals(signals) {
-            const el = document.getElementById('signalsList');
-            document.getElementById('signalCount').textContent = signals.length;
-            document.getElementById('statSignals').textContent = signals.length;
-
-            if (!signals.length) {
-                el.innerHTML = '<div class="empty-state"><span>🔗</span><p>Run agents to generate collaboration signals</p></div>';
-                return;
-            }
-
-            el.innerHTML = signals.map(s => {
-                const conf = Math.round((s.confidence || 0.5) * 100);
-                const agents = Array.isArray(s.agents_involved) ? s.agents_involved.join(', ') : '';
-                return `
-            <div class="signal-row">
-                <div class="signal-confidence" style="--conf:${conf}%">${conf}%</div>
-                <div class="signal-info">
-                    <div class="signal-title">${esc(s.title)}</div>
-                    <div class="signal-desc">${esc(s.description).slice(0, 200)}</div>
-                    <div class="signal-meta">Agents: ${esc(agents)} · ${timeSince(s.created_at)}</div>
-                </div>
-            </div>
-        `;
-            }).join('');
+        async function runAgent(name, btn) {
+            if (btn) { btn.disabled = true; btn.textContent = '⟳'; }
+            await fetch(API + '/api/agents/' + encodeURIComponent(name) + '/run', { method: 'POST' });
+            await refreshAll();
+            if (btn) { btn.disabled = false; btn.textContent = '▶ Run'; }
         }
 
-        function renderInsights(insights) {
+        async function stopAgent(name) {
+            await fetch(API + '/api/agents/' + encodeURIComponent(name) + '/stop', { method: 'POST' });
+            await loadAgents();
+        }
+
+        async function deleteAgent(name) {
+            if (!confirm('Delete agent ' + name + '?')) return;
+            await fetch(API + '/api/agents/' + encodeURIComponent(name), { method: 'DELETE' });
+            await refreshAll();
+        }
+
+        async function runAllAgents() {
+            const btn = document.getElementById('runAllBtn');
+            btn.disabled = true; btn.textContent = '⟳ Running…';
+            const agents = await fetchJSON('/api/agents');
+            for (const a of agents) await fetch(API + '/api/agents/' + encodeURIComponent(a.name) + '/run', { method: 'POST' });
+            await refreshAll();
+            btn.disabled = false; btn.textContent = '▶ Run All';
+        }
+
+        // ── Agent Builder ───────────────────────────────────────────
+
+        async function buildAgent(e) {
+            e.preventDefault();
+            const sources = document.getElementById('bSources').value.split(',').map(s => s.trim()).filter(Boolean);
+            const res = await fetch(API + '/api/builder/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: document.getElementById('bName').value,
+                    description: document.getElementById('bDesc').value,
+                    personality: document.getElementById('bPersonality').value,
+                    interval: parseInt(document.getElementById('bInterval').value) || 3600,
+                    data_sources: sources,
+                })
+            });
+            const data = await res.json();
+            document.getElementById('builderResult').style.display = 'block';
+            document.getElementById('builderCode').textContent = data.code;
+        }
+
+        // ── Insights ────────────────────────────────────────────────
+
+        async function loadInsights() {
+            allInsights = await fetchJSON('/api/insights');
+            renderInsights(allInsights);
+        }
+
+        function renderInsights(list) {
             const el = document.getElementById('insightsList');
-            document.getElementById('insightCount').textContent = insights.length;
-            document.getElementById('statInsights').textContent = insights.length;
-
-            if (!insights.length) {
-                el.innerHTML = '<div class="empty-state"><span>💡</span><p>No insights yet — run an agent!</p></div>';
-                return;
-            }
-
-            el.innerHTML = insights.map(i => `
-        <div class="insight-row" onclick="showInsight(${JSON.stringify(esc(i.title))}, ${JSON.stringify(esc(i.content))})">
-            <div class="insight-title">${esc(i.title) || 'Untitled'}</div>
-            <div class="insight-preview">${esc(i.content).slice(0, 200)}</div>
-            <div class="insight-meta">
-                <span>🤖 ${esc(i.agent_name)}</span>
-                <span>🕒 ${timeSince(i.created_at)}</span>
-            </div>
+            if (!list.length) { el.innerHTML = '<div class="empty">No insights</div>'; return; }
+            el.innerHTML = list.map(i => `
+        <div class="list-row clickable" onclick="showModal('💡 '+${JSON.stringify(esc(i.title))}, ${JSON.stringify(esc(i.content))})">
+            <strong>${esc(i.title || 'Untitled')}</strong>
+            <span class="text-muted">🤖 ${esc(i.agent_name)} · 🕒 ${timeSince(i.created_at)}</span>
         </div>
     `).join('');
         }
 
-        function renderLogs(logs) {
-            const el = document.getElementById('logsList');
-            document.getElementById('logCount').textContent = logs.length;
-            const errors = logs.filter(l => l.level === 'ERROR').length;
-            document.getElementById('statErrors').textContent = errors;
-
-            if (!logs.length) {
-                el.innerHTML = '<div class="empty-state"><span>📋</span><p>No logs yet</p></div>';
-                return;
-            }
-
-            el.innerHTML = logs.slice(0, 30).map(l => `
-        <div class="log-row">
-            <span class="log-level ${esc(l.level)}">${esc(l.level)}</span>
-            <span class="log-agent">${esc(l.agent_name)}</span>
-            <span class="log-message">${esc(l.message)}</span>
-            <span class="log-time">${timeSince(l.created_at)}</span>
-        </div>
-    `).join('');
+        function filterInsights() {
+            const q = document.getElementById('insightSearch').value.toLowerCase();
+            renderInsights(allInsights.filter(i => (i.title + i.content + i.agent_name).toLowerCase().includes(q)));
         }
 
-        function renderRuns(runs) {
-            const el = document.getElementById('runsList');
-            document.getElementById('runCount').textContent = runs.length;
-            document.getElementById('statRuns').textContent = runs.length;
-
-            if (!runs.length) {
-                el.innerHTML = '<div class="empty-state"><span>📊</span><p>No runs yet</p></div>';
-                return;
-            }
-
-            el.innerHTML = runs.map(r => `
-        <div class="run-row">
-            <div class="run-status ${esc(r.status)}"></div>
-            <span class="run-agent-name">${esc(r.agent_name)}</span>
-            <span class="run-result">${esc((r.result || '').slice(0, 100))}</span>
-            <span class="run-time">${timeSince(r.started_at)}</span>
-        </div>
-    `).join('');
-        }
-
-        // ── World Map (Leaflet) ──────────────────────────────────────
+        // ── World Map ───────────────────────────────────────────────
 
         function initMap() {
             map = L.map('worldMap', { zoomControl: true }).setView([25, 10], 2);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '© CartoDB',
-                maxZoom: 18,
-            }).addTo(map);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© CartoDB', maxZoom: 18 }).addTo(map);
             setTimeout(() => map.invalidateSize(), 200);
             loadEvents();
         }
 
         async function loadEvents() {
             const events = await fetchJSON('/api/events');
-            document.getElementById('eventCount').textContent = events.length;
-            document.getElementById('statEvents').textContent = events.length;
-
-            eventMarkers.forEach(m => map.removeLayer(m));
-            eventMarkers = [];
-
+            document.getElementById('mapEventCount').textContent = events.length;
+            markers.forEach(m => map.removeLayer(m)); markers = [];
             events.forEach(e => {
                 if (!e.latitude && !e.longitude) return;
-                const marker = L.circleMarker([e.latitude, e.longitude], {
-                    radius: 8,
-                    fillColor: '#6366f1',
-                    color: '#818cf8',
-                    weight: 2,
-                    opacity: 0.9,
-                    fillOpacity: 0.7,
-                }).addTo(map);
+                const m = L.circleMarker([e.latitude, e.longitude], { radius: 8, fillColor: '#6366f1', color: '#818cf8', weight: 2, opacity: .9, fillOpacity: .7 }).addTo(map);
+                m.bindPopup(`<div style="font-family:Inter,sans-serif;font-size:13px"><strong>${esc(e.topic)}</strong><br>${esc(e.description).slice(0, 150)}<br><small style="color:#888">📍 ${esc(e.location)} · 🤖 ${esc(e.agent_name)}</small></div>`);
+                markers.push(m);
+            });
+        }
 
-                marker.bindPopup(`
-            <div style="font-family:Inter,sans-serif;font-size:13px;">
-                <strong>${esc(e.topic)}</strong><br>
-                ${esc(e.description).slice(0, 150)}<br>
-                <small style="color:#888;">📍 ${esc(e.location)} · 🤖 ${esc(e.agent_name)} · ${timeSince(e.created_at)}</small>
+        // ── Logs ────────────────────────────────────────────────────
+
+        async function loadLogs() {
+            allLogs = await fetchJSON('/api/logs');
+            renderLogs(allLogs);
+        }
+
+        function renderLogs(list) {
+            const el = document.getElementById('logsList');
+            if (!list.length) { el.innerHTML = '<div class="empty">No logs</div>'; return; }
+            el.innerHTML = list.slice(0, 100).map(l => `
+        <div class="log-row">
+            <span class="log-level ${esc(l.level)}">${esc(l.level)}</span>
+            <span class="log-agent">${esc(l.agent_name)}</span>
+            <span class="log-msg">${esc(l.message)}</span>
+            <span class="log-time">${timeSince(l.created_at)}</span>
+        </div>
+    `).join('');
+        }
+
+        function filterLogs() {
+            const level = document.getElementById('logLevelFilter').value;
+            const agent = document.getElementById('logAgentFilter').value.toLowerCase();
+            renderLogs(allLogs.filter(l => (!level || l.level === level) && (!agent || l.agent_name.toLowerCase().includes(agent))));
+        }
+
+        // ── Files ───────────────────────────────────────────────────
+
+        async function loadFiles() {
+            const files = await fetchJSON('/api/files');
+            const el = document.getElementById('filesList');
+            if (!files.length) { el.innerHTML = '<div class="empty">No files in data/</div>'; return; }
+            el.innerHTML = files.map(f => `
+        <div class="file-row">
+            <span class="file-icon">${f.type === 'txt' ? '📄' : f.type === 'json' ? '📋' : f.type === 'csv' ? '📊' : '📄'}</span>
+            <span class="file-name" onclick="viewFile('${esc(f.path)}')" style="cursor:pointer;color:var(--accent)">${esc(f.name)}</span>
+            <span class="file-size">${formatSize(f.size)}</span>
+            <button class="btn btn-sm btn-danger" onclick="deleteFile('${esc(f.path)}')">🗑</button>
+        </div>
+    `).join('');
+        }
+
+        async function viewFile(path) {
+            const data = await fetchJSON('/api/files/' + encodeURIComponent(path));
+            document.getElementById('fileViewerName').textContent = '📄 ' + data.name;
+            document.getElementById('fileViewerContent').textContent = data.content;
+            document.getElementById('fileViewer').style.display = 'block';
+        }
+
+        function closeFileViewer() { document.getElementById('fileViewer').style.display = 'none'; }
+
+        async function deleteFile(path) {
+            if (!confirm('Delete ' + path + '?')) return;
+            await fetch(API + '/api/files/' + encodeURIComponent(path), { method: 'DELETE' });
+            loadFiles();
+        }
+
+        // ── Connections ─────────────────────────────────────────────
+
+        async function loadConnections() {
+            const conns = await fetchJSON('/api/connections');
+            const el = document.getElementById('connectionGrid');
+            if (!conns.length) { el.innerHTML = '<div class="empty" style="grid-column:1/-1">No API connections</div>'; return; }
+            el.innerHTML = conns.map(c => `
+        <div class="conn-card">
+            <div class="conn-icon">${esc(c.icon)}</div>
+            <h3>${esc(c.name)}</h3>
+            <div class="conn-status ${esc(c.status)}">${esc(c.status)}</div>
+            <div class="conn-url">${esc(c.url).slice(0, 40)}</div>
+            <div class="conn-actions">
+                <button class="btn btn-sm btn-primary" onclick="testConnection('${esc(c.name)}',this)">🔗 Test</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteConnection('${esc(c.name)}')">🗑</button>
             </div>
-        `);
-                eventMarkers.push(marker);
+        </div>
+    `).join('');
+        }
+
+        async function addConnection(e) {
+            e.preventDefault();
+            await fetch(API + '/api/connections', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+                    name: document.getElementById('cName').value, url: document.getElementById('cUrl').value,
+                    api_key: document.getElementById('cKey').value, icon: document.getElementById('cIcon').value,
+                })
             });
+            document.getElementById('cName').value = document.getElementById('cUrl').value = document.getElementById('cKey').value = '';
+            loadConnections();
         }
 
-        // ── Knowledge Graph (Canvas) ─────────────────────────────────
-
-        let graphData = { nodes: [], links: [] };
-
-        async function loadMemory() {
-            graphData = await fetchJSON('/api/memory');
-            document.getElementById('memoryCount').textContent = graphData.nodes.length;
+        async function testConnection(name, btn) {
+            btn.disabled = true; btn.textContent = '⟳';
+            await fetch(API + '/api/connections/' + encodeURIComponent(name) + '/test', { method: 'POST' });
+            await loadConnections();
         }
 
-        function drawGraph() {
-            const canvas = document.getElementById('graphCanvas');
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            const W = canvas.width = canvas.parentElement.clientWidth || 1200;
-            const H = canvas.height = 500;
+        async function deleteConnection(name) {
+            if (!confirm('Delete ' + name + '?')) return;
+            await fetch(API + '/api/connections/' + encodeURIComponent(name), { method: 'DELETE' });
+            loadConnections();
+        }
 
-            ctx.clearRect(0, 0, W, H);
+        // ── Providers ───────────────────────────────────────────────
 
-            const nodes = graphData.nodes || [];
-            const links = graphData.links || [];
-            if (!nodes.length) {
-                ctx.fillStyle = '#64748b';
-                ctx.font = '14px Inter, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText('No knowledge nodes yet — run agents to populate the graph', W / 2, H / 2);
-                return;
-            }
+        async function loadProviders() {
+            const provs = await fetchJSON('/api/providers');
+            const el = document.getElementById('providerGrid');
+            if (!provs.length) { el.innerHTML = '<div class="empty" style="grid-column:1/-1">No LLM providers</div>'; return; }
+            el.innerHTML = provs.map(p => `
+        <div class="conn-card">
+            <div class="conn-icon">${p.provider === 'ollama' ? '🦙' : p.provider === 'openai' ? '🤖' : '✨'}</div>
+            <h3>${esc(p.name)}</h3>
+            <div class="conn-status ${esc(p.status)}">${esc(p.status)}${p.is_default ? ' · ⭐ Default' : ''}</div>
+            <div class="conn-url">${esc(p.provider)} · ${esc(p.model)}</div>
+            <div class="conn-actions">
+                <button class="btn btn-sm btn-primary" onclick="testProvider('${esc(p.name)}',this)">🔗 Test</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteProvider('${esc(p.name)}')">🗑</button>
+            </div>
+        </div>
+    `).join('');
+        }
 
-            // Layout: circular
-            const cx = W / 2, cy = H / 2;
-            const radius = Math.min(W, H) * 0.35;
-            const positions = nodes.map((n, i) => {
-                const angle = (2 * Math.PI * i) / nodes.length - Math.PI / 2;
-                return { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };
+        async function addProvider(e) {
+            e.preventDefault();
+            await fetch(API + '/api/providers', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+                    name: document.getElementById('pName').value, provider: document.getElementById('pProvider').value,
+                    model: document.getElementById('pModel').value, url: document.getElementById('pUrl').value,
+                    api_key: document.getElementById('pKey').value, is_default: document.getElementById('pDefault').checked,
+                })
             });
-
-            // Draw links
-            ctx.strokeStyle = 'rgba(99, 102, 241, 0.2)';
-            ctx.lineWidth = 1;
-            links.forEach(link => {
-                const si = nodes.findIndex(n => n.id === link.source_id);
-                const ti = nodes.findIndex(n => n.id === link.target_id);
-                if (si >= 0 && ti >= 0) {
-                    ctx.beginPath();
-                    ctx.moveTo(positions[si].x, positions[si].y);
-                    ctx.lineTo(positions[ti].x, positions[ti].y);
-                    ctx.stroke();
-                }
-            });
-
-            // Draw nodes
-            const colors = { TrendAgent: '#06b6d4', default: '#6366f1' };
-            nodes.forEach((node, i) => {
-                const p = positions[i];
-                const color = colors[node.agent_name] || colors.default;
-
-                // Glow
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, 18, 0, Math.PI * 2);
-                ctx.fillStyle = color + '30';
-                ctx.fill();
-
-                // Node
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
-                ctx.fillStyle = color;
-                ctx.fill();
-                ctx.strokeStyle = color;
-                ctx.lineWidth = 2;
-                ctx.stroke();
-
-                // Label
-                ctx.fillStyle = '#94a3b8';
-                ctx.font = '11px Inter, sans-serif';
-                ctx.textAlign = 'center';
-                const label = (node.topic || '').slice(0, 25);
-                ctx.fillText(label, p.x, p.y + 26);
-            });
+            document.getElementById('pName').value = document.getElementById('pModel').value = document.getElementById('pUrl').value = document.getElementById('pKey').value = '';
+            loadProviders();
         }
 
-        // ── Actions ──────────────────────────────────────────────────
-
-        async function runAgent(name, btn) {
-            if (btn) { btn.disabled = true; btn.textContent = '⟳'; }
-            try {
-                await fetch(`${API}/api/agents/${encodeURIComponent(name)}/run`, { method: 'POST' });
-                await refreshAll();
-            } finally {
-                if (btn) { btn.disabled = false; btn.textContent = '▶ Run'; }
-            }
+        async function testProvider(name, btn) {
+            btn.disabled = true; btn.textContent = '⟳';
+            await fetch(API + '/api/providers/' + encodeURIComponent(name) + '/test', { method: 'POST' });
+            await loadProviders();
         }
 
-        async function runAllAgents() {
-            const btn = document.getElementById('runAllBtn');
-            btn.disabled = true; btn.textContent = '⟳ Running …';
-            try {
-                const agents = await fetchJSON('/api/agents');
-                for (const a of agents) {
-                    await fetch(`${API}/api/agents/${encodeURIComponent(a.name)}/run`, { method: 'POST' });
-                }
-                await refreshAll();
-            } finally {
-                btn.disabled = false; btn.textContent = '▶ Run All Agents';
-            }
+        async function deleteProvider(name) {
+            if (!confirm('Delete ' + name + '?')) return;
+            await fetch(API + '/api/providers/' + encodeURIComponent(name), { method: 'DELETE' });
+            loadProviders();
         }
 
-        function showInsight(title, content) {
-            document.getElementById('modalTitle').textContent = '💡 ' + (title || 'Insight');
+        // ── Modal ───────────────────────────────────────────────────
+
+        function showModal(title, content) {
+            document.getElementById('modalTitle').textContent = title;
             document.getElementById('modalContent').textContent = content;
-            document.getElementById('insightModal').classList.add('active');
+            document.getElementById('modal').classList.add('active');
         }
+        function closeModal(e) { if (e.target === e.currentTarget) document.getElementById('modal').classList.remove('active'); }
 
-        function closeModal(e) {
-            if (e.target === e.currentTarget) {
-                document.getElementById('insightModal').classList.remove('active');
-            }
-        }
-
-        // ── Refresh ──────────────────────────────────────────────────
+        // ── Refresh ─────────────────────────────────────────────────
 
         async function refreshAll() {
-            const [agents, insights, logs, runs, signals] = await Promise.all([
-                fetchJSON('/api/agents'),
-                fetchJSON('/api/insights'),
-                fetchJSON('/api/logs'),
-                fetchJSON('/api/runs'),
-                fetchJSON('/api/signals'),
-            ]);
-            renderAgents(agents);
-            renderInsights(insights);
-            renderLogs(logs);
-            renderRuns(runs);
-            renderSignals(signals);
-
-            // Load memory graph data in background
-            loadMemory();
-
-            // Refresh map if active
+            await Promise.all([loadDashboard(), loadAgents(), loadInsights(), loadLogs()]);
             if (map) loadEvents();
         }
 
-        // ── Helpers ──────────────────────────────────────────────────
+        // ── Helpers ─────────────────────────────────────────────────
 
-        function esc(str) {
-            if (!str) return '';
-            const d = document.createElement('div');
-            d.textContent = String(str);
-            return d.innerHTML;
-        }
+        function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+        function formatInterval(s) { if (!s) return 'manual'; if (s < 60) return s + 's'; if (s < 3600) return Math.round(s / 60) + 'm'; return Math.round(s / 3600) + 'h'; }
+        function timeSince(iso) { if (!iso) return ''; const d = (Date.now() - new Date(iso).getTime()) / 1000; if (d < 60) return 'now'; if (d < 3600) return Math.floor(d / 60) + 'm ago'; if (d < 86400) return Math.floor(d / 3600) + 'h ago'; return Math.floor(d / 86400) + 'd ago'; }
+        function formatSize(b) { if (b < 1024) return b + 'B'; if (b < 1048576) return (b / 1024).toFixed(1) + 'KB'; return (b / 1048576).toFixed(1) + 'MB'; }
 
-        function formatInterval(secs) {
-            if (!secs) return 'manual';
-            if (secs < 60) return secs + 's';
-            if (secs < 3600) return Math.round(secs / 60) + 'm';
-            return Math.round(secs / 3600) + 'h';
-        }
-
-        function timeSince(iso) {
-            if (!iso) return '';
-            const diff = (Date.now() - new Date(iso).getTime()) / 1000;
-            if (diff < 60) return 'just now';
-            if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-            if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-            return Math.floor(diff / 86400) + 'd ago';
-        }
-
-        // ── Boot ─────────────────────────────────────────────────────
+        // ── Boot ────────────────────────────────────────────────────
 
         refreshAll();
         setInterval(refreshAll, 15000);
     </script>
-
 </body>
 
 </html>
