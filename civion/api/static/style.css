@@ -73,7 +73,23 @@ body::before {
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
-    transition: transform .3s ease;
+    transition: var(--transition);
+}
+
+.sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 45;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.sidebar-overlay.active {
+    display: block;
+    opacity: 1;
 }
 
 .sidebar-logo {
@@ -952,6 +968,7 @@ body::before {
 
     .content {
         margin-left: 0;
+        width: 100%;
     }
 
     .menu-toggle {

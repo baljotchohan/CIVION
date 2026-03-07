@@ -3,7 +3,7 @@ Unit tests for CIVION CollaborationEngine.
 """
 
 import pytest
-from civion.engine.collaboration_engine import generate_signals
+from civion.engine.signal_engine import generate_signals
 
 @pytest.mark.asyncio
 async def test_collaboration_generate_signals(test_db_path, mock_llm):

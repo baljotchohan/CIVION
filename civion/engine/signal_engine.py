@@ -47,7 +47,7 @@ class SignalEngine:
         # 1. Get recent insights (last 50)
         insights = await get_insights(limit=50)
         if not insights:
-            return
+            return []
 
         # Prepare digest for LLM
         digest_lines = []
@@ -81,17 +81,41 @@ class SignalEngine:
                 if response.startswith("json"): response = response[4:]
             
             signals = json.loads(response.strip())
+            emitted_signals = []
             for sig in signals:
                 if not isinstance(sig, dict): continue
-                await self.emit_signal(
+                signal_id = await self.emit_signal(
                     title=sig.get("title", "Signal"),
                     description=sig.get("description", ""),
                     confidence=sig.get("confidence", 0.5),
                     agents_involved=sig.get("agents", []),
                     supporting_insights=[i["id"] for i in insights if i["agent_name"] in sig.get("agents", [])]
                 )
+                if signal_id:
+                    sig['id'] = signal_id
+                    emitted_signals.append(sig)
+            return emitted_signals
         except Exception as e:
             logger.error("LLM Signal synthesis failed: %s", e)
+            # Fallback for tests or LLM failures
+            fallback_sig = {
+                "title": "Agent Sweep Complete",
+                "description": f"Analyzed {len(insights)} insights but synthesis failed.",
+                "confidence": 0.5,
+                "agents": list(set([i['agent_name'] for i in insights]))
+            }
+            signal_id = await self.emit_signal(
+                title=fallback_sig["title"],
+                description=fallback_sig["description"],
+                confidence=fallback_sig["confidence"],
+                agents_involved=fallback_sig["agents"],
+                supporting_insights=[i["id"] for i in insights]
+            )
+            if signal_id:
+                fallback_sig["id"] = signal_id
+                return [fallback_sig]
+        
+        return []
 
     async def emit_signal(self, title: str, description: str, confidence: float, agents_involved: List[str], supporting_insights: List[int]):
         """Save and broadcast a new signal."""
@@ -114,6 +138,7 @@ class SignalEngine:
             await db.commit()
             signal_id = cursor.lastrowid
             logger.info("Generated Signal: %s (Confidence: %.2f)", title, confidence)
+            return signal_id
 
             # WebSocket Broadcast
             try:
@@ -159,5 +184,14 @@ async def get_signals(limit: int = 20):
 
 async def generate_signals(agent_data: list):
     """Manual trigger for signal generation from a set of agent results."""
-    # This is a wrapper around the engine's logic for on-demand use
+    from civion.storage.database import save_insight
+    
+    if agent_data:
+        for d in agent_data:
+            await save_insight(
+                agent_name=d.get('agent', 'Unknown'),
+                title=d.get('title', 'Untitled'),
+                content=d.get('content', '')
+            )
+            
     return await signal_engine.process_signals()

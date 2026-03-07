@@ -18,6 +18,7 @@
 <body>
 
     <!-- ═══ SIDEBAR ═══ -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-logo">
             <img src="/static/logo.png" alt="CIVION"
@@ -435,7 +436,11 @@
             document.getElementById('sidebar').classList.remove('open');
         }
 
-        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (overlay) overlay.classList.toggle('active');
+        }
 
         // ── Fetch ───────────────────────────────────────────────────
 

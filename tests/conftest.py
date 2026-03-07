@@ -33,7 +33,7 @@ async def test_db_path(monkeypatch):
     db_module.DB_PATH = Path(path)
     
     # Also patch it in other modules that import it statically
-    import civion.engine.collaboration_engine as collab_module
+    import civion.engine.signal_engine as collab_module
     old_collab_db_path = getattr(collab_module, "DB_PATH", old_db_path)
     collab_module.DB_PATH = Path(path)
     
@@ -138,7 +138,7 @@ def mock_agent():
         interval = 3600
         personality = "Watcher"
 
-        async def run(self) -> AgentResult:
+        async def execute_task(self) -> AgentResult:
             return AgentResult(
                 success=True,
                 title="Test Run",

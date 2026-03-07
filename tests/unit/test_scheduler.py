@@ -5,12 +5,12 @@ Unit tests for CIVION Agent Scheduler.
 import pytest
 
 from civion.engine.scheduler import AgentScheduler
-from civion.engine.agent_engine import AgentEngine
+from civion.engine.agent_engine import AgentController
 
 @pytest.mark.asyncio
 async def test_scheduler_starts_and_stops():
     """Test basic scheduler initialization."""
-    engine = AgentEngine()
+    engine = AgentController()
     scheduler = AgentScheduler(engine)
     
     # Default is not running
@@ -29,7 +29,7 @@ async def test_scheduler_starts_and_stops():
 @pytest.mark.asyncio
 async def test_scheduler_schedules_agents(mock_agent):
     """Test that all agents in the engine are added as jobs."""
-    engine = AgentEngine()
+    engine = AgentController()
     engine.register_agent(mock_agent)
     
     scheduler = AgentScheduler(engine)

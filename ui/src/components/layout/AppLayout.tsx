@@ -42,7 +42,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
                 {/* Scrollable Content Outer */}
                 <main className="flex-1 overflow-y-auto overflow-x-hidden p-8 scroll-smooth">
-                    <div className="max-w-[1600px] mx-auto min-h-full">
+                    <div className="max-w-[1600px] mx-auto">
                         {children}
                     </div>
                 </main>

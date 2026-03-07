@@ -5,12 +5,12 @@ Ensures the engine can load agents, register them, and execute them concurrently
 
 import pytest
 
-from civion.engine.agent_engine import AgentEngine
+from civion.engine.agent_engine import AgentController
 
 @pytest.mark.asyncio
 async def test_agent_engine_registration(test_db_path, mock_agent):
     """Test that the engine registers agents correctly into the database."""
-    engine = AgentEngine()
+    engine = AgentController()
     engine.register_agent(mock_agent)
     
     assert mock_agent.name in engine._agents
@@ -27,7 +27,7 @@ async def test_agent_engine_registration(test_db_path, mock_agent):
 @pytest.mark.asyncio
 async def test_agent_engine_run_single(test_db_path, mock_agent):
     """Test running a single agent through the engine."""
-    engine = AgentEngine()
+    engine = AgentController()
     engine.register_agent(mock_agent)
     
     result = await engine.run_agent(mock_agent.name)
@@ -38,14 +38,14 @@ async def test_agent_engine_run_single(test_db_path, mock_agent):
 @pytest.mark.asyncio
 async def test_agent_engine_run_missing(test_db_path):
     """Test running a non-existent agent returns gracefully."""
-    engine = AgentEngine()
+    engine = AgentController()
     result = await engine.run_agent("non_existent_agent")
     assert result is None
 
 @pytest.mark.asyncio
 async def test_agent_engine_run_all_concurrent(test_db_path, mock_agent):
     """Test concurrent execution of all agents."""
-    engine = AgentEngine()
+    engine = AgentController()
     engine.register_agent(mock_agent)
     
     # We can fake a second agent
@@ -62,7 +62,7 @@ async def test_agent_engine_run_all_concurrent(test_db_path, mock_agent):
 @pytest.mark.asyncio
 async def test_agent_engine_startup(test_db_path):
     """Test that the engine can start up without AttributeError."""
-    engine = AgentEngine()
+    engine = AgentController()
     # This should not raise AttributeError
     await engine.startup(load_agents=False)
     assert engine._is_started is True

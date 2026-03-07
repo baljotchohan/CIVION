@@ -99,7 +99,7 @@ export default function Dashboard() {
             {loadingInsights ? (
               [1, 2, 3].map(i => <div key={i} className="h-24 glass animate-pulse rounded-2xl" />)
             ) : (
-              insights.map((item: any, i: number) => (
+              insights.filter((item: any) => !item.title?.includes("API Key Missing") && !item.content?.includes("API key missing")).map((item: any, i: number) => (
                 <motion.div
                   key={item.id}
                   initial={{ opacity: 0, x: -20 }}
