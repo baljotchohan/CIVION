@@ -1,73 +1,87 @@
-import uuid
-from typing import List, Dict
-from datetime import datetime
-from civion.models.persona import Persona
+"""
+CIVION Persona System
+Custom AI analysis personas with unique perspectives.
+"""
+from __future__ import annotations
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
+from civion.core.logger import engine_logger
+from civion.services.llm_service import llm_service
+from civion.utils.helpers import generate_id, now_iso
+
+log = engine_logger("persona_system")
+
+
+@dataclass
+class Persona:
+    id: str = ""
+    name: str = ""
+    description: str = ""
+    system_prompt: str = ""
+    reasoning_style: str = "analytical"
+    is_shared: bool = False
+    created_by: str = "system"
+    created_at: str = ""
+
+    def dict(self):
+        return {
+            "id": self.id, "name": self.name, "description": self.description,
+            "system_prompt": self.system_prompt, "reasoning_style": self.reasoning_style,
+            "is_shared": self.is_shared, "created_by": self.created_by,
+            "created_at": self.created_at,
+        }
+
 
 class PersonaSystem:
-    """Manages custom personas"""
+    """Manages custom analysis personas."""
+
     def __init__(self):
-        self._personas: Dict[str, Persona] = {}
+        self._personas: List[Persona] = []
         self._seed_defaults()
 
     def _seed_defaults(self):
-        p = Persona(
-            id=f"persona_{uuid.uuid4().hex[:12]}",
-            name="Shakespeare Agent",
-            description="Analyzes technology like poetry",
-            system_prompt="You are Shakespeare. Describe technology using poetic metaphor.",
-            reasoning_style="Creative/Poetic",
-            created_by="system",
-            usage_count=47,
-            shared=True
-        )
-        self._personas[p.id] = p
+        defaults = [
+            ("Analyst", "Balanced analytical perspective", "You are an analytical intelligence analyst. Provide balanced, evidence-based assessments.", "analytical"),
+            ("Optimist", "Focuses on opportunities and growth", "You are an optimistic analyst who identifies opportunities and positive trends.", "aggressive"),
+            ("Skeptic", "Critical analysis with risk focus", "You are a skeptical analyst who challenges assumptions and highlights risks.", "conservative"),
+        ]
+        for name, desc, prompt, style in defaults:
+            self._personas.append(Persona(
+                id=generate_id("per"),
+                name=name, description=desc,
+                system_prompt=prompt, reasoning_style=style,
+                is_shared=True, created_by="system",
+                created_at=now_iso(),
+            ))
 
-    async def create_persona(
-        self, 
-        name: str, 
-        description: str, 
-        system_prompt: str,
-        reasoning_style: str,
-        user_id: str
-    ) -> Persona:
-        """Create a custom persona"""
+    async def create_persona(self, name: str, description: str, prompt: str, style: str, created_by: str) -> Persona:
         persona = Persona(
-            id=f"persona_{uuid.uuid4().hex[:12]}",
-            name=name,
-            description=description,
-            system_prompt=system_prompt,
-            reasoning_style=reasoning_style,
-            created_by=user_id,
-            created_at=datetime.now()
+            id=generate_id("per"),
+            name=name, description=description,
+            system_prompt=prompt, reasoning_style=style,
+            created_by=created_by, created_at=now_iso(),
         )
-        self._personas[persona.id] = persona
+        self._personas.append(persona)
+        log.info(f"Persona created: {name}")
         return persona
-    
-    async def get_persona(self, persona_id: str) -> Persona:
-        return self._personas.get(persona_id)
 
     async def list_personas(self) -> List[Persona]:
-        return list(self._personas.values())
-    
-    async def analyze_with_persona(self, persona_id: str, data: str) -> str:
-        """Analyze data through specific persona lens"""
-        persona = await self.get_persona(persona_id)
-        if not persona:
-            return "Persona not found."
-        
-        # Mock LLM generation using persona's system prompt
-        analysis = f"[{persona.name} Analysis]: Based on my {persona.reasoning_style} perspective, {data}..."
-        
-        persona.usage_count += 1
-        return analysis
-    
-    async def get_all_perspectives(self, data: str, user_personas: List[str]) -> Dict:
-        """Analyze data through all user's personas"""
-        perspectives = {}
-        for pid in user_personas:
-            p = await self.get_persona(pid)
-            if p:
-                perspectives[p.name] = await self.analyze_with_persona(pid, data)
-        return perspectives
+        return self._personas
 
+    async def analyze_with_persona(self, persona_id: str, data: str) -> str:
+        persona = next((p for p in self._personas if p.id == persona_id), None)
+        if not persona:
+            return "Persona not found"
+
+        prompt = f"""{persona.system_prompt}
+
+Analyze the following intelligence data:
+{data}
+
+Provide your unique perspective and analysis.
+"""
+        return await llm_service.generate(prompt)
+
+
+# Singleton
 persona_system = PersonaSystem()

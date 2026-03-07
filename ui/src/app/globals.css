@@ -5,60 +5,78 @@
 @layer base {
     :root {
         --bg-primary: #0a0e27;
-        --bg-secondary: #1a1f3a;
-        --bg-tertiary: #252d4a;
+        --bg-secondary: #111633;
+        --bg-tertiary: #1a2040;
 
         --accent-primary: #00ff88;
         --accent-secondary: #00d4ff;
         --accent-tertiary: #ff006e;
 
-        --text-primary: #ffffff;
-        --text-secondary: #a0a0a0;
-        --text-tertiary: #606060;
+        --text-primary: #e8e8e8;
+        --text-secondary: #8892b0;
+        --text-tertiary: #4a5568;
 
-        --border-color: rgba(0, 255, 136, 0.2);
+        --border-color: rgba(0, 255, 136, 0.15);
         --success: #00ff88;
         --warning: #ffaa00;
         --error: #ff4444;
         --info: #00d4ff;
 
-        --glow-green: 0 0 20px rgba(0, 255, 136, 0.5);
-        --glow-cyan: 0 0 20px rgba(0, 212, 255, 0.5);
-        --glow-pink: 0 0 20px rgba(255, 0, 110, 0.5);
+        --glow-green: 0 0 20px rgba(0, 255, 136, 0.4);
+        --glow-cyan: 0 0 20px rgba(0, 212, 255, 0.4);
+        --glow-pink: 0 0 20px rgba(255, 0, 110, 0.4);
+    }
+
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(0, 255, 136, 0.2) transparent;
+    }
+
+    *::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    *::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    *::-webkit-scrollbar-thumb {
+        background: rgba(0, 255, 136, 0.2);
+        border-radius: 3px;
     }
 
     body {
         background-color: var(--bg-primary);
         color: var(--text-primary);
-        font-family: 'Geist Sans', -apple-system, sans-serif;
+        font-family: 'Inter', -apple-system, sans-serif;
     }
 }
 
 @layer components {
 
-    /* Glassmorphism Cards */
+    /* ── Glassmorphism Cards ──────────────────── */
     .sci-fi-card {
-        background: rgba(15, 20, 39, 0.8);
-        backdrop-filter: blur(10px);
+        background: rgba(17, 22, 51, 0.8);
+        backdrop-filter: blur(12px);
         border: 1px solid var(--border-color);
-        border-radius: 8px;
-        box-shadow: 0 8px 32px rgba(0, 255, 136, 0.1);
-        transition: all 0.3s ease;
+        border-radius: 12px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .sci-fi-card:hover {
-        border-color: rgba(0, 255, 136, 0.5);
-        box-shadow: 0 8px 32px rgba(0, 255, 136, 0.2);
+        border-color: rgba(0, 255, 136, 0.35);
+        box-shadow: 0 8px 32px rgba(0, 255, 136, 0.08);
+        transform: translateY(-1px);
     }
 
-    /* Neon Glow Effect */
+    /* ── Neon Glow ───────────────────────────── */
     .neon-text {
         color: var(--accent-primary);
-        text-shadow: 0 0 10px rgba(0, 255, 136, 0.8),
-            0 0 20px rgba(0, 255, 136, 0.4);
+        text-shadow: 0 0 10px rgba(0, 255, 136, 0.6), 0 0 30px rgba(0, 255, 136, 0.2);
     }
 
-    /* Animated Gradient Border */
+    /* ── Animated Border ─────────────────────── */
     .animated-border {
         position: relative;
         overflow: hidden;
@@ -70,14 +88,13 @@
         top: 0;
         left: -100%;
         width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg,
-                transparent,
-                rgba(0, 255, 136, 0.5),
-                transparent);
+        height: 2px;
+        background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
         animation: slide 3s infinite;
+        z-index: 1;
     }
 
+    /* ── Status Pulse ────────────────────────── */
     .status-pulse {
         display: inline-block;
         width: 8px;
@@ -85,6 +102,167 @@
         border-radius: 50%;
         background: var(--success);
         animation: pulse 2s infinite;
+    }
+
+    /* ── Confidence Bar ──────────────────────── */
+    .confidence-bar {
+        height: 6px;
+        border-radius: 3px;
+        overflow: hidden;
+        background: var(--bg-tertiary);
+    }
+
+    .confidence-fill {
+        height: 100%;
+        border-radius: 3px;
+        background: linear-gradient(90deg, var(--error), var(--warning), var(--success));
+        transition: width 1s ease;
+    }
+
+    /* ── Buttons ──────────────────────────────── */
+    .btn-primary {
+        background: linear-gradient(135deg, rgba(0, 255, 136, 0.15), rgba(0, 212, 255, 0.15));
+        border: 1px solid rgba(0, 255, 136, 0.3);
+        color: var(--accent-primary);
+        padding: 8px 20px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+        background: linear-gradient(135deg, rgba(0, 255, 136, 0.25), rgba(0, 212, 255, 0.25));
+        box-shadow: var(--glow-green);
+    }
+
+    .btn-secondary {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--text-secondary);
+        padding: 8px 20px;
+        border-radius: 8px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text-primary);
+    }
+
+    .btn-danger {
+        background: rgba(255, 68, 68, 0.1);
+        border: 1px solid rgba(255, 68, 68, 0.3);
+        color: var(--error);
+        padding: 8px 20px;
+        border-radius: 8px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-danger:hover {
+        background: rgba(255, 68, 68, 0.2);
+    }
+
+    /* ── Badge ────────────────────────────────── */
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+
+    .badge-green {
+        background: rgba(0, 255, 136, 0.15);
+        color: var(--success);
+    }
+
+    .badge-cyan {
+        background: rgba(0, 212, 255, 0.15);
+        color: var(--info);
+    }
+
+    .badge-yellow {
+        background: rgba(255, 170, 0, 0.15);
+        color: var(--warning);
+    }
+
+    .badge-red {
+        background: rgba(255, 68, 68, 0.15);
+        color: var(--error);
+    }
+
+    .badge-purple {
+        background: rgba(139, 92, 246, 0.15);
+        color: #a78bfa;
+    }
+
+    /* ── Input ────────────────────────────────── */
+    .input-field {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 10px 14px;
+        color: var(--text-primary);
+        font-size: 13px;
+        outline: none;
+        transition: border-color 0.2s;
+        width: 100%;
+    }
+
+    .input-field:focus {
+        border-color: rgba(0, 255, 136, 0.5);
+        box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.1);
+    }
+
+    /* ── Cascade Animation ───────────────────── */
+    .cascade-item {
+        opacity: 0;
+        animation: cascadeIn 0.5s ease forwards;
+    }
+
+    .cascade-item:nth-child(1) {
+        animation-delay: 0.1s;
+    }
+
+    .cascade-item:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+
+    .cascade-item:nth-child(3) {
+        animation-delay: 0.3s;
+    }
+
+    .cascade-item:nth-child(4) {
+        animation-delay: 0.4s;
+    }
+
+    .cascade-item:nth-child(5) {
+        animation-delay: 0.5s;
+    }
+
+    .cascade-item:nth-child(6) {
+        animation-delay: 0.6s;
+    }
+
+    /* ── Page Title ──────────────────────────── */
+    .page-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+    }
+
+    .page-subtitle {
+        font-size: 0.75rem;
+        color: var(--text-tertiary);
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
     }
 }
 
@@ -106,6 +284,40 @@
     }
 
     50% {
-        box-shadow: 0 0 0 10px rgba(0, 255, 136, 0);
+        box-shadow: 0 0 0 8px rgba(0, 255, 136, 0);
+    }
+}
+
+@keyframes cascadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }

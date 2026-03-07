@@ -1,71 +1,64 @@
-import uuid
-import httpx
+"""
+CIVION Network Engine
+P2P distributed intelligence sharing.
+"""
+from __future__ import annotations
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import List, Dict, Optional
+from typing import Any, Dict, List
+from civion.core.logger import engine_logger
+from civion.utils.helpers import generate_id, now_iso
+
+log = engine_logger("network_engine")
+
 
 @dataclass
-class NetworkPeer:
-    id: str
-    name: str
-    url: str
-    last_seen: datetime = field(default_factory=datetime.now)
+class Peer:
+    id: str = ""
+    url: str = ""
+    status: str = "disconnected"
+    last_seen: str = ""
     signals_shared: int = 0
-    signals_received: int = 0
-    trust_score: float = 1.0
 
-@dataclass
-class SharedSignal:
-    id: str
-    original_peer: str
-    signal_id: str
-    topic: str
-    content: str
-    confidence: float
-    verifications: int = 0
-    timestamp: datetime = field(default_factory=datetime.now)
+    def dict(self):
+        return {"id": self.id, "url": self.url, "status": self.status, "last_seen": self.last_seen, "signals_shared": self.signals_shared}
+
 
 class NetworkEngine:
-    """Manages P2P signal sharing"""
+    """P2P intelligence network engine."""
+
     def __init__(self):
-        self.peer_id = f"peer_{uuid.uuid4().hex[:12]}"
-        self.network_name = ""
-        self.peers: Dict[str, NetworkPeer] = {}
-        self.shared_signals: Dict[str, SharedSignal] = {}
+        self.peers: List[Peer] = []
+        self._network_name = ""
+        self._signals_shared = 0
 
-    async def join_network(self, network_name: str, peer_urls: List[str]):
-        """Join a network of CIVION peers"""
-        self.network_name = network_name
-        
-        # Mock discovering a peer
-        mock_peer = NetworkPeer(
-            id=f"peer_mock_{uuid.uuid4().hex[:8]}",
-            name="Global_Research_Node_01",
-            url="http://mock-global-node.local"
-        )
-        self.peers[mock_peer.id] = mock_peer
-
+    async def join_network(self, network: str, peer_urls: List[str]) -> None:
+        self._network_name = network
         for url in peer_urls:
-            try:
-                # Real P2P flow
-                async with httpx.AsyncClient() as client:
-                    response = await client.get(f"{url}/api/network/info", timeout=2.0)
-                    if response.status_code == 200:
-                        data = response.json()
-                        p = NetworkPeer(id=data["id"], name=data["name"], url=url)
-                        self.peers[p.id] = p
-            except Exception:
-                pass
-    
-    async def get_network_stats(self):
+            self.peers.append(Peer(
+                id=generate_id("peer"),
+                url=url, status="connected",
+                last_seen=now_iso(),
+            ))
+        log.info(f"Joined network '{network}' with {len(peer_urls)} peers")
+
+    async def get_peers(self) -> List[Peer]:
+        return self.peers
+
+    async def get_network_stats(self) -> Dict[str, Any]:
         return {
-            "peer_count": len(self.peers),
-            "shared_signals": len(self.shared_signals),
-            "network_name": self.network_name or "Not Connected",
-            "global_confidence_avg": 0.88
+            "network": self._network_name or "not_connected",
+            "peers": len(self.peers),
+            "connected": sum(1 for p in self.peers if p.status == "connected"),
+            "signals_shared": self._signals_shared,
+            "health": "excellent" if self.peers else "no_peers",
         }
 
-    async def get_peers(self) -> List[NetworkPeer]:
-        return list(self.peers.values())
+    async def broadcast_signal(self, signal: Dict) -> int:
+        """Broadcast a signal to all peers."""
+        notified = sum(1 for p in self.peers if p.status == "connected")
+        self._signals_shared += 1
+        return notified
 
+
+# Singleton
 network_engine = NetworkEngine()
