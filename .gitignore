@@ -1,19 +1,25 @@
+# Python
 __pycache__/
 *.pyc
 .pytest_cache/
+.venv/
+build/
+dist/
+
+# Environment
 .env
-ui/node_modules/
+
+# Node.js
 node_modules/
+ui/node_modules/
+ui/.old_node_modules/
 ui/.next/
 .next/
 ui/out/
-dist/
-build/
+
+# Logs
 *.log
-.DS_Storenode_modules/
-.next/
-ui/node_modules/
-ui/.next/
-dist/
-build/
-.env
+
+# OS
+.DS_Store
+
