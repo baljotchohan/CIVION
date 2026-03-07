@@ -16,7 +16,7 @@ class ResearchPaperAgent(BaseAgent):
     interval = 3600 * 6  # Run every 6 hours
     personality = "Analyst"
     tags = ["research", "ai", "arxiv"]
-    tools_allowed = ["arxiv"]
+    tools_allowed = ["arxiv_search"]
 
     async def execute_task(self) -> AgentResult:
         # Search Arxiv for AI/ML papers

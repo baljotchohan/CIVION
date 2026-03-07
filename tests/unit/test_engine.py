@@ -13,7 +13,7 @@ async def test_agent_engine_registration(test_db_path, mock_agent):
     engine = AgentController()
     engine.register_agent(mock_agent)
     
-    assert mock_agent.name in engine._agents
+    assert mock_agent.name in engine._instances
     
     from civion.storage.database import register_agent_db
     await register_agent_db(mock_agent.name, mock_agent.description, mock_agent.personality, mock_agent.interval, getattr(mock_agent, "tags", []))
