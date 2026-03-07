@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 from civion.core.constants import AgentState, DEFAULT_AGENTS
 from civion.core.logger import engine_logger
 from civion.agents.base_agent import BaseAgent
+from civion.api.websocket import manager
 
 log = engine_logger("agent_engine")
 
@@ -33,7 +34,18 @@ class AgentEngine:
         agent = self._agents.get(name)
         if not agent:
             return {"error": f"Agent '{name}' not found"}
+        
+        if agent.is_running:
+            return {"status": "already_running", "agent": name}
+            
         await agent.start()
+        
+        # Broadcast event
+        await manager.broadcast("agent_started", {
+            "agent": name,
+            "timestamp": datetime.now().isoformat()
+        })
+        
         return {"status": "started", "agent": name}
 
     async def stop_agent(self, name: str) -> Dict[str, Any]:
@@ -41,11 +53,50 @@ class AgentEngine:
         agent = self._agents.get(name)
         if not agent:
             return {"error": f"Agent '{name}' not found"}
+            
         await agent.stop()
         if name in self._running_tasks:
             self._running_tasks[name].cancel()
             del self._running_tasks[name]
+            
+        # Broadcast event
+        await manager.broadcast("agent_stopped", {
+            "agent": name,
+            "timestamp": datetime.now().isoformat()
+        })
+        
         return {"status": "stopped", "agent": name}
+
+    async def pause_agent(self, name: str) -> Dict[str, Any]:
+        """Pause a specific agent."""
+        agent = self._agents.get(name)
+        if not agent:
+            return {"error": f"Agent '{name}' not found"}
+        
+        agent.state = AgentState.IDLE # Or add a PAUSED state to AgentState
+        agent._running = False
+        
+        await manager.broadcast("agent_paused", {
+            "agent": name,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+        return {"status": "paused", "agent": name}
+
+    async def resume_agent(self, name: str) -> Dict[str, Any]:
+        """Resume a specific agent."""
+        agent = self._agents.get(name)
+        if not agent:
+            return {"error": f"Agent '{name}' not found"}
+        
+        agent._running = True
+        
+        await manager.broadcast("agent_resumed", {
+            "agent": name,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+        return {"status": "running", "agent": name}
 
     async def restart_agent(self, name: str) -> Dict[str, Any]:
         """Restart a specific agent."""

@@ -12,6 +12,7 @@ from civion.core.config import settings
 from civion.core.logger import get_logger, print_banner
 from civion.engine.agent_engine import agent_engine, register_default_agents
 from civion.engine.event_stream import event_stream
+from civion.api.websocket import manager
 
 
 log = get_logger("api")
@@ -102,22 +103,18 @@ async def legacy_status():
 # ── WebSocket ────────────────────────────────────────
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    """Real-time event stream via WebSocket."""
-    await websocket.accept()
-    event_stream.register_ws(websocket)
-    log.info("WebSocket client connected")
-
+    """WebSocket endpoint for real-time updates"""
+    await manager.connect(websocket)
     try:
         while True:
+            # Keep connection alive, listen for messages
             data = await websocket.receive_text()
-            # Echo or handle commands
+            
+            # Client can send ping to keep alive
             if data == "ping":
-                await websocket.send_text('{"type": "pong"}')
+                await websocket.send_json({"type": "pong"})
     except WebSocketDisconnect:
-        event_stream.unregister_ws(websocket)
-        log.info("WebSocket client disconnected")
-    except Exception:
-        event_stream.unregister_ws(websocket)
+        manager.disconnect(websocket)
 
 
 # ── Error Handlers ───────────────────────────────────

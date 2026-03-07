@@ -39,6 +39,18 @@ async def restart_agent(agent_name: str):
     return await agent_engine.restart_agent(agent_name)
 
 
+@router.post("/{agent_name}/pause")
+async def pause_agent(agent_name: str):
+    """Pause an agent."""
+    return await agent_engine.pause_agent(agent_name)
+
+
+@router.post("/{agent_name}/resume")
+async def resume_agent(agent_name: str):
+    """Resume an agent."""
+    return await agent_engine.resume_agent(agent_name)
+
+
 @router.post("/{agent_name}/run")
 async def run_agent(agent_name: str):
     """Run a single scan cycle for an agent."""

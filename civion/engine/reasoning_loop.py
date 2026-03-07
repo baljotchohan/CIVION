@@ -4,11 +4,13 @@ Multi-agent debate and consensus engine.
 """
 from __future__ import annotations
 import random
+import asyncio
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 from civion.core.logger import engine_logger
 from civion.services.llm_service import llm_service
 from civion.utils.helpers import generate_id, now_iso
+from datetime import datetime
 
 log = engine_logger("reasoning_loop")
 
@@ -83,12 +85,19 @@ class ReasoningEngine:
         agents = ["Research Monitor", "GitHub Trend", "Market Signal", "Sentiment"]
         for agent in agents:
             position = random.choice(["support", "challenge"])
-            loop.arguments.append(ReasoningArgument(
+            confidence = round(random.uniform(0.5, 0.95), 2)
+            arg = ReasoningArgument(
                 agent=agent,
                 position=position,
                 argument=f"{agent} analysis of '{topic[:40]}': {'supporting' if position == 'support' else 'challenging'} evidence found.",
-                confidence=round(random.uniform(0.5, 0.95), 2),
-            ))
+                confidence=confidence,
+            )
+            loop.arguments.append(arg)
+            
+            # Broadcast update
+            await self.broadcast_reasoning_update(loop.id, "argument_added", arg.dict())
+            await self.broadcast_confidence_change(loop.id, confidence, agent)
+            await asyncio.sleep(0.5) # Add a small delay for visualization
 
         # Calculate consensus
         support_count = sum(1 for a in loop.arguments if a.position == "support")
@@ -97,8 +106,33 @@ class ReasoningEngine:
         loop.state = "consensus_reached"
 
         self.loops.append(loop)
+        
+        # Broadcast completion
+        await self.broadcast_reasoning_update(loop.id, "completed", loop.dict())
+        
         log.info(f"Reasoning loop completed: {topic}")
         return loop
+
+    async def broadcast_reasoning_update(self, loop_id: str, stage: str, data: dict):
+        """Broadcast reasoning updates via WebSocket"""
+        from civion.api.websocket import manager
+        
+        await manager.broadcast("reasoning_updated", {
+            "loop_id": loop_id,
+            "stage": stage,
+            "data": data
+        })
+
+    async def broadcast_confidence_change(self, loop_id: str, confidence: float, agent: str):
+        """Broadcast confidence changes"""
+        from civion.api.websocket import manager
+        
+        await manager.broadcast("confidence_changed", {
+            "loop_id": loop_id,
+            "confidence": confidence,
+            "agent": agent,
+            "timestamp": datetime.now().isoformat()
+        })
 
     async def get_loop(self, loop_id: str) -> Optional[ReasoningLoop]:
         return next((l for l in self.loops if l.id == loop_id), None)

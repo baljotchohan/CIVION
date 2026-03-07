@@ -1,6 +1,6 @@
-'use client';
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { DebateViewer } from '@/components/reasoning/DebateViewer';
 
 const mockReasoningLoops = [
     {
@@ -30,6 +30,8 @@ const mockReasoningLoops = [
 ];
 
 export default function ReasoningPage() {
+    const [selectedLoop, setSelectedLoop] = useState<string | null>(null);
+
     return (
         <div className="p-6 space-y-6">
             <header className="flex justify-between items-center">
@@ -37,52 +39,58 @@ export default function ReasoningPage() {
                     <h2 className="page-title">🧠 Multi-Agent Reasoning</h2>
                     <p className="page-subtitle">Watch agents debate and reach consensus</p>
                 </div>
-                <button className="btn-primary">+ Start Debate</button>
+                <button className="btn-primary" onClick={() => setSelectedLoop(null)}>Show All</button>
             </header>
 
-            <div className="space-y-6">
-                {mockReasoningLoops.map((loop, i) => (
-                    <motion.div key={loop.id} className="sci-fi-card p-6" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
-                        <div className="flex justify-between items-start mb-4">
-                            <div>
-                                <h3 className="font-semibold text-lg">{loop.topic}</h3>
-                                <p className="text-xs text-text-secondary mt-1">&quot;{loop.hypothesis}&quot;</p>
+            {selectedLoop ? (
+                <div className="max-w-4xl mx-auto">
+                    <button
+                        className="mb-4 text-cyan-400 hover:text-cyan-300 flex items-center"
+                        onClick={() => setSelectedLoop(null)}
+                    >
+                        ← Back to all debates
+                    </button>
+                    <DebateViewer loopId={selectedLoop} />
+                </div>
+            ) : (
+                <div className="space-y-6">
+                    {mockReasoningLoops.map((loop, i) => (
+                        <motion.div
+                            key={loop.id}
+                            className="sci-fi-card p-6 cursor-pointer hover:border-accent-primary/50 transition-colors"
+                            initial={{ opacity: 0, y: 15 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.1 }}
+                            onClick={() => setSelectedLoop(loop.id)}
+                        >
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <h3 className="font-semibold text-lg">{loop.topic}</h3>
+                                    <p className="text-xs text-text-secondary mt-1">&quot;{loop.hypothesis}&quot;</p>
+                                </div>
+                                <div className="text-right">
+                                    <span className={`badge ${loop.state === 'consensus_reached' ? 'badge-green' : 'badge-yellow'}`}>{loop.state.replace('_', ' ')}</span>
+                                    <p className={`font-mono text-xl font-bold mt-1 ${loop.final_confidence > 0.7 ? 'text-success' : 'text-warning'}`}>
+                                        {(loop.final_confidence * 100).toFixed(0)}%
+                                    </p>
+                                </div>
                             </div>
-                            <div className="text-right">
-                                <span className={`badge ${loop.state === 'consensus_reached' ? 'badge-green' : 'badge-yellow'}`}>{loop.state.replace('_', ' ')}</span>
-                                <p className={`font-mono text-xl font-bold mt-1 ${loop.final_confidence > 0.7 ? 'text-success' : 'text-warning'}`}>
-                                    {(loop.final_confidence * 100).toFixed(0)}%
-                                </p>
-                            </div>
-                        </div>
 
-                        <div className="space-y-3 mb-4">
-                            {loop.arguments.map((arg, j) => (
-                                <motion.div key={j} className="flex items-start space-x-3 p-3 bg-bg-tertiary rounded-lg" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 + j * 0.08 }}>
-                                    <span className={`text-xs font-bold mt-0.5 ${arg.position === 'support' ? 'text-success' : 'text-error'}`}>
-                                        {arg.position === 'support' ? '▲' : '▼'}
-                                    </span>
-                                    <div className="flex-1">
-                                        <div className="flex items-center space-x-2 mb-1">
-                                            <span className="text-xs font-mono text-accent-secondary">{arg.agent}</span>
-                                            <span className={`badge text-[10px] ${arg.position === 'support' ? 'badge-green' : 'badge-red'}`}>{arg.position}</span>
-                                        </div>
-                                        <p className="text-sm text-text-primary">&quot;{arg.argument}&quot;</p>
+                            <div className="flex -space-x-2 overflow-hidden mb-4">
+                                {loop.arguments.map((arg, j) => (
+                                    <div key={j} className="inline-block h-8 w-8 rounded-full ring-2 ring-bg-primary bg-bg-tertiary flex items-center justify-center text-xs" title={arg.agent}>
+                                        🤖
                                     </div>
-                                    <span className="font-mono text-xs text-text-tertiary">{(arg.confidence * 100).toFixed(0)}%</span>
-                                </motion.div>
-                            ))}
-                        </div>
-
-                        {loop.consensus && (
-                            <div className="p-3 bg-bg-secondary border border-accent-primary/20 rounded-lg">
-                                <p className="text-xs font-mono text-accent-primary mb-1">CONSENSUS</p>
-                                <p className="text-sm text-text-primary">{loop.consensus}</p>
+                                ))}
                             </div>
-                        )}
-                    </motion.div>
-                ))}
-            </div>
+
+                            <div className="text-sm text-text-secondary">
+                                Click to view real-time debate details...
+                            </div>
+                        </motion.div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

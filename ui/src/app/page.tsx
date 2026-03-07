@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { ConfidenceCascade } from '@/components/dashboard/ConfidenceCascade';
+import { DebateViewer } from '@/components/reasoning/DebateViewer';
 
 export default function Dashboard() {
     const [confidence] = useState(0.85);
@@ -42,34 +44,18 @@ export default function Dashboard() {
                     </ul>
                 </div>
 
-                {/* Confidence Cascade Sample */}
-                <div className="sci-fi-card p-6 md:col-span-1">
-                    <h3 className="font-mono text-accent-tertiary mb-2">[CONFIDENCE CASCADE]</h3>
-                    <p className="text-xs text-text-secondary mb-4 text-right">Target 0.95</p>
-                    <div className="h-4 bg-bg-secondary rounded-full overflow-hidden mb-2 border border-border-color">
-                        <motion.div
-                            className="h-full bg-gradient-to-r from-error via-warning to-success"
-                            initial={{ width: "30%" }}
-                            animate={{ width: `${confidence * 100}%` }}
-                            transition={{ duration: 1.5, ease: "easeOut" }}
-                        />
-                    </div>
-                    <div className="flex justify-between text-xs font-mono">
-                        <span className="text-text-secondary">0.55 INITIAL</span>
-                        <span className="text-success font-bold neon-text">85% CURRENT</span>
-                    </div>
+                {/* Confidence Cascade */}
+                <div className="md:col-span-1">
+                    <ConfidenceCascade insightId="rl_001" />
                 </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
                 {/* Reasoning Loop */}
-                <div className="sci-fi-card p-6 flex flex-col">
-                    <h3 className="font-mono text-accent-primary mb-4 border-b border-border-color pb-2">MULTI-AGENT REASONING IN PROGRESS</h3>
-                    <div className="flex-1 space-y-4 text-sm font-mono mt-4">
-                        <div className="cascade-item text-text-secondary">Agent A: <span className="text-text-primary">"AI Robotics growing 40%"</span> <span className="text-success">✓</span></div>
-                        <div className="cascade-item text-text-secondary">Agent B: <span className="text-text-primary">"Verifying sustainability..."</span> <span className="text-warning animate-pulse">▌▌▌</span></div>
-                        <div className="cascade-item text-text-secondary">Agent C: <span className="text-text-primary">"Market data confirms"</span> <span className="text-success">✓</span></div>
-                        <div className="cascade-item text-text-secondary mt-6">Agent D: <span className="text-accent-secondary">"Synthesizing consensus..."</span></div>
+                <div className="sci-fi-card p-6 flex flex-col overflow-hidden">
+                    <h3 className="font-mono text-accent-primary mb-4 border-b border-border-color pb-2">MULTI-AGENT REASONING</h3>
+                    <div className="flex-1 overflow-y-auto">
+                        <DebateViewer loopId="rl_001" />
                     </div>
                 </div>
 
