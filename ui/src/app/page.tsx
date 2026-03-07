@@ -49,7 +49,7 @@ export default function Dashboard() {
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           { label: "Active Agents", value: status?.agents_running?.toString() || "0", delta: "", icon: Cpu, color: "text-explorer" },
-          { label: "Signals Detected", value: signals.length.toString(), delta: "", icon: Zap, color: "text-signal" },
+          { label: "Signals Detected", value: (signals || []).length.toString(), delta: "", icon: Zap, color: "text-signal" },
           { label: "Knowledge Nodes", value: status?.total_insights?.toString() || "0", delta: "", icon: TrendingUp, color: "text-analyst" },
           { label: "System Health", value: "99.8%", icon: ShieldCheck, color: "text-watcher" },
         ].map((stat, i) => (
@@ -99,7 +99,7 @@ export default function Dashboard() {
             {loadingInsights ? (
               [1, 2, 3].map(i => <div key={i} className="h-24 glass animate-pulse rounded-2xl" />)
             ) : (
-              insights.filter((item: any) => !item.title?.includes("API Key Missing") && !item.content?.includes("API key missing")).map((item: any, i: number) => (
+              (insights || []).filter((item: any) => !item.title?.includes("API Key Missing") && !item.content?.includes("API key missing")).map((item: any, i: number) => (
                 <motion.div
                   key={item.id}
                   initial={{ opacity: 0, x: -20 }}
@@ -125,7 +125,7 @@ export default function Dashboard() {
                 </motion.div>
               ))
             )}
-            {insights.length === 0 && !loadingInsights && (
+            {(!insights || insights.length === 0) && !loadingInsights && (
               <div className="p-10 text-center glass rounded-2xl text-slate-500 text-sm italic">
                 Waiting for agent insights...
               </div>
@@ -140,7 +140,7 @@ export default function Dashboard() {
             Active Signals
           </h2>
           <div className="glass-heavy p-6 rounded-2xl space-y-6 border-rose-500/20 glow-signal">
-            {signals.slice(0, 3).map((sig, i) => (
+            {(signals || []).slice(0, 3).map((sig: any, i: number) => (
               <div key={sig.id} className="space-y-2 last:border-0 border-b border-white/5 pb-4 last:pb-0">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">{(sig.confidence * 100).toFixed(0)}% Confidence</span>
@@ -150,7 +150,7 @@ export default function Dashboard() {
                 <p className="text-xs text-slate-400 leading-relaxed pr-6">{sig.description}</p>
               </div>
             ))}
-            {signals.length === 0 && (
+            {(!signals || signals.length === 0) && (
               <p className="text-xs text-slate-500 italic text-center py-4">Scanning for patterns...</p>
             )}
             <button className="w-full py-3 rounded-xl bg-rose-500/10 text-rose-400 text-xs font-bold hover:bg-rose-500/20 transition-all border border-rose-500/30">

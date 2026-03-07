@@ -98,7 +98,7 @@ export default function LogsPage() {
                             <RefreshCcw className="w-5 h-5 animate-spin" />
                             <span>Syncing audit logs...</span>
                         </div>
-                    ) : filteredLogs?.length === 0 ? (
+                    ) : !filteredLogs || filteredLogs.length === 0 ? (
                         <div className="h-full flex items-center justify-center text-slate-600">
                             No logs matching filters.
                         </div>
