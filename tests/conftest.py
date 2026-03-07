@@ -19,6 +19,14 @@ from civion.api.server import app
 from civion.services.api_service import APIService
 from civion.services.llm_service import LLMService
 
+# ── Global Initialization ─────────────────────────────────────
+
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def global_db_init():
+    """Ensures the database and its tables exist before any tests run."""
+    from civion.storage.database import init_db
+    await init_db()
+
 # ── Database Fixtures ─────────────────────────────────────────
 
 @pytest_asyncio.fixture
