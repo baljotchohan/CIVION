@@ -3,6 +3,9 @@ from civion.tools.filesystem_tool import FileSystemTool
 from civion.tools.web_search_tool import WebSearchTool
 from civion.tools.github_tool import GitHubTool
 from civion.tools.arxiv_tool import ArxivTool
+from civion.tools.hackernews_tool import HackerNewsTool
+from civion.tools.news_tool import NewsTool
+from civion.tools.coingecko_tool import CoinGeckoTool
 
 __all__ = [
     "BaseTool",
@@ -11,5 +14,8 @@ __all__ = [
     "FileSystemTool",
     "WebSearchTool",
     "GitHubTool",
-    "ArxivTool"
+    "ArxivTool",
+    "HackerNewsTool",
+    "NewsTool",
+    "CoinGeckoTool"
 ]

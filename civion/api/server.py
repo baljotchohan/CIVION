@@ -45,7 +45,7 @@ from civion.storage.database import (
     get_providers, save_provider, update_provider_status, delete_provider,
     update_agent_status, delete_agent_db,
 )
-from civion.engine.planner_engine import planner_engine
+from civion.engine.goal_planner import planner_engine
 from fastapi.middleware.cors import CORSMiddleware
 
 logger = logging.getLogger("civion.server")
@@ -256,13 +256,37 @@ async def api_run_agent(name: str):
 
 @app.post("/api/agents/{name}/stop")
 async def api_stop_agent(name: str):
+    success = await engine.stop_agent(name)
     await update_agent_status(name, "stopped")
-    return {"status": "stopped", "agent": name}
+    return JSONResponse({"status": "stopped" if success else "error", "agent": name}, 200 if success else 400)
 
 @app.post("/api/agents/{name}/start")
 async def api_start_agent(name: str):
+    success = await engine.start_agent(name)
     await update_agent_status(name, "running")
-    return {"status": "running", "agent": name}
+    return JSONResponse({"status": "started" if success else "error", "agent": name}, 200 if success else 400)
+
+@app.post("/api/agents/{name}/pause")
+async def api_pause_agent(name: str):
+    success = await engine.pause_agent(name)
+    await update_agent_status(name, "paused")
+    return JSONResponse({"status": "paused" if success else "error", "agent": name}, 200 if success else 400)
+
+@app.post("/api/agents/{name}/resume")
+async def api_resume_agent(name: str):
+    success = await engine.resume_agent(name)
+    await update_agent_status(name, "running")
+    return JSONResponse({"status": "resumed" if success else "error", "agent": name}, 200 if success else 400)
+
+@app.post("/api/agents/{name}/restart")
+async def api_restart_agent(name: str):
+    success = await engine.restart_agent(name)
+    await update_agent_status(name, "running")
+    return JSONResponse({"status": "restarted" if success else "error", "agent": name}, 200 if success else 400)
+
+@app.get("/api/agents/health")
+async def api_agents_health():
+    return engine.get_health()
 
 @app.delete("/api/agents/{name}")
 async def api_delete_agent(name: str):
@@ -472,11 +496,13 @@ async def api_delete_provider(name: str):
 
 @app.get("/api/goals")
 async def api_goals():
-    return await planner_engine.list_goals()
+    from civion.storage.database import get_all_goals
+    return await get_all_goals()
 
 @app.get("/api/goals/{id}")
 async def api_goal_detail(id: str):
-    all_goals = await planner_engine.list_goals()
+    from civion.storage.database import get_all_goals
+    all_goals = await get_all_goals()
     goal = next((g for g in all_goals if g["id"] == id), None)
     if not goal:
         return JSONResponse({"error": "Goal not found"}, 404)
@@ -485,11 +511,41 @@ async def api_goal_detail(id: str):
 @app.post("/api/goals")
 async def api_create_goal(request: Request):
     data = await request.json()
-    goal = await planner_engine.create_goal(
+    goal_id = await planner_engine.create_goal(
         title=data.get("title", "Untitled Goal"),
-        description=data.get("description", "")
+        description=data.get("description", ""),
+        user_prompt=data.get("user_prompt", "")
     )
-    return goal
+    return {"id": goal_id, "status": "pending"}
+
+@app.post("/api/goals/{id}/decompose")
+async def api_decompose_goal(id: str):
+    try:
+        tasks = await planner_engine.decompose_goal(id)
+        return {"id": id, "tasks_created": len(tasks), "status": "ready"}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, 500)
+
+@app.post("/api/goals/{id}/execute")
+async def api_execute_goal(id: str):
+    import asyncio
+    # Execute in background so we don't block the API request immediately
+    asyncio.create_task(planner_engine.execute_goal(id))
+    return {"id": id, "status": "executing"}
+
+@app.get("/api/goals/{id}/progress")
+async def api_goal_progress(id: str):
+    from civion.storage.database import get_all_goals
+    all_goals = await get_all_goals()
+    goal = next((g for g in all_goals if g["id"] == id), None)
+    if not goal:
+        return JSONResponse({"error": "Goal not found"}, 404)
+    return {
+        "id": goal["id"], 
+        "status": goal["status"], 
+        "confidence": goal.get("confidence", 0.0),
+        "tasks": goal.get("tasks", [])
+    }
 
 
 # ── Agent Builder ─────────────────────────────────────────────

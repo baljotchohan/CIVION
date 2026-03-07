@@ -124,23 +124,27 @@ CREATE TABLE IF NOT EXISTS llm_providers (
 );
 
 CREATE TABLE IF NOT EXISTS goals (
-    id          TEXT PRIMARY KEY,
-    title       TEXT NOT NULL,
-    description TEXT NOT NULL DEFAULT '',
-    status      TEXT NOT NULL DEFAULT 'pending',
-    final_report TEXT,
-    created_at  TEXT NOT NULL,
-    completed_at TEXT
+    id              TEXT PRIMARY KEY,
+    title           TEXT NOT NULL,
+    description     TEXT,
+    user_prompt     TEXT,
+    status          TEXT,
+    assigned_agents TEXT,
+    final_insight   TEXT,
+    confidence      REAL,
+    created_at      TEXT,
+    updated_at      TEXT
 );
 
-CREATE TABLE IF NOT EXISTS subtasks (
+CREATE TABLE IF NOT EXISTS tasks (
     id          TEXT PRIMARY KEY,
-    goal_id     TEXT NOT NULL,
-    description TEXT NOT NULL,
-    assigned_agent TEXT,
-    status      TEXT NOT NULL DEFAULT 'pending',
+    goal_id     TEXT,
+    agent_name  TEXT,
+    description TEXT,
+    parameters  TEXT,
+    status      TEXT,
     result      TEXT,
-    FOREIGN KEY (goal_id) REFERENCES goals(id)
+    created_at  TEXT
 );
 """
 
@@ -164,6 +168,27 @@ async def init_db() -> None:
         # Migration for collaboration_signals
         try:
             await db.execute("ALTER TABLE collaboration_signals ADD COLUMN supporting_insights TEXT NOT NULL DEFAULT '[]'")
+        except Exception: pass
+        try:
+            await db.execute("ALTER TABLE collaboration_signals ADD COLUMN confidence REAL")
+        except Exception: pass
+        try:
+            await db.execute("ALTER TABLE collaboration_signals ADD COLUMN evidence TEXT")
+        except Exception: pass
+        try:
+            await db.execute("ALTER TABLE collaboration_signals ADD COLUMN updated_at TEXT")
+        except Exception: pass
+
+        # Goals migration
+        try: await db.execute("ALTER TABLE goals ADD COLUMN user_prompt TEXT")
+        except Exception: pass
+        try: await db.execute("ALTER TABLE goals ADD COLUMN assigned_agents TEXT")
+        except Exception: pass
+        try: await db.execute("ALTER TABLE goals ADD COLUMN final_insight TEXT")
+        except Exception: pass
+        try: await db.execute("ALTER TABLE goals ADD COLUMN confidence REAL")
+        except Exception: pass
+        try: await db.execute("ALTER TABLE goals ADD COLUMN updated_at TEXT")
         except Exception: pass
         
         await db.commit()
@@ -192,41 +217,71 @@ async def _fetch_all(query: str, params: tuple = ()) -> list[dict[str, Any]]:
             return [dict(row) for row in await cursor.fetchall()]
 
 
-# ── Goals & SubTasks ──────────────────────────────────────────
+# ── Goals & Tasks ──────────────────────────────────────────
 
-async def save_goal(id: str, title: str, description: str) -> None:
+async def save_goal(id: str, title: str, description: str, user_prompt: str = "") -> None:
     await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         await db.execute(
-            "INSERT INTO goals (id, title, description, status, created_at) VALUES (?, ?, ?, ?, ?)",
-            (id, title, description, "pending", _now())
+            """INSERT INTO goals 
+               (id, title, description, user_prompt, status, assigned_agents, confidence, created_at, updated_at) 
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (id, title, description, user_prompt, "pending", "[]", 0.0, _now(), _now())
         )
         await db.commit()
 
-async def update_goal(id: str, status: str, final_report: str = None) -> None:
+async def update_goal(
+    id: str, 
+    status: str = None, 
+    assigned_agents: list[str] = None,
+    final_insight: str = None,
+    confidence: float = None
+) -> None:
+    await ensure_db_ready()
+    updates = []
+    params = []
+    if status is not None:
+        updates.append("status = ?")
+        params.append(status)
+    if assigned_agents is not None:
+        updates.append("assigned_agents = ?")
+        params.append(json.dumps(assigned_agents))
+    if final_insight is not None:
+        updates.append("final_insight = ?")
+        params.append(final_insight)
+    if confidence is not None:
+        updates.append("confidence = ?")
+        params.append(confidence)
+    
+    if not updates:
+        return
+
+    updates.append("updated_at = ?")
+    params.append(_now())
+    params.append(id)
+    
+    query = f"UPDATE goals SET {', '.join(updates)} WHERE id = ?"
+    
+    async with aiosqlite.connect(str(DB_PATH)) as db:
+        await db.execute(query, tuple(params))
+        await db.commit()
+
+async def save_task(id: str, goal_id: str, agent_name: str, description: str, parameters: dict) -> None:
     await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
-        completed_at = _now() if status == "completed" else None
         await db.execute(
-            "UPDATE goals SET status = ?, final_report = ?, completed_at = ? WHERE id = ?",
-            (status, final_report, completed_at, id)
+            """INSERT INTO tasks 
+               (id, goal_id, agent_name, description, parameters, status, created_at) 
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (id, goal_id, agent_name, description, json.dumps(parameters), "pending", _now())
         )
         await db.commit()
 
-async def save_subtask(id: str, goal_id: str, description: str, agent: str) -> None:
+async def update_task(id: str, status: str, result: str = None) -> None:
     await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         await db.execute(
-            "INSERT INTO subtasks (id, goal_id, description, assigned_agent, status) VALUES (?, ?, ?, ?, ?)",
-            (id, goal_id, description, agent, "pending")
-        )
-        await db.commit()
-
-async def update_subtask(id: str, status: str, result: str = None) -> None:
-    await ensure_db_ready()
-    async with aiosqlite.connect(str(DB_PATH)) as db:
-        await db.execute(
-            "UPDATE subtasks SET status = ?, result = ? WHERE id = ?",
+            "UPDATE tasks SET status = ?, result = ? WHERE id = ?",
             (status, result, id)
         )
         await db.commit()
@@ -234,8 +289,15 @@ async def update_subtask(id: str, status: str, result: str = None) -> None:
 async def get_all_goals() -> list[dict[str, Any]]:
     goals = await _fetch_all("SELECT * FROM goals ORDER BY created_at DESC")
     for goal in goals:
-        goal['subtasks'] = await _fetch_all("SELECT * FROM subtasks WHERE goal_id = ?", (goal['id'],))
+        try: goal['assigned_agents'] = json.loads(goal.get('assigned_agents', '[]'))
+        except Exception: goal['assigned_agents'] = []
+        
+        goal['tasks'] = await _fetch_all("SELECT * FROM tasks WHERE goal_id = ?", (goal['id'],))
+        for t in goal['tasks']:
+            try: t['parameters'] = json.loads(t.get('parameters', '{}'))
+            except Exception: t['parameters'] = {}
     return goals
+
 
 
 # ── Agents ────────────────────────────────────────────────────

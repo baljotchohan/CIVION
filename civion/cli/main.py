@@ -37,6 +37,9 @@ app.add_typer(agent_app, name="agent")
 marketplace_app = typer.Typer(help="Discover and install agents from the CIVION Registry")
 app.add_typer(marketplace_app, name="marketplace")
 
+goal_app = typer.Typer(help="Manage Intelligence Goals")
+app.add_typer(goal_app, name="goal")
+
 
 
 
@@ -334,6 +337,99 @@ def agent_create(name: str = typer.Argument(..., help="Name of the new agent")):
     console.print(f"  Class:       [bold]{class_name}[/]")
     console.print(f"  Personality: [magenta]Explorer[/] (edit to change)")
     console.print("  Includes:    memory graph + API + LLM + events")
+
+
+# ── civion goal ──────────────────────────────────────────────
+
+@goal_app.command("create")
+def goal_create(
+    prompt: str = typer.Argument(..., help="The explicit goal prompt for the agents"),
+    title: str = typer.Option("CLI Goal", help="Title of the goal"),
+):
+    """Create and start a new intelligent goal."""
+    import asyncio
+    from civion.engine.goal_planner import planner_engine
+    
+    async def run():
+        console.print(f"[cyan]Creating Goal:[/] {title}\n[dim]Prompt:[/] {prompt}")
+        goal_id = await planner_engine.create_goal(title, description="Created via CLI", user_prompt=prompt)
+        console.print(f"[green]✓[/] Created Goal: [cyan]{goal_id}[/]")
+        
+        console.print("\n[yellow]⏳ Decomposing goal into tasks...[/]")
+        tasks = await planner_engine.decompose_goal(goal_id)
+        console.print(f"[green]✓[/] Generated {len(tasks)} parallel tasks.")
+        
+        console.print("\n[cyan]🚀 Executing goal...[/]")
+        await planner_engine.execute_goal(goal_id)
+        
+        console.print("\n[green]✓[/] Goal execution complete! Check dashboard for final insight.")
+        
+    asyncio.run(run())
+
+
+@goal_app.command("list")
+def goal_list():
+    """List all goals."""
+    import asyncio
+    from civion.storage.database import get_all_goals
+    from rich.table import Table
+    
+    async def run():
+        goals = await get_all_goals()
+        if not goals:
+            console.print("[yellow]No goals found.[/]")
+            return
+            
+        table = Table(title="Intelligence Goals", show_lines=True)
+        table.add_column("ID", style="cyan bold")
+        table.add_column("Title", style="white")
+        table.add_column("Status", style="magenta")
+        table.add_column("Tasks", justify="right", style="dim")
+        table.add_column("Confidence", justify="right", style="green")
+        
+        for g in goals:
+            confidence = float(g.get('confidence') or 0.0)
+            table.add_row(
+                g["id"][:13], 
+                g["title"], 
+                g["status"], 
+                str(len(g.get("tasks", []))),
+                f"{confidence:.2f}"
+            )
+        console.print(table)
+    
+    asyncio.run(run())
+
+
+@goal_app.command("status")
+def goal_status(goal_id: str = typer.Argument(..., help="ID of the goal (e.g., goal_123)")):
+    """View detailed status of a specific goal."""
+    import asyncio
+    from civion.storage.database import get_all_goals
+    
+    async def run():
+        goals = await get_all_goals()
+        goal = next((g for g in goals if g["id"].startswith(goal_id)), None)
+        if not goal:
+            console.print(f"[red]Goal '{goal_id}' not found.[/]")
+            return
+            
+        console.print(f"\n[bold cyan]Goal:[/] {goal['title']} ({goal['id']})")
+        console.print(f"[bold]Status:[/] {goal['status']}")
+        console.print(f"[bold]Confidence:[/] {goal.get('confidence', 0.0)}")
+        
+        if goal.get("tasks"):
+            console.print("\n[bold]Tasks:[/]")
+            for t in goal["tasks"]:
+                status_color = "green" if t['status'] == 'completed' else "yellow" if t['status'] == 'running' else "dim"
+                console.print(f"  - [{status_color}]{t['status'].upper()}[/] | [cyan]{t['agent_name']}[/] | {t['description']}")
+                
+        if goal.get("final_insight"):
+            console.print("\n[bold magenta]Final Insight Engine Report:[/]")
+            console.print(goal["final_insight"])
+            
+    asyncio.run(run())
+
 
 
 # ── Marketplace Commands ──────────────────────────────────────
