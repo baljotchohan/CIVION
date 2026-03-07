@@ -1,28 +1,38 @@
 'use client';
+
 import { useState, useEffect, useCallback } from 'react';
 
-/**
- * Generic data fetching hook with loading/error states.
- */
-export function useApi<T>(fetcher: () => Promise<T>, deps: any[] = []) {
+const API_BASE = '/api/v1';
+
+export function useApi<T>(endpoint: string, options: { refreshInterval?: number } = {}) {
     const [data, setData] = useState<T | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const refetch = useCallback(async () => {
-        setLoading(true);
-        setError(null);
+    const fetchData = useCallback(async () => {
         try {
-            const result = await fetcher();
+            const response = await fetch(`${API_BASE}${endpoint}`);
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.statusText}`);
+            }
+            const result = await response.json();
             setData(result);
-        } catch (e: any) {
-            setError(e.message || 'Failed to fetch');
+            setError(null);
+        } catch (err: any) {
+            setError(err.message);
         } finally {
             setLoading(false);
         }
-    }, deps);
+    }, [endpoint]);
 
-    useEffect(() => { refetch(); }, [refetch]);
+    useEffect(() => {
+        fetchData();
 
-    return { data, loading, error, refetch };
+        if (options.refreshInterval) {
+            const interval = setInterval(fetchData, options.refreshInterval);
+            return () => clearInterval(interval);
+        }
+    }, [fetchData, options.refreshInterval]);
+
+    return { data, loading, error, refetch: fetchData };
 }
