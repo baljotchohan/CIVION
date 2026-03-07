@@ -145,7 +145,10 @@ CREATE TABLE IF NOT EXISTS subtasks (
 """
 
 
+_initialized = False
+
 async def init_db() -> None:
+    global _initialized
     _ensure_dir()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         await db.executescript(_SCHEMA)
@@ -164,6 +167,13 @@ async def init_db() -> None:
         except Exception: pass
         
         await db.commit()
+    _initialized = True
+
+
+async def ensure_db_ready() -> None:
+    """Ensure the database is initialized before any access."""
+    if not _initialized:
+        await init_db()
 
 
 def _now() -> str:
@@ -175,6 +185,7 @@ def _to_json(data: Any) -> str:
 
 
 async def _fetch_all(query: str, params: tuple = ()) -> list[dict[str, Any]]:
+    await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(query, params) as cursor:
@@ -184,6 +195,7 @@ async def _fetch_all(query: str, params: tuple = ()) -> list[dict[str, Any]]:
 # ── Goals & SubTasks ──────────────────────────────────────────
 
 async def save_goal(id: str, title: str, description: str) -> None:
+    await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         await db.execute(
             "INSERT INTO goals (id, title, description, status, created_at) VALUES (?, ?, ?, ?, ?)",
@@ -192,6 +204,7 @@ async def save_goal(id: str, title: str, description: str) -> None:
         await db.commit()
 
 async def update_goal(id: str, status: str, final_report: str = None) -> None:
+    await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         completed_at = _now() if status == "completed" else None
         await db.execute(
@@ -201,6 +214,7 @@ async def update_goal(id: str, status: str, final_report: str = None) -> None:
         await db.commit()
 
 async def save_subtask(id: str, goal_id: str, description: str, agent: str) -> None:
+    await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         await db.execute(
             "INSERT INTO subtasks (id, goal_id, description, assigned_agent, status) VALUES (?, ?, ?, ?, ?)",
@@ -209,6 +223,7 @@ async def save_subtask(id: str, goal_id: str, description: str, agent: str) -> N
         await db.commit()
 
 async def update_subtask(id: str, status: str, result: str = None) -> None:
+    await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         await db.execute(
             "UPDATE subtasks SET status = ?, result = ? WHERE id = ?",
@@ -229,6 +244,7 @@ async def register_agent_db(
     name: str, description: str, personality: str,
     interval: int, tags: list[str],
 ) -> None:
+    await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         await db.execute(
             """INSERT INTO agents (name, description, personality, interval, tags, status, registered_at)
@@ -245,12 +261,14 @@ async def register_agent_db(
 
 
 async def update_agent_status(name: str, status: str) -> None:
+    await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         await db.execute("UPDATE agents SET status = ? WHERE name = ?", (status, name))
         await db.commit()
 
 
 async def delete_agent_db(name: str) -> None:
+    await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         await db.execute("DELETE FROM agents WHERE name = ?", (name,))
         await db.commit()
@@ -263,6 +281,7 @@ async def get_registered_agents() -> list[dict[str, Any]]:
 # ── Agent Runs ────────────────────────────────────────────────
 
 async def save_run_start(agent_name: str) -> int:
+    await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         cursor = await db.execute(
             "INSERT INTO agent_runs (agent_name, started_at, status) VALUES (?, ?, ?)",
@@ -272,6 +291,7 @@ async def save_run_start(agent_name: str) -> int:
         return cursor.lastrowid
 
 async def save_run_end(run_id: int, status: str, result: str = "") -> None:
+    await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         await db.execute(
             "UPDATE agent_runs SET finished_at = ?, status = ?, result = ? WHERE id = ?",
@@ -286,6 +306,7 @@ async def get_runs(limit: int = 50) -> list[dict[str, Any]]:
 # ── Insights ──────────────────────────────────────────────────
 
 async def save_insight(agent_name: str, content: str, title: str = "") -> int:
+    await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         cursor = await db.execute(
             "INSERT INTO insights (agent_name, title, content, created_at) VALUES (?, ?, ?, ?)",
@@ -301,6 +322,7 @@ async def get_insights(limit: int = 50) -> list[dict[str, Any]]:
 # ── Logs ──────────────────────────────────────────────────────
 
 async def save_log(agent_name: str, message: str, level: str = "INFO") -> None:
+    await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         await db.execute(
             "INSERT INTO logs (agent_name, level, message, created_at) VALUES (?, ?, ?, ?)",
@@ -318,6 +340,7 @@ async def save_world_event(
     agent_name: str, topic: str, description: str,
     latitude: float, longitude: float, location: str = "",
 ) -> int:
+    await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         cursor = await db.execute(
             """INSERT INTO world_events
@@ -335,6 +358,7 @@ async def get_world_events(limit: int = 100) -> list[dict[str, Any]]:
 # ── API Connections ───────────────────────────────────────────
 
 async def save_connection(name: str, url: str, api_key: str, icon: str = "🔌") -> int:
+    await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         cursor = await db.execute(
             """INSERT INTO api_connections (name, url, api_key, icon, status, created_at)
@@ -346,11 +370,13 @@ async def save_connection(name: str, url: str, api_key: str, icon: str = "🔌")
         return cursor.lastrowid
 
 async def update_connection_status(name: str, status: str) -> None:
+    await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         await db.execute("UPDATE api_connections SET status = ? WHERE name = ?", (status, name))
         await db.commit()
 
 async def delete_connection(name: str) -> None:
+    await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         await db.execute("DELETE FROM api_connections WHERE name = ?", (name,))
         await db.commit()
@@ -364,6 +390,7 @@ async def get_connections() -> list[dict[str, Any]]:
 async def save_provider(
     name: str, provider: str, model: str, api_key: str, url: str, is_default: bool,
 ) -> int:
+    await ensure_db_ready()
     default_int = 1 if is_default else 0
     async with aiosqlite.connect(str(DB_PATH)) as db:
         if is_default:
@@ -381,11 +408,13 @@ async def save_provider(
         return cursor.lastrowid
 
 async def update_provider_status(name: str, status: str) -> None:
+    await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         await db.execute("UPDATE llm_providers SET status = ? WHERE name = ?", (status, name))
         await db.commit()
 
 async def delete_provider(name: str) -> None:
+    await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         await db.execute("DELETE FROM llm_providers WHERE name = ?", (name,))
         await db.commit()

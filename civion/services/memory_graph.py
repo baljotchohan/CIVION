@@ -19,7 +19,7 @@ from typing import Any
 
 import aiosqlite
 
-from civion.storage.database import DB_PATH
+from civion.storage.database import DB_PATH, ensure_db_ready
 
 
 # ── Data Structures ───────────────────────────────────────────
@@ -67,6 +67,7 @@ class MemoryNode:
 
 async def store_insight(node: MemoryNode) -> int:
     """Persist a MemoryNode and return its row id."""
+    await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         cursor = await db.execute(
             """INSERT INTO memory_nodes
@@ -145,7 +146,8 @@ async def search_insights(
     where = " AND ".join(conditions) if conditions else "1=1"
     sql = f"SELECT * FROM memory_nodes WHERE {where} ORDER BY id DESC LIMIT ?"
     params.append(limit)
-
+    
+    await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(sql, tuple(params)) as cursor:
@@ -168,6 +170,7 @@ async def link_related_insights(node_id: int) -> int:
     Auto-link a newly stored insight to existing insights
     that share at least one tag.  Returns the number of links created.
     """
+    await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         db.row_factory = aiosqlite.Row
 
@@ -230,6 +233,7 @@ async def link_insights_semantically(node_id: int) -> int:
     from civion.services.llm_service import llm
     
     # 1. Get the source node
+    await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute("SELECT * FROM memory_nodes WHERE id = ?", (node_id,)) as cur:
@@ -296,7 +300,8 @@ async def link_insights_semantically(node_id: int) -> int:
 async def get_memory_graph(limit: int = 50) -> dict[str, Any]:
     """Return nodes and links for the knowledge graph visualisation."""
     nodes = await search_insights(limit=limit)
-
+    
+    await ensure_db_ready()
     async with aiosqlite.connect(str(DB_PATH)) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
