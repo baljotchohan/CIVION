@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "civion"
 version = "2.0.0"
-description = "CIVION — AI Intelligence Command Center"
+description = "CIVION — Personal AI Intelligence System. Install: pipx install civion"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [{name = "CIVION Team"}]
@@ -80,15 +80,25 @@ Homepage = "https://openclaw.ai"
 Repository = "https://github.com/civion/civion"
 Documentation = "https://docs.openclaw.ai"
 "Bug Tracker" = "https://github.com/civion/civion/issues"
+"Install Guide" = "https://github.com/baljotchohan/CIVION#installation"
 
 [tool.setuptools.packages.find]
 include = ["civion*"]
 
 [tool.setuptools.package-data]
 civion = [
+  "static/**/*",
   "static/ui/**/*",
   "static/ui/*",
+  "static/ui/_next/**/*",
+  "static/ui/_next/static/**/*",
+  "static/ui/_next/static/chunks/**/*",
+  "static/ui/_next/static/css/**/*",
+  "py.typed",
 ]
+
+[tool.setuptools]
+include-package-data = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

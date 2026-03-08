@@ -51,10 +51,22 @@ jobs:
         with:
           name: frontend-build
           path: civion/static/ui/
+
+      - name: Verify frontend bundle
+        run: |
+          ls civion/static/ui/
+          test -f civion/static/ui/index.html || \
+            (echo "index.html missing!" && exit 1)
       
       - name: Install build tools
         run: pip install build twine
       
+      - name: Test importing and CLI
+        run: |
+          pip install -e ".[dev]"
+          python -c "import civion; print('Import OK')"
+          python -c "from civion.cli.main import app; print('CLI OK')"
+
       - name: Build package
         run: python -m build
       

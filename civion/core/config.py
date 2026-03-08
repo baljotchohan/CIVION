@@ -138,15 +138,52 @@ settings = config
 config.app_name = "CIVION"
 config.app_version = "2.0.0"
 
-# Add properties for legacy keys that were in the pydantic model
+# Add properties with setters for keys that were in the pydantic model
 def get_legacy_secret(self, key):
     return self.get_secret(key)
 
-CivionConfig.openai_api_key = property(lambda self: self.get_secret("OPENAI_API_KEY"))
-CivionConfig.anthropic_api_key = property(lambda self: self.get_secret("ANTHROPIC_API_KEY"))
-CivionConfig.google_api_key = property(lambda self: self.get_secret("GOOGLE_API_KEY"))
-CivionConfig.github_token = property(lambda self: self.get_secret("GITHUB_TOKEN"))
-CivionConfig.news_api_key = property(lambda self: self.get_secret("NEWS_API_KEY"))
-CivionConfig.coingecko_api_key = property(lambda self: self.get_secret("COINGECKO_API_KEY"))
-CivionConfig.frontend_url = property(lambda self: f"http://localhost:{self.port}")
-CivionConfig.database_url = property(lambda self: f"sqlite+aiosqlite:///{self.db_path}")
+# Define properties with both getters and setters for compatibility with setup_wizard
+class CivionConfigWithSetters(CivionConfig):
+    @property
+    def openai_api_key(self): return self.get_secret("OPENAI_API_KEY")
+    @openai_api_key.setter
+    def openai_api_key(self, value): self.set_secret("OPENAI_API_KEY", value)
+
+    @property
+    def anthropic_api_key(self): return self.get_secret("ANTHROPIC_API_KEY")
+    @anthropic_api_key.setter
+    def anthropic_api_key(self, value): self.set_secret("ANTHROPIC_API_KEY", value)
+
+    @property
+    def google_api_key(self): return self.get_secret("GOOGLE_API_KEY")
+    @google_api_key.setter
+    def google_api_key(self, value): self.set_secret("GOOGLE_API_KEY", value)
+
+    @property
+    def github_token(self): return self.get_secret("GITHUB_TOKEN")
+    @github_token.setter
+    def github_token(self, value): self.set_secret("GITHUB_TOKEN", value)
+
+    @property
+    def news_api_key(self): return self.get_secret("NEWS_API_KEY")
+    @news_api_key.setter
+    def news_api_key(self, value): self.set_secret("NEWS_API_KEY", value)
+
+    @property
+    def coingecko_api_key(self): return self.get_secret("COINGECKO_API_KEY")
+    @coingecko_api_key.setter
+    def coingecko_api_key(self, value): self.set_secret("COINGECKO_API_KEY", value)
+
+    @property
+    def frontend_url(self): return f"http://localhost:{self.port}"
+    @property
+    def database_url(self): return f"sqlite+aiosqlite:///{self.db_path}"
+
+# Re-instantiate with setters
+config = CivionConfigWithSetters()
+settings = config
+
+def _save_env_file(data: dict):
+    """Helper to save multiple secrets at once, used by CLI"""
+    for k, v in data.items():
+        config.set_secret(k, v)

@@ -47,44 +47,54 @@ def start(
     host: Optional[str] = typer.Option(None, help="Override host"),
     reload: bool = typer.Option(False, help="Enable auto-reload (dev)")
 ):
-    """Start CIVION — backend + frontend in one command"""
+    """Start CIVION — intelligence system + UI in one command"""
+    
+    # First run check — if not configured, run setup first
     if not config.config_exists():
-        console.print("[yellow]CIVION is not configured yet. Running setup...[/yellow]")
-        setup()
-        return
+        console.print(Panel(
+            "[bold yellow]Welcome to CIVION![/bold yellow]\n\n"
+            "Looks like this is your first time. Let's get you set up.\n"
+            "This will take about 2 minutes.\n\n"
+            "[dim]Running: civion setup[/dim]",
+            title="🚀 First Run",
+            border_style="yellow"
+        ))
+        import asyncio
+        asyncio.run(run_setup())
+        
+        # After setup, ask if they want to start
+        from rich.prompt import Confirm
+        if not Confirm.ask("\nSetup complete! Start CIVION now?", default=True):
+            return
 
     run_port = port or config.port
     run_host = host or config.host or "0.0.0.0"
     
-    # Save PID
+    # Save PID for stop command
     os.makedirs(CIVION_DIR, exist_ok=True)
     with open(PID_FILE, "w") as f:
         f.write(str(os.getpid()))
 
+    # Beautiful start banner
+    console.print()
     console.print(Panel(
-        f"[bold green]Starting CIVION...[/bold green]\n\n"
-        f"Backend + Frontend: [link=http://localhost:{run_port}]http://localhost:{run_port}[/link]\n"
-        f"API Documentation: [link=http://localhost:{run_port}/api/v1/docs]http://localhost:{run_port}/api/v1/docs[/link]",
-        title="CIVION v2.0", border_style="cyan"
+        f"[bold green]● CIVION is starting...[/bold green]\n\n"
+        f"  [white]Dashboard:[/white]  [link=http://localhost:{run_port}][cyan]http://localhost:{run_port}[/cyan][/link]\n"
+        f"  [white]API Docs:[/white]   [link=http://localhost:{run_port}/api/docs][dim]http://localhost:{run_port}/api/docs[/dim][/link]\n\n"
+        f"  [dim]Press Ctrl+C to stop[/dim]",
+        title="civion v2.0",
+        border_style="green",
+        padding=(1, 3),
     ))
+    console.print()
 
     def open_browser():
         if config.auto_open_browser:
-            time.sleep(1.5)
+            time.sleep(2.0)
             url = f"http://localhost:{run_port}"
-            console.print(f"[dim]Opening {url}...[/dim]")
             webbrowser.open(url)
 
     threading.Thread(target=open_browser, daemon=True).start()
-
-    static_path = Path(__file__).parent.parent / "static" / "ui"
-    if not (static_path / "index.html").exists():
-        console.print(Panel(
-            "[yellow]Warning: Frontend UI bundle is missing.[/yellow]\n"
-            "If you cloned this repository, please build the frontend to see the UI.\n"
-            "Open your browser to see more instructions.",
-            title="UI Notice", border_style="yellow"
-        ))
 
     try:
         uvicorn.run(
@@ -92,10 +102,13 @@ def start(
             host=run_host,
             port=run_port,
             reload=reload,
-            log_level=config.log_level.lower()
+            log_level="warning",  # quieter output
         )
+    except KeyboardInterrupt:
+        console.print("\n[yellow]CIVION stopped.[/yellow]")
     except Exception as e:
-        console.print(f"[red]Failed to start server: {e}[/red]")
+        console.print(f"\n[red]Failed to start: {e}[/red]")
+        console.print("[dim]Run 'civion doctor' to diagnose issues.[/dim]")
     finally:
         if PID_FILE.exists():
             PID_FILE.unlink()
@@ -169,6 +182,25 @@ def doctor():
             live.console.print(f"  ✗ Port {config.port} in use")
         finally:
             s.close()
+
+        # Check pipx vs pip
+        time.sleep(0.3)
+        try:
+            result = subprocess.run(
+                ["pipx", "list"], capture_output=True, text=True
+            )
+            if "civion" in result.stdout:
+                live.console.print("  ✓ Installed via pipx (recommended)")
+            else:
+                live.console.print(
+                    "  ℹ  Tip: Install with pipx for best experience: "
+                    "pipx install civion"
+                )
+        except FileNotFoundError:
+            live.console.print(
+                "  ℹ  Tip: pipx not found. "
+                "For global CLI tools, pipx is recommended."
+            )
 
         # Check Frontend Bundle
         static_path = Path(__file__).parent.parent / "static" / "ui"
