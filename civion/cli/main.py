@@ -63,6 +63,7 @@ def start(
     host: str = typer.Option("0.0.0.0", help="Host to bind"),
     ui_port: int = typer.Option(3000, help="Frontend port"),
     open_browser: bool = typer.Option(False, "--open-browser", help="Open browser automatically"),
+    clean: bool = typer.Option(False, "--clean", help="Clean UI cache before starting"),
 ):
     """🚀 Start the CIVION system and launch the UI."""
     _banner()
@@ -76,6 +77,18 @@ def start(
 
     ui_dir = PROJECT_ROOT / "ui"
     frontend_proc = None
+
+    # 0. Clean UI Cache if requested
+    if clean and ui_dir.exists():
+        import shutil
+        next_dir = ui_dir / ".next"
+        if next_dir.exists():
+            console.print(f"[bold yellow]⏹[/] Cleaning UI cache ([dim].next[/])...")
+            try:
+                shutil.rmtree(next_dir)
+                console.print(f"[green]✓[/] Cache cleaned.")
+            except Exception as e:
+                console.print(f"[red]✗[/] Failed to clean cache: {e}")
 
     # 1. Launch Next.js Frontend
     if ui_dir.exists():
@@ -553,12 +566,29 @@ def update():
             return
 
         # Dependencies
-        task2 = progress.add_task(description="Updating dependencies...", total=None)
+        task2 = progress.add_task(description="Updating backend dependencies...", total=None)
         try:
             subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check=True, capture_output=True, cwd=str(PROJECT_ROOT))
-            progress.update(task2, description="[green]✓[/] Dependencies updated.")
+            progress.update(task2, description="[green]✓[/] Backend dependencies updated.")
         except Exception as e:
-            progress.update(task2, description=f"[red]✗[/] Dependency update failed: {e}")
+            progress.update(task2, description=f"[red]✗[/] Backend dependency update failed: {e}")
+
+        # UI Dependencies & Cache
+        ui_dir = PROJECT_ROOT / "ui"
+        if ui_dir.exists():
+            task3 = progress.add_task(description="Updating UI dependencies & cleaning cache...", total=None)
+            try:
+                # Remove .next cache
+                import shutil
+                next_dir = ui_dir / ".next"
+                if next_dir.exists():
+                    shutil.rmtree(next_dir)
+                
+                # npm install
+                subprocess.run(["npm", "install"], check=True, capture_output=True, cwd=str(ui_dir))
+                progress.update(task3, description="[green]✓[/] UI updated and cache cleaned.")
+            except Exception as e:
+                progress.update(task3, description=f"[red]✗[/] UI update failed: {e}")
 
     console.print("\n[bold green]✨ CIVION is up to date![/bold green]")
     console.print("Run [cyan]civion start[/cyan] to launch the system.")
