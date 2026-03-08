@@ -45,6 +45,18 @@ class ReasoningLoop:
             "state": self.state, "created_at": self.created_at,
         }
 
+    def run_cycle(self, *args, **kwargs):
+        """Execute one cycle of the reasoning loop."""
+        pass
+
+    def set_active_goal(self, goal: str, *args, **kwargs):
+        """Set the active goal for the reasoning loop."""
+        self.topic = goal
+
+    def get_state(self, *args, **kwargs) -> str:
+        """Get the current state of the reasoning loop."""
+        return self.state
+
 
 class ReasoningEngine:
     """Multi-agent reasoning and debate engine."""

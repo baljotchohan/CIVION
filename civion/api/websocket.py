@@ -13,7 +13,7 @@ class ConnectionManager:
         self.active_connections: List[Dict] = []
         self._counter = 0
 
-    async def connect(self, websocket: WebSocket):
+    async def connect(self, websocket: WebSocket, client_id: str = None):
         try:
             await websocket.accept()
             self._counter += 1

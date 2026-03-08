@@ -9,12 +9,15 @@ async def test_reasoning_loop_broadcasting():
     engine = ReasoningEngine()
     
     # Mock a websocket connection to capture broadcasts
+    import json
     class MockWebSocket:
         def __init__(self):
             self.sent_messages = []
         async def accept(self): pass
         async def send_json(self, data):
             self.sent_messages.append(data)
+        async def send_text(self, message):
+            self.sent_messages.append(json.loads(message))
     
     mock_ws = MockWebSocket()
     await manager.connect(mock_ws)

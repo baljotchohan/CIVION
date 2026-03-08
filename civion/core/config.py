@@ -33,6 +33,7 @@ class CivionConfig:
         
         self.enable_p2p_network: bool = True
         self.mock_mode: bool = False
+        self.debug: bool = False
         self.log_level: str = "INFO"
         
         # Ensure directories exist
@@ -118,6 +119,7 @@ class CivionConfig:
             "agent_refresh_interval": self.agent_refresh_interval,
             "enable_p2p_network": self.enable_p2p_network,
             "mock_mode": self.mock_mode,
+            "debug": self.debug,
             "log_level": self.log_level
         }
 

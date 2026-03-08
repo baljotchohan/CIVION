@@ -54,11 +54,11 @@ class PersonaSystem:
                 created_at=now_iso(),
             ))
 
-    async def create_persona(self, name: str, description: str, prompt: str, style: str, created_by: str) -> Persona:
+    async def create_persona(self, name: str, description: str, system_prompt: str, style: str, created_by: str) -> Persona:
         persona = Persona(
             id=generate_id("per"),
             name=name, description=description,
-            system_prompt=prompt, reasoning_style=style,
+            system_prompt=system_prompt, reasoning_style=style,
             created_by=created_by, created_at=now_iso(),
         )
         self._personas.append(persona)
