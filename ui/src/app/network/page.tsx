@@ -1,84 +1,126 @@
 'use client';
-import React from 'react';
-import { motion } from 'framer-motion';
 
-const mockPeers = [
-    { id: 'peer_01', name: 'Node-Alpha', url: '10.0.1.15:8000', status: 'connected', signals_shared: 23, last_seen: '1 min ago' },
-    { id: 'peer_02', name: 'Node-Beta', url: '10.0.2.28:8000', status: 'connected', signals_shared: 18, last_seen: '3 min ago' },
-    { id: 'peer_03', name: 'Node-Gamma', url: '10.0.3.42:8000', status: 'syncing', signals_shared: 12, last_seen: 'now' },
-    { id: 'peer_04', name: 'Node-Delta', url: '192.168.1.50:8000', status: 'disconnected', signals_shared: 7, last_seen: '15 min ago' },
+import React from 'react';
+import { NetworkMap, Peer, SharedSignal } from '@/components/network/NetworkMap';
+import { Globe, Shield, Activity, Share2, Wifi } from 'lucide-react';
+
+const mockPeers: Peer[] = [
+    { id: '1', location: 'US-East', findings_count: 145, status: 'active', latency: 45 },
+    { id: '2', location: 'EU-Central', findings_count: 89, status: 'active', latency: 110 },
+    { id: '3', location: 'AP-South', findings_count: 234, status: 'active', latency: 180 },
+    { id: '4', location: 'US-West', findings_count: 56, status: 'syncing', latency: 60 },
+    { id: '5', location: 'SA-East', findings_count: 12, status: 'offline', latency: 0 },
 ];
 
-const networkStats = { peers: 12, signals_shared: 34, consensus: '67%', health: 'Excellent', uptime: '99.2%' };
+const mockSharedSignals: SharedSignal[] = [
+    { id: 's1', from_peer: '3', to_peer: '1', title: 'New autonomous routing exploit pattern detected', timestamp: new Date(Date.now() - 30000).toISOString() },
+    { id: 's2', from_peer: '2', to_peer: '4', title: 'ArXiv paper: Scaling laws breakdown at 100T parameters', timestamp: new Date(Date.now() - 60000).toISOString() },
+    { id: 's3', from_peer: '1', to_peer: '2', title: 'GitHub trend: Rust-based AI agent frameworks +300%', timestamp: new Date(Date.now() - 120000).toISOString() },
+    { id: 's4', from_peer: '4', to_peer: '3', title: 'Sentiment shift: Developer fatigue with RAG pipelines', timestamp: new Date(Date.now() - 300000).toISOString() },
+];
 
 export default function NetworkPage() {
     return (
-        <div className="p-6 space-y-6">
-            <header className="flex justify-between items-center">
-                <div>
-                    <h2 className="page-title">🌐 Intelligence Network</h2>
-                    <p className="page-subtitle">P2P distributed intelligence sharing</p>
-                </div>
-                <button className="btn-primary">+ Join Network</button>
-            </header>
+        <div className="min-h-screen bg-[#0a0e27] text-white p-6 ml-[240px] flex flex-col h-screen overflow-hidden">
 
-            {/* Network Stats */}
-            <div className="grid grid-cols-5 gap-4">
-                {[
-                    { label: 'Peers', value: networkStats.peers, color: 'text-info', icon: '👥' },
-                    { label: 'Shared Signals', value: networkStats.signals_shared, color: 'text-success', icon: '📡' },
-                    { label: 'Consensus', value: networkStats.consensus, color: 'text-warning', icon: '🤝' },
-                    { label: 'Health', value: networkStats.health, color: 'text-success', icon: '💚' },
-                    { label: 'Uptime', value: networkStats.uptime, color: 'text-accent-primary', icon: '⬆' },
-                ].map(stat => (
-                    <div key={stat.label} className="sci-fi-card p-4 text-center">
-                        <span className="text-xl">{stat.icon}</span>
-                        <p className={`text-xl font-bold font-mono mt-1 ${stat.color}`}>{stat.value}</p>
-                        <p className="text-xs text-text-tertiary">{stat.label}</p>
+            {/* Header */}
+            <div className="flex justify-between items-center mb-6 flex-shrink-0">
+                <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-lg bg-[#00d4ff]/10 border border-[#00d4ff]/30 flex items-center justify-center shadow-[0_0_15px_rgba(0,212,255,0.2)]">
+                        <Globe className="w-5 h-5 text-[#00d4ff]" />
                     </div>
-                ))}
+                    <div>
+                        <h1 className="text-2xl font-black font-sans tracking-tight text-white">Global P2P Network</h1>
+                        <p className="text-xs font-mono text-[#a0a0a0]">Decentralized intelligence sharing across nodes</p>
+                    </div>
+                </div>
+
+                <button className="flex items-center px-6 py-2 rounded-lg bg-[#00d4ff] text-[#0a0e27] font-black font-sans text-sm hover:bg-[#33ddff] transition-all shadow-[0_0_20px_rgba(0,212,255,0.4)] hover:scale-105 active:scale-95">
+                    <Wifi className="w-4 h-4 mr-2" /> Broadcast Node Presence
+                </button>
             </div>
 
-            {/* Peer List */}
-            <div className="sci-fi-card">
-                <div className="p-4 border-b border-border-color">
-                    <h3 className="font-mono text-sm text-accent-primary">CONNECTED PEERS</h3>
-                </div>
-                <div className="divide-y divide-border-color">
-                    {mockPeers.map((peer, i) => (
-                        <motion.div key={peer.id} className="p-4 flex justify-between items-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }}>
-                            <div className="flex items-center space-x-3">
-                                <span className={`status-pulse ${peer.status === 'connected' ? '' : peer.status === 'syncing' ? 'bg-warning' : 'bg-error'}`}></span>
-                                <div>
-                                    <p className="font-semibold text-sm">{peer.name}</p>
-                                    <p className="text-xs text-text-tertiary font-mono">{peer.url}</p>
+            <div className="flex flex-1 gap-6 overflow-hidden">
+
+                {/* Main Network Map Area */}
+                <div className="flex-1 flex flex-col min-w-0">
+                    <div className="flex-1 rounded-xl overflow-hidden border border-[#00d4ff]/20 bg-[#1a1f3a]/50 shadow-[inset_0_0_30px_rgba(0,0,0,0.5)]">
+                        <NetworkMap peers={mockPeers} signals={mockSharedSignals} />
+                    </div>
+
+                    {/* Bottom Shared Signals Feed */}
+                    <div className="mt-6 h-64 bg-[#1a1f3a]/80 backdrop-blur rounded-xl border border-white/5 p-4 flex flex-col">
+                        <h3 className="text-xs font-mono uppercase tracking-wider text-[#a0a0a0] mb-4 flex items-center">
+                            <Share2 className="w-4 h-4 mr-2 text-[#00d4ff]" /> Live Node Exchange Feed
+                        </h3>
+
+                        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-2">
+                            {mockSharedSignals.map((sig, i) => (
+                                <div key={i} className="bg-black/20 rounded-lg p-3 border border-white/5 flex items-center hover:border-[#00d4ff]/30 transition-colors">
+                                    <div className="flex flex-col items-center justify-center px-3 border-r border-white/10 mr-4">
+                                        <span className="text-[10px] font-mono text-[#a0a0a0]">FROM</span>
+                                        <span className="text-xs font-bold text-[#00d4ff]">{mockPeers.find(p => p.id === sig.from_peer)?.location || 'Unknown'}</span>
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-sm font-sans text-white line-clamp-1">{sig.title}</p>
+                                        <span className="text-[10px] font-mono text-gray-500">{new Date(sig.timestamp).toLocaleTimeString()}</span>
+                                    </div>
+                                    <div className="flex flex-col items-center justify-center px-3 border-l border-white/10 ml-4">
+                                        <span className="text-[10px] font-mono text-[#a0a0a0]">TO</span>
+                                        <span className="text-xs font-bold text-[#00ff88]">{mockPeers.find(p => p.id === sig.to_peer)?.location || 'Unknown'}</span>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="flex items-center space-x-4">
-                                <span className="text-xs text-text-secondary">{peer.signals_shared} signals</span>
-                                <span className={`badge ${peer.status === 'connected' ? 'badge-green' : peer.status === 'syncing' ? 'badge-yellow' : 'badge-red'}`}>{peer.status}</span>
-                                <span className="text-[10px] text-text-tertiary">{peer.last_seen}</span>
-                            </div>
-                        </motion.div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Network Visualization Placeholder */}
-            <div className="sci-fi-card p-6 text-center">
-                <h3 className="font-mono text-sm text-accent-secondary mb-4">NETWORK TOPOLOGY</h3>
-                <div className="h-48 flex items-center justify-center text-text-tertiary">
-                    <div className="relative">
-                        {[0, 1, 2, 3, 4, 5].map(i => (
-                            <div key={i} className="absolute w-3 h-3 rounded-full bg-accent-primary/50 animate-pulse" style={{
-                                top: `${50 + 40 * Math.sin(i * Math.PI / 3)}%`,
-                                left: `${50 + 40 * Math.cos(i * Math.PI / 3)}%`,
-                                animationDelay: `${i * 0.3}s`,
-                            }} />
-                        ))}
-                        <div className="w-4 h-4 rounded-full bg-accent-primary neon-text" />
+                            ))}
+                        </div>
                     </div>
                 </div>
+
+                {/* Right Sidebar - Peer List */}
+                <div className="w-80 flex flex-col bg-[#1a1f3a]/80 backdrop-blur rounded-xl border border-white/5 p-4 flex-shrink-0">
+                    <h3 className="text-xs font-mono uppercase tracking-wider text-[#a0a0a0] mb-4 flex items-center">
+                        <Shield className="w-4 h-4 mr-2 text-[#00ff88]" /> Verified Nodes
+                    </h3>
+
+                    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2">
+                        {mockPeers.map(peer => {
+                            const statusColors = {
+                                active: '#00d4ff',
+                                syncing: '#ff006e',
+                                offline: '#a0a0a0'
+                            };
+                            const color = statusColors[peer.status];
+
+                            return (
+                                <div key={peer.id} className="bg-black/30 p-3 rounded-xl border border-white/5 relative group cursor-pointer hover:border-white/20 transition-all">
+                                    <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ backgroundColor: color }} />
+
+                                    <div className="pl-2">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div className="font-bold font-sans text-white text-sm">{peer.location}</div>
+                                            <div className="text-[10px] font-mono uppercase px-2 py-0.5 rounded border" style={{ color, borderColor: `${color}30`, backgroundColor: `${color}10` }}>
+                                                {peer.status}
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-white/5">
+                                            <div>
+                                                <div className="text-[9px] font-mono text-[#a0a0a0] uppercase mb-0.5">Findings</div>
+                                                <div className="text-xs font-mono font-bold text-white">{peer.findings_count}</div>
+                                            </div>
+                                            <div>
+                                                <div className="text-[9px] font-mono text-[#a0a0a0] uppercase mb-0.5">Latency</div>
+                                                <div className="text-xs font-mono font-bold" style={{ color: peer.latency > 150 ? '#ff006e' : '#00ff88' }}>
+                                                    {peer.latency > 0 ? `${peer.latency}ms` : '---'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
             </div>
         </div>
     );

@@ -91,6 +91,11 @@ For each prediction, provide:
         self._predictions.append(pred)
 
         log.info(f"Generated {len(new_preds)} predictions")
+        
+        # Broadcast prediction made
+        from civion.api.websocket import manager
+        await manager.broadcast("prediction_made", pred.dict())
+        
         return new_preds
 
     async def get_all_predictions(self) -> List[Prediction]:

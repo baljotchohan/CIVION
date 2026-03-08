@@ -1,135 +1,155 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CheckCircle2, XCircle, Activity } from 'lucide-react';
 
-export const ConfidenceCascade = ({ insightId }: { insightId: string }) => {
-    const { latestEvent } = useWebSocket();
-    const [cascadeEvents, setCascadeEvents] = useState<any[]>([]);
-    const [currentConfidence, setCurrentConfidence] = useState(0.55);
+export type ConfidenceAction = "verified" | "challenged" | "confirmed" | "verifying";
+
+export interface ConfidenceStep {
+    agent: string;
+    action: ConfidenceAction;
+    confidence_before: number;
+    confidence_after: number;
+    timestamp: string;
+    reason: string;
+}
+
+interface ConfidenceCascadeProps {
+    confidenceHistory: ConfidenceStep[];
+    currentScore: number;
+}
+
+const getColorForScore = (score: number) => {
+    if (score < 40) return 'rgb(255, 0, 110)'; // Accent Pink
+    if (score < 70) return 'rgb(255, 214, 0)'; // Yellow
+    return 'rgb(0, 255, 136)'; // Accent Green
+};
+
+const getIconForAction = (action: ConfidenceAction) => {
+    switch (action) {
+        case 'verified':
+        case 'confirmed':
+            return <CheckCircle2 className="w-5 h-5 text-[#00ff88]" />;
+        case 'challenged':
+        case 'rejected':
+            return <XCircle className="w-5 h-5 text-[#ff006e]" />;
+        case 'verifying':
+        default:
+            return <Activity className="w-5 h-5 text-[#00d4ff] animate-pulse" />;
+    }
+};
+
+export const ConfidenceCascade: React.FC<ConfidenceCascadeProps> = ({ confidenceHistory, currentScore }) => {
+    const [prevScore, setPrevScore] = useState(currentScore);
+    const [displayScore, setDisplayScore] = useState(currentScore);
 
     useEffect(() => {
-        // Note: The backend uses 'loop_id' for reasoning, but 'insight_id' might be used for other confidence changes
-        if (latestEvent?.type === 'confidence_changed' && (latestEvent.data.insight_id === insightId || latestEvent.data.loop_id === insightId)) {
-            const newEvent = {
-                agent: latestEvent.data.agent,
-                confidence: latestEvent.data.confidence,
-                timestamp: new Date(latestEvent.timestamp),
-            };
-
-            setCascadeEvents(prev => [...prev, newEvent]);
-            setCurrentConfidence(latestEvent.data.confidence);
+        if (currentScore !== prevScore) {
+            setPrevScore(displayScore);
+            setDisplayScore(currentScore);
         }
-    }, [latestEvent, insightId]);
+    }, [currentScore, prevScore, displayScore]);
 
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: {
-                staggerChildren: 0.2,
-                delayChildren: 0.2,
-            },
-        },
-    };
+    const delta = displayScore - prevScore;
+    const isPositive = delta >= 0;
 
-    const itemVariants = {
-        hidden: { opacity: 0, x: -20 },
-        visible: {
-            opacity: 1,
-            x: 0,
-            transition: { duration: 0.5 },
-        },
-    };
+    const barColor = getColorForScore(displayScore * 100);
 
     return (
-        <div className="space-y-6">
-            {/* Main Confidence Display */}
-            <motion.div
-                className="border border-cyan-500/30 rounded-lg p-8 bg-gradient-to-br from-slate-900/50 to-slate-800/50 backdrop-blur-sm"
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-            >
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-2xl font-bold text-cyan-400">Confidence Building</h3>
-                    <motion.div
-                        className="text-4xl font-black text-green-400"
-                        key={currentConfidence}
-                        animate={{ scale: [1, 1.2, 1] }}
-                        transition={{ duration: 0.3 }}
-                    >
-                        {(currentConfidence * 100).toFixed(0)}%
-                    </motion.div>
-                </div>
+        <div className="w-full flex flex-col space-y-6">
+            {/* Main Glassmorphism Card */}
+            <div className="relative rounded-xl border border-[#00ff88]/20 bg-[rgba(26,31,58,0.8)] backdrop-blur-[20px] p-6 shadow-[0_0_20px_rgba(0,255,136,0.1)] overflow-hidden">
 
-                {/* Animated Bar */}
-                <div className="space-y-4">
-                    <div className="h-4 bg-slate-700 rounded-full overflow-hidden border border-green-500/20">
-                        <motion.div
-                            className="h-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500"
-                            initial={{ width: '55%' }}
-                            animate={{ width: `${currentConfidence * 100}%` }}
-                            transition={{ duration: 0.8, ease: 'easeOut' }}
-                        />
+                {/* Header Info */}
+                <div className="flex justify-between items-end mb-4">
+                    <div>
+                        <h3 className="text-sm uppercase tracking-wider text-[#a0a0a0] mb-1 font-sans">System Confidence</h3>
+                        <div className="flex items-center space-x-3">
+                            <motion.span
+                                key={displayScore}
+                                initial={{ scale: 1.5, opacity: 0, color: barColor }}
+                                animate={{ scale: 1, opacity: 1, color: barColor }}
+                                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                                className="text-4xl font-bold font-mono"
+                            >
+                                {(displayScore * 100).toFixed(1)}%
+                            </motion.span>
+
+                            <AnimatePresence mode="popLayout">
+                                {delta !== 0 && (
+                                    <motion.span
+                                        key={delta}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        className={`text-sm font-mono px-2 py-1 rounded-md bg-opacity-20 ${isPositive ? 'text-[#00ff88] bg-[#00ff88]' : 'text-[#ff006e] bg-[#ff006e]'
+                                            }`}
+                                    >
+                                        {isPositive ? '+' : ''}{(delta * 100).toFixed(1)}%
+                                    </motion.span>
+                                )}
+                            </AnimatePresence>
+                        </div>
                     </div>
 
-                    {/* Glow Effect */}
+                    <div className="text-right text-[#a0a0a0] text-sm font-mono">
+                        <div>Prev: {(prevScore * 100).toFixed(1)}%</div>
+                    </div>
+                </div>
+
+                {/* Animated Progress Bar */}
+                <div className="h-4 w-full bg-[#1a1f3a] rounded-full overflow-hidden border border-[#00ff88]/10 relative">
                     <motion.div
-                        className="h-2 bg-gradient-to-r from-transparent via-green-500 to-transparent blur-lg"
-                        animate={{ opacity: [0.3, 0.8, 0.3] }}
-                        transition={{ duration: 2, repeat: Infinity }}
+                        className="absolute top-0 left-0 h-full rounded-full"
+                        initial={{ width: `${prevScore * 100}%`, backgroundColor: getColorForScore(prevScore * 100) }}
+                        animate={{ width: `${displayScore * 100}%`, backgroundColor: barColor }}
+                        transition={{ type: "spring", stiffness: 50, damping: 15 }}
+                        style={{
+                            boxShadow: `0 0 15px ${barColor}`
+                        }}
                     />
                 </div>
-            </motion.div>
+            </div>
 
-            {/* Cascade Timeline */}
-            <motion.div
-                className="space-y-2"
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-            >
-                {cascadeEvents.map((event, i) => (
-                    <motion.div
-                        key={i}
-                        className="flex items-center space-x-4 p-3 rounded-lg border border-cyan-500/20 bg-gradient-to-r from-slate-900/50 to-slate-800/30 hover:border-cyan-500/50 transition-colors"
-                        variants={itemVariants}
-                        whileHover={{
-                            x: 5,
-                            boxShadow: '0 0 20px rgba(0, 255, 136, 0.1)'
-                        }}
-                    >
-                        {/* Agent Avatar */}
+            {/* History Timeline */}
+            <div className="flex flex-col space-y-3">
+                <AnimatePresence>
+                    {confidenceHistory.map((step, idx) => (
                         <motion.div
-                            className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0 border border-cyan-500/50"
-                            animate={{ scale: [1, 1.2, 1] }}
-                            transition={{ duration: 0.5 }}
+                            key={idx + step.timestamp}
+                            initial={{ opacity: 0, x: -20, height: 0 }}
+                            animate={{ opacity: 1, x: 0, height: 'auto' }}
+                            transition={{ delay: idx * 0.1, type: "spring" }}
+                            className="rounded-xl border border-[#00ff88]/20 bg-[rgba(26,31,58,0.5)] backdrop-blur-[10px] p-4 flex items-center justify-between group hover:shadow-[0_0_15px_rgba(0,255,136,0.15)] transition-shadow"
                         >
-                            <span className="text-xs font-bold text-cyan-400">✓</span>
-                        </motion.div>
-
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-cyan-300">{event.agent}</div>
-                            <div className="text-xs text-gray-500">
-                                {event.timestamp.toLocaleTimeString()}
+                            <div className="flex items-center space-x-4">
+                                <div className="p-2 rounded-full bg-[#1a1f3a] border border-[#00ff88]/10">
+                                    {getIconForAction(step.action)}
+                                </div>
+                                <div>
+                                    <div className="flex items-center space-x-2">
+                                        <span className="font-bold text-[#ffffff] font-sans">{step.agent}</span>
+                                        <span className="text-xs text-[#a0a0a0] font-mono px-2 py-0.5 rounded-full border border-white/5 bg-white/5 uppercase tracking-wider">
+                                            {step.action}
+                                        </span>
+                                    </div>
+                                    <p className="text-sm text-[#a0a0a0] mt-1 font-sans line-clamp-1">{step.reason}</p>
+                                </div>
                             </div>
-                        </div>
 
-                        {/* Confidence Badge */}
-                        <motion.div
-                            className="text-right flex-shrink-0"
-                            animate={{ scale: [1, 1.1, 1] }}
-                            transition={{ duration: 0.3 }}
-                        >
-                            <div className="text-sm font-bold text-green-400">
-                                {(event.confidence * 100).toFixed(0)}%
+                            <div className="flex flex-col items-end">
+                                <div className="font-mono text-sm mb-1">
+                                    <span className="text-white">{(step.confidence_after * 100).toFixed(0)}%</span>
+                                </div>
+                                <div className="text-xs text-[#a0a0a0] font-mono opacity-60">
+                                    {new Date(step.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                </div>
                             </div>
                         </motion.div>
-                    </motion.div>
-                ))}
-            </motion.div>
+                    ))}
+                </AnimatePresence>
+            </div>
         </div>
     );
 };

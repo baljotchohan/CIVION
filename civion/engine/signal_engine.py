@@ -42,7 +42,7 @@ class SignalEngine:
                                 sig_b.get("title", "") + " " + sig_b.get("description", ""),
                             )
                             if overlap > 0.3:
-                                patterns.append({
+                                pattern = {
                                     "id": generate_id("pat"),
                                     "type": "cross_source_correlation",
                                     "sources": [src_a, src_b],
@@ -51,7 +51,12 @@ class SignalEngine:
                                     "description": f"Correlation between {src_a} and {src_b}: "
                                                    f"{sig_a.get('title', '')[:40]} ↔ {sig_b.get('title', '')[:40]}",
                                     "detected_at": now_iso(),
-                                })
+                                }
+                                patterns.append(pattern)
+                                
+                                # Broadcast signal detected
+                                from civion.api.websocket import manager
+                                await manager.broadcast("signal_detected", pattern)
 
         if patterns:
             log.info(f"Detected {len(patterns)} cross-source patterns")

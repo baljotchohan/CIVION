@@ -1,122 +1,166 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { useState, useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-export const DebateViewer = ({ loopId }: { loopId: string }) => {
-    const { latestEvent } = useWebSocket();
-    const [debate, setDebate] = useState<any>(null);
-    const [confidence, setConfidence] = useState(0.55);
+export type AgentRole = "proposer" | "challenger" | "verifier" | "synthesizer";
 
+export interface DebateMessage {
+    id: string;
+    agent_name: string;
+    role: AgentRole;
+    content: string;
+    confidence: number;
+    timestamp: string;
+    is_final: boolean;
+}
+
+interface DebateViewerProps {
+    debate: DebateMessage[];
+    isActive: boolean;
+}
+
+const getRoleColor = (role: AgentRole) => {
+    switch (role) {
+        case 'proposer': return '#00d4ff'; // Cyan
+        case 'challenger': return '#ff006e'; // Pink
+        case 'verifier': return '#00ff88'; // Green
+        case 'synthesizer': return '#9b59b6'; // Purple
+        default: return '#ffffff';
+    }
+};
+
+const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+};
+
+export const DebateViewer: React.FC<DebateViewerProps> = ({ debate, isActive }) => {
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll to latest message
     useEffect(() => {
-        if (latestEvent?.type === 'reasoning_updated' && latestEvent.data.loop_id === loopId) {
-            setDebate(latestEvent.data.data); // data field contains the reasoning loop dict
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
+    }, [debate, isActive]);
 
-        if (latestEvent?.type === 'confidence_changed' && latestEvent.data.loop_id === loopId) {
-            setConfidence(latestEvent.data.confidence);
-        }
-    }, [latestEvent, loopId]);
+    const hasConclusion = debate.length > 0 && debate[debate.length - 1].is_final;
 
     return (
-        <div className="space-y-6">
+        <div className="flex flex-col h-full bg-[rgba(26,31,58,0.8)] backdrop-blur-[20px] rounded-xl border border-[#00ff88]/20 shadow-[0_0_20px_rgba(0,255,136,0.1)] overflow-hidden">
+
             {/* Header */}
-            <div className="border border-cyan-500/30 rounded-lg p-6 bg-gradient-to-br from-slate-900/50 to-slate-800/50 backdrop-blur-sm">
-                <h2 className="text-2xl font-bold text-cyan-400 mb-2">Multi-Agent Reasoning</h2>
-                <p className="text-gray-400">{debate?.hypothesis || 'Analyzing...'}</p>
+            <div className="p-4 border-b border-[#00ff88]/20 flex justify-between items-center bg-[#1a1f3a]">
+                <h2 className="text-lg font-sans font-bold text-white flex items-center">
+                    <span className="mr-2">Live Debate Stream</span>
+                    {isActive && (
+                        <span className="flex h-3 w-3 relative">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00ff88] opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-[#00ff88]"></span>
+                        </span>
+                    )}
+                </h2>
+
+                {hasConclusion && (
+                    <div className="px-3 py-1 rounded-full bg-[#9b59b6]/20 border border-[#9b59b6]/50 text-[#9b59b6] text-xs font-bold font-mono tracking-widest uppercase shadow-[0_0_10px_rgba(155,89,182,0.3)]">
+                        Consensus Reached
+                    </div>
+                )}
             </div>
 
-            {/* Confidence Bar */}
-            <motion.div className="border border-green-500/30 rounded-lg p-6 bg-gradient-to-br from-slate-900/50 to-slate-800/50 backdrop-blur-sm">
-                <div className="flex justify-between mb-4">
-                    <span className="text-gray-300">Confidence Level</span>
-                    <motion.span
-                        className="text-2xl font-bold text-green-400"
-                        animate={{ scale: [1, 1.1, 1] }}
-                        transition={{ duration: 0.5 }}
-                    >
-                        {(confidence * 100).toFixed(0)}%
-                    </motion.span>
-                </div>
+            {/* Messages Area */}
+            <div
+                ref={scrollRef}
+                className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar scroll-smooth"
+            >
+                <AnimatePresence initial={false}>
+                    {debate.map((msg, i) => {
+                        const color = getRoleColor(msg.role);
+                        const isSynthesizer = msg.role === 'synthesizer';
 
-                {/* Animated Bar */}
-                <div className="h-3 bg-slate-700 rounded-full overflow-hidden border border-green-500/20">
-                    <motion.div
-                        className="h-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500"
-                        initial={{ width: '55%' }}
-                        animate={{ width: `${confidence * 100}%` }}
-                        transition={{ duration: 0.8, ease: 'easeOut' }}
-                    />
-                </div>
+                        return (
+                            <motion.div
+                                key={msg.id}
+                                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                transition={{
+                                    type: 'spring',
+                                    stiffness: 260,
+                                    damping: 20,
+                                    delay: 0.1 // staggered feel
+                                }}
+                                className={`flex w-full ${isSynthesizer ? 'justify-center' : (msg.role === 'proposer' ? 'justify-start' : 'justify-end')}`}
+                            >
+                                <div className={`flex max-w-[80%] ${isSynthesizer ? 'flex-col items-center text-center' : (msg.role === 'proposer' ? 'flex-row' : 'flex-row-reverse')} gap-4`}>
 
-                {/* Glow effect */}
-                <motion.div
-                    className="mt-4 h-1 bg-gradient-to-r from-transparent via-green-500 to-transparent blur-lg"
-                    animate={{ opacity: [0.3, 0.8, 0.3] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                />
-            </motion.div>
-
-            {/* Arguments Timeline */}
-            <div className="space-y-3">
-                {debate?.arguments?.map((arg: any, i: number) => (
-                    <motion.div
-                        key={i}
-                        className="border border-cyan-500/20 rounded-lg p-4 bg-gradient-to-r from-slate-900/70 to-slate-800/70 backdrop-blur-sm"
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.2 }}
-                        whileHover={{
-                            borderColor: 'rgba(0, 255, 136, 0.5)',
-                            boxShadow: '0 0 20px rgba(0, 255, 136, 0.2)'
-                        }}
-                    >
-                        <div className="flex items-start space-x-4">
-                            {/* Agent Avatar */}
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500/30 to-blue-500/30 flex items-center justify-center flex-shrink-0 border border-cyan-500/50">
-                                <span className="text-cyan-300 font-bold text-sm">🤖</span>
-                            </div>
-
-                            {/* Content */}
-                            <div className="flex-1 min-w-0">
-                                <h4 className="font-semibold text-cyan-300">{arg.agent}</h4>
-                                <p className="text-gray-300 mt-1">{arg.argument || arg.content}</p>
-
-                                {/* Confidence */}
-                                <div className="mt-3 flex items-center space-x-2">
-                                    <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden max-w-xs">
-                                        <motion.div
-                                            className="h-full bg-gradient-to-r from-cyan-500 to-green-500"
-                                            initial={{ width: 0 }}
-                                            animate={{ width: `${arg.confidence * 100}%` }}
-                                            transition={{ duration: 0.6, delay: i * 0.2 }}
-                                        />
+                                    {/* Avatar */}
+                                    <div
+                                        className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold font-mono text-sm border-2 shadow-lg"
+                                        style={{
+                                            borderColor: color,
+                                            backgroundColor: `${color}20`,
+                                            color: color,
+                                            boxShadow: `0 0 15px ${color}40`
+                                        }}
+                                    >
+                                        {getInitials(msg.agent_name)}
                                     </div>
-                                    <span className="text-sm text-gray-400 w-12 text-right">
-                                        {(arg.confidence * 100).toFixed(0)}%
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </motion.div>
-                ))}
-            </div>
 
-            {/* Final Consensus */}
-            {debate?.consensus && (
-                <motion.div
-                    className="border-2 border-green-500/50 rounded-lg p-6 bg-gradient-to-br from-green-900/20 to-slate-900/50 backdrop-blur-sm"
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                >
-                    <h3 className="text-xl font-bold text-green-400 mb-2">✓ Consensus Reached</h3>
-                    <p className="text-gray-300">{debate.consensus}</p>
-                    <p className="text-green-400 mt-2 text-sm">
-                        Confidence: {(confidence * 100).toFixed(0)}%
-                    </p>
-                </motion.div>
-            )}
+                                    {/* Message Bubble */}
+                                    <div className={`flex flex-col ${isSynthesizer ? 'items-center mt-3' : (msg.role === 'proposer' ? 'items-start' : 'items-end')}`}>
+                                        <div className="flex items-baseline space-x-2 mb-1 px-1">
+                                            <span className="text-xs font-bold font-sans" style={{ color }}>
+                                                {msg.agent_name}
+                                            </span>
+                                            <span className="text-[10px] text-[#a0a0a0] font-mono uppercase tracking-wider">
+                                                {msg.role}
+                                            </span>
+                                            <span className="text-[10px] text-[#a0a0a0] font-mono opacity-60">
+                                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                            </span>
+                                        </div>
+
+                                        <div
+                                            className="p-4 rounded-xl text-sm font-sans leading-relaxed text-[#ffffff] backdrop-blur-md border relative group"
+                                            style={{
+                                                backgroundColor: `${color}10`,
+                                                borderColor: `${color}30`,
+                                                borderTopLeftRadius: msg.role === 'proposer' && !isSynthesizer ? 0 : '0.75rem',
+                                                borderTopRightRadius: msg.role !== 'proposer' && !isSynthesizer ? 0 : '0.75rem',
+                                            }}
+                                        >
+                                            {msg.content}
+
+                                            {/* Confidence indicator hover */}
+                                            <div className="absolute top-0 right-0 -mt-2 -mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <div className="px-2 py-0.5 rounded text-[10px] font-mono font-bold font-black bg-[#0a0e27] border" style={{ borderColor: color, color }}>
+                                                    conf: {(msg.confidence * 100).toFixed(0)}%
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        );
+                    })}
+                </AnimatePresence>
+
+                {/* Typing Indicator */}
+                {isActive && !hasConclusion && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="flex items-center space-x-2 text-[#a0a0a0] text-sm font-mono mt-4 ml-2"
+                    >
+                        <div className="flex space-x-1">
+                            <motion.div className="w-2 h-2 rounded-full bg-[#00d4ff]" animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0 }} />
+                            <motion.div className="w-2 h-2 rounded-full bg-[#ff006e]" animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }} />
+                            <motion.div className="w-2 h-2 rounded-full bg-[#00ff88]" animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }} />
+                        </div>
+                        <span>Agents thinking...</span>
+                    </motion.div>
+                )}
+            </div>
         </div>
     );
 };

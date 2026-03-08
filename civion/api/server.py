@@ -108,13 +108,27 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             # Keep connection alive, listen for messages
-            data = await websocket.receive_text()
+            data_str = await websocket.receive_text()
             
-            # Client can send ping to keep alive
-            if data == "ping":
-                await websocket.send_json({"type": "pong"})
+            try:
+                import json
+                data = json.loads(data_str)
+                msg_type = data.get("type")
+                
+                if msg_type == "ping":
+                    from datetime import datetime
+                    await websocket.send_json({"type": "pong", "timestamp": datetime.now().isoformat()})
+                elif msg_type == "subscribe":
+                    events = data.get("events", [])
+                    await manager.subscribe(websocket, events)
+                elif msg_type == "unsubscribe":
+                    events = data.get("events", [])
+                    await manager.unsubscribe(websocket, events)
+            except json.JSONDecodeError:
+                if data_str == "ping":
+                    await websocket.send_json({"type": "pong"})
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        await manager.disconnect(websocket)
 
 
 # ── Error Handlers ───────────────────────────────────
