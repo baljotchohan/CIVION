@@ -65,23 +65,67 @@ def start(
     ui_url = f"http://localhost:{ui_port}"
     api_url = f"http://{host}:{port}"
     
-    console.print(f"[bold cyan]●[/] Starting [bold]CIVION Backend[/] on [green]{api_url}[/]")
-    console.print(f"[bold cyan]●[/] Starting [bold]CIVION Frontend[/] on [green]{ui_url}[/]")
-    
+    import subprocess
+    import os
+    import signal
+    from pathlib import Path
+
+    ui_dir = Path("ui")
+    frontend_proc = None
+
+    # 1. Launch Next.js Frontend
+    if ui_dir.exists():
+        console.print(f"[bold cyan]●[/] Launching [bold]CIVION Dashboard[/] (Next.js)...")
+        try:
+            # Use Popen to launch in background
+            # We use setsid on Unix to kill the entire process group later
+            kwargs = {}
+            if os.name != "nt":
+                kwargs["preexec_fn"] = os.setsid
+            
+            frontend_proc = subprocess.Popen(
+                ["npm", "run", "dev", "--", "-p", str(ui_port)],
+                cwd=str(ui_dir),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                **kwargs
+            )
+            console.print(f"[green]✓[/] Frontend starting at [bold]{ui_url}[/]")
+        except Exception as e:
+            console.print(f"[red]✗[/] Failed to start frontend: {e}")
+    else:
+        console.print(f"[yellow]⚠️[/] Frontend directory 'ui' not found. Skipping UI launch.")
+
+    # 2. Browser Launch
     if not no_browser:
         import webbrowser
         import threading
         import time
 
         def open_browser():
-            time.sleep(2)  # Wait for server to start
-            console.print(f"[bold green]✓[/] Launching Intelligence Intelligence Command Center UI...")
+            # Wait for Next.js to compile (approx 5s for dev mode)
+            time.sleep(5)
+            console.print(f"[bold green]✓[/] Opening Command Center in browser...")
             webbrowser.open(ui_url)
 
         threading.Thread(target=open_browser, daemon=True).start()
 
+    # 3. Launch FastAPI Backend (Blocking)
+    console.print(f"[bold cyan]●[/] Starting [bold]CIVION Intelligence Server[/] on [green]{api_url}[/]")
+    
     import uvicorn
-    uvicorn.run("civion.api.server:app", host=host, port=port, reload=True)
+    try:
+        uvicorn.run("civion.api.server:app", host=host, port=port, reload=True)
+    finally:
+        if frontend_proc:
+            console.print("\n[yellow]⏹[/] Shutting down frontend...")
+            try:
+                if os.name != "nt":
+                    os.killpg(os.getpgid(frontend_proc.pid), signal.SIGTERM)
+                else:
+                    frontend_proc.terminate()
+            except Exception:
+                pass
 
 
 @app.command()
