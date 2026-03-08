@@ -41,3 +41,58 @@ async def start_reasoning(topic: str, insight: str = ""):
 async def vote_on_conclusion(loop_id: str, agree: bool = True):
     """Vote on a reasoning conclusion."""
     return {"loop_id": loop_id, "vote": "agree" if agree else "disagree", "recorded": True}
+
+
+@router.get("/active")
+async def get_active_debates():
+    """Get currently active debates logic formatted for frontend."""
+    loops = reasoning_engine.loops if hasattr(reasoning_engine, 'loops') else []
+    
+    # Filter for active or recently completed debates to show in UI
+    active_loops = [l for l in loops]
+    
+    debates = []
+    for loop in active_loops:
+        messages = []
+        for arg in loop.arguments:
+            messages.append({
+                "agent_id": arg.agent,
+                "role": "proposer" if arg.position == "support" else "challenger",
+                "content": arg.argument,
+                "confidence_delta": arg.confidence,
+                "timestamp": loop.created_at
+            })
+            
+        debates.append({
+            "id": loop.id,
+            "topic": loop.topic,
+            "status": loop.state if loop.state in ["active", "completed", "error"] else ("active" if loop.state == "debating" else "completed"),
+            "messages": messages,
+            "conclusion": loop.consensus,
+            "final_confidence": loop.final_confidence
+        })
+        
+    return {"debates": debates}
+
+
+@router.get("/confidence-history")
+async def get_confidence_history():
+    """Get system-wide average confidence history."""
+    import time
+    
+    # Generate mock history using the reasoning engine loops
+    loops = reasoning_engine.loops if hasattr(reasoning_engine, 'loops') else []
+    
+    history = []
+    base_time = int(time.time()) - 3600 # Last hour
+    
+    # Just generic placeholder data for the graph
+    history.append({"time": str(base_time), "confidence": 0.5})
+    history.append({"time": str(base_time + 600), "confidence": 0.6})
+    history.append({"time": str(base_time + 1200), "confidence": 0.55})
+    
+    if loops:
+        latest = round(sum(l.final_confidence for l in loops) / len(loops), 2)
+        history.append({"time": str(base_time + 1800), "confidence": latest})
+        
+    return {"history": history}
