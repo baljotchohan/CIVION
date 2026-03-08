@@ -3,18 +3,25 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { useSystemState } from '../hooks/useSystemState';
+import { useAliveState } from '../hooks/useAliveState';
 import { getStats } from '../lib/api';
 import { SystemStats } from '../types';
 import { classNames } from '../lib/utils';
-import { Bot, Zap, Target, Globe, Activity, Terminal } from 'lucide-react';
+import { Bot, Zap, Target, Globe, Activity, Terminal, Database } from 'lucide-react';
 import { AgentStatusGrid } from '../components/agents/AgentStatusGrid';
 import { ConfidenceCascade } from '../components/dashboard/ConfidenceCascade';
 import { SignalFeed } from '../components/signals/SignalFeed';
 import { PredictionCard } from '../components/predictions/PredictionCard';
 import { SkeletonCard } from '../components/ui/SkeletonCard';
+import { EmptyState } from '../components/ui/EmptyState';
+import { DemoModeBanner } from '../components/ui/DemoModeBanner';
 
 export default function DashboardPage() {
     const { connectionState } = useWebSocket();
+    const { systemState } = useSystemState();
+    const { dataMode } = useAliveState();
+
     const [stats, setStats] = useState<SystemStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -34,168 +41,173 @@ export default function DashboardPage() {
             setStats(data);
             setError(null);
         } catch (err) {
-            setError("System offline — showing cached data");
-            // Set mock data as fallback if API unavailable
-            setStats({
-                active_agents: 4,
-                signals_today: 142,
-                predictions_made: 28,
-                network_peers: 12,
-                uptime_seconds: 3600,
-                confidence_avg: 0.82,
-                version: "2.0.0"
-            });
+            setError("System offline — falling back if possible");
+            // If we are in demo mode, our stats will naturally be empty or mocked by backend, 
+            // but the UI relies on dataMode to decide if it shows empty state anyway.
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchStats();
-        // Setup polling every 30s as a backup
-        const poll = setInterval(fetchStats, 30000);
-        return () => clearInterval(poll);
-    }, []);
+        if (dataMode !== 'empty') {
+            fetchStats();
+            const poll = setInterval(fetchStats, 30000);
+            return () => clearInterval(poll);
+        } else {
+            setLoading(false);
+        }
+    }, [dataMode]);
 
-    // WebSocket dot color
     const wsColor = connectionState === 'connected' ? '#00ff88' : connectionState === 'connecting' ? '#00d4ff' : '#ff006e';
 
     return (
-        <div className="min-h-screen bg-[#0a0e27] text-white p-6 space-y-6 flex flex-col">
+        <div className="min-h-screen bg-[#0a0e27] text-white p-6 space-y-6 flex flex-col pt-16 lg:pt-6">
+            <DemoModeBanner />
 
-            {/* ERROR BOUNDARY FALLBACK BAR */}
-            {error && (
-                <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="p-3 bg-[#ff006e]/20 border border-[#ff006e] rounded-lg text-[#ff006e] flex items-center justify-center font-mono text-sm tracking-wider uppercase"
-                >
-                    <Activity className="w-4 h-4 mr-2" />
-                    {error}
-                </motion.div>
-            )}
-
-            {/* HEADER */}
-            <header className="flex justify-between items-center bg-[rgba(26,31,58,0.8)] backdrop-blur-[20px] p-6 rounded-xl border border-[rgba(0,255,136,0.2)] shadow-[0_0_20px_rgba(0,255,136,0.1)]">
-                <div className="flex items-center space-x-4">
-                    <Terminal className="w-8 h-8 text-[#00ff88]" />
-                    <div>
-                        <h1 className="text-2xl font-sans tracking-widest font-bold text-[#00ff88] uppercase" style={{ textShadow: '0 0 10px rgba(0,255,136,0.5)' }}>CIVION Command Center</h1>
-                        <div className="text-[#a0a0a0] font-mono text-sm mt-1">v{stats?.version || '2.0.0'}</div>
-                    </div>
-                </div>
-
-                <div className="flex items-center space-x-8">
-                    {/* Live Clock */}
-                    <div className="text-2xl font-mono text-white tracking-widest bg-[#1a1f3a] px-4 py-2 rounded-lg border border-white/10" suppressHydrationWarning>
-                        {currentTime || '00:00:00'}
-                    </div>
-
-                    {/* WS Status Dot */}
-                    <div className="flex items-center space-x-3 bg-[#1a1f3a] px-4 py-2.5 rounded-lg border border-white/10">
-                        <span className="relative flex h-3 w-3">
-                            {connectionState === 'connected' && (
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: wsColor }}></span>
-                            )}
-                            <span className="relative inline-flex rounded-full h-3 w-3" style={{ backgroundColor: wsColor }}></span>
-                        </span>
-                        <span className="font-mono text-xs uppercase tracking-wider text-[#a0a0a0]">{connectionState}</span>
-                    </div>
-                </div>
-            </header>
-
-            {/* 4 STAT CARDS ROW */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard
-                    title="Active Agents"
-                    value={stats?.active_agents}
-                    icon={<Bot size={24} />}
-                    color="#00ff88"
-                    loading={loading}
+            {dataMode === 'empty' ? (
+                <EmptyState
+                    health={systemState.health}
+                    icon={<Database className="w-8 h-8" />}
+                    title="Intelligence Command Offline"
+                    message="The dashboard requires active data streams and configured API keys to begin orchestration."
                 />
-                <StatCard
-                    title="Signals Today"
-                    value={stats?.signals_today}
-                    icon={<Zap size={24} />}
-                    color="#00d4ff"
-                    loading={loading}
-                />
-                <StatCard
-                    title="Predictions"
-                    value={stats?.predictions_made}
-                    icon={<Target size={24} />}
-                    color="#9b59b6"
-                    loading={loading}
-                />
-                <StatCard
-                    title="Network Peers"
-                    value={stats?.network_peers}
-                    icon={<Globe size={24} />}
-                    color="#ff006e"
-                    loading={loading}
-                />
-            </div>
+            ) : (
+                <>
+                    {/* ERROR BOUNDARY FALLBACK BAR */}
+                    {error && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="p-3 bg-[#ff006e]/20 border border-[#ff006e] rounded-lg text-[#ff006e] flex items-center justify-center font-mono text-sm tracking-wider uppercase"
+                        >
+                            <Activity className="w-4 h-4 mr-2" />
+                            {error}
+                        </motion.div>
+                    )}
 
-            {/* MIDDLE ROW (60/40) */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                <div className="lg:col-span-3 flex flex-col min-h-[500px]">
-                    <div className="mb-4 flex items-center justify-between">
-                        <h3 className="text-lg font-sans uppercase tracking-widest text-white">System Confidence</h3>
-                        <div className="text-sm font-mono text-[#00ff88]">{(stats ? stats.confidence_avg * 100 : 0).toFixed(1)}% AVG</div>
-                    </div>
-                    {loading ? <SkeletonCard lines={8} height="100%" /> : <ConfidenceCascade confidenceHistory={[]} currentScore={stats ? stats.confidence_avg : 0} />}
-                </div>
+                    {/* HEADER */}
+                    <header className="flex flex-col md:flex-row justify-between items-start md:items-center bg-[rgba(26,31,58,0.8)] backdrop-blur-[20px] p-6 rounded-xl border border-[rgba(0,255,136,0.2)] shadow-[0_0_20px_rgba(0,255,136,0.1)] gap-4">
+                        <div className="flex items-center space-x-4">
+                            <Terminal className="w-8 h-8 text-[#00ff88]" />
+                            <div>
+                                <h1 className="text-2xl font-sans tracking-widest font-bold text-[#00ff88] uppercase" style={{ textShadow: '0 0 10px rgba(0,255,136,0.5)' }}>CIVION Command Center</h1>
+                                <div className="text-[#a0a0a0] font-mono text-sm mt-1">v{stats?.version || '2.0.0'}</div>
+                            </div>
+                        </div>
 
-                <div className="lg:col-span-2 flex flex-col min-h-[500px]">
-                    <div className="mb-4 flex items-center justify-between">
-                        <h3 className="text-lg font-sans uppercase tracking-widest text-white">Fleet Status</h3>
-                        <a href="/agents" className="text-xs font-mono text-[#00d4ff] hover:text-white transition-colors uppercase tracking-wider">Manage Fleet ↗</a>
-                    </div>
-                    {/* Assuming AgentStatusGrid handles its own internal loading/fetch or receives mocked props if null for now */}
-                    <div className="flex-1 bg-[rgba(26,31,58,0.8)] rounded-xl border border-[rgba(0,255,136,0.2)] p-4 overflow-hidden shadow-[0_0_20px_rgba(0,255,136,0.1)] backdrop-blur-[20px]">
-                        <AgentStatusGrid agents={[]} onStart={() => { }} onStop={() => { }} onRestart={() => { }} />
-                    </div>
-                </div>
-            </div>
+                        <div className="flex items-center space-x-4 md:space-x-8 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 hide-scrollbar">
+                            {/* Live Clock */}
+                            <div className="text-xl md:text-2xl font-mono text-white tracking-widest bg-[#1a1f3a] px-4 py-2 rounded-lg border border-white/10 shrink-0" suppressHydrationWarning>
+                                {currentTime || '00:00:00'}
+                            </div>
 
-            {/* BOTTOM ROW (55/45) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-12">
-                <div className="lg:col-span-6 xl:col-span-7 flex flex-col">
-                    <div className="mb-4 flex items-center justify-between">
-                        <h3 className="text-lg font-sans uppercase tracking-widest text-white">Live Signals Feeds</h3>
-                        <a href="/signals" className="text-xs font-mono text-[#00d4ff] hover:text-white transition-colors uppercase tracking-wider">View All ↗</a>
-                    </div>
-                    <div className="flex-1 bg-[rgba(26,31,58,0.8)] rounded-xl border border-[rgba(0,255,136,0.2)] p-6 shadow-[0_0_20px_rgba(0,255,136,0.1)] backdrop-blur-[20px]">
-                        <SignalFeed signals={[]} />
-                    </div>
-                </div>
+                            {/* WS Status Dot */}
+                            <div className="flex items-center space-x-3 bg-[#1a1f3a] px-4 py-2.5 rounded-lg border border-white/10 shrink-0">
+                                <span className="relative flex h-3 w-3">
+                                    {connectionState === 'connected' && (
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: wsColor }}></span>
+                                    )}
+                                    <span className="relative inline-flex rounded-full h-3 w-3" style={{ backgroundColor: wsColor }}></span>
+                                </span>
+                                <span className="font-mono text-xs uppercase tracking-wider text-[#a0a0a0]">{connectionState}</span>
+                            </div>
+                        </div>
+                    </header>
 
-                <div className="lg:col-span-6 xl:col-span-5 flex flex-col">
-                    <div className="mb-4 flex items-center justify-between">
-                        <h3 className="text-lg font-sans uppercase tracking-widest text-white">Latest Prediction</h3>
-                        <a href="/predictions" className="text-xs font-mono text-[#00d4ff] hover:text-white transition-colors uppercase tracking-wider">All Forecasts ↗</a>
-                    </div>
-                    <div className="flex-1 bg-[rgba(26,31,58,0.8)] rounded-xl border border-[rgba(0,255,136,0.2)] p-6 shadow-[0_0_20px_rgba(0,255,136,0.1)] backdrop-blur-[20px]">
-                        {/* Dummy PredictionCard instance */}
-                        <PredictionCard
-                            prediction={{
-                                id: "p-dash",
-                                title: "AI Agents Will Surpass Human App Usage",
-                                description: "The volume of API requests handled by autonomous agents will exceed human-driven front-end clicks.",
-                                probability: 0.88,
-                                timeframe: "Q4 2026",
-                                evidence: ["Rising API token usage in cloud providers", "Decrease in DAU for traditional web apps"],
-                                created_at: new Date().toISOString(),
-                                resolved: false,
-                                outcome: null,
-                                accuracy: null,
-                                shared_count: 42
-                            }}
+                    {/* 4 STAT CARDS ROW */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <StatCard
+                            title="Active Agents"
+                            value={stats?.active_agents}
+                            icon={<Bot size={24} />}
+                            color="#00ff88"
+                            loading={loading}
+                        />
+                        <StatCard
+                            title="Signals Today"
+                            value={stats?.signals_today}
+                            icon={<Zap size={24} />}
+                            color="#00d4ff"
+                            loading={loading}
+                        />
+                        <StatCard
+                            title="Predictions"
+                            value={stats?.predictions_made}
+                            icon={<Target size={24} />}
+                            color="#9b59b6"
+                            loading={loading}
+                        />
+                        <StatCard
+                            title="Network Peers"
+                            value={stats?.network_peers}
+                            icon={<Globe size={24} />}
+                            color="#ff006e"
+                            loading={loading}
                         />
                     </div>
-                </div>
-            </div>
 
+                    {/* MIDDLE ROW (60/40) */}
+                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                        <div className="lg:col-span-3 flex flex-col min-h-[500px]">
+                            <div className="mb-4 flex items-center justify-between">
+                                <h3 className="text-lg font-sans uppercase tracking-widest text-white">System Confidence</h3>
+                                <div className="text-sm font-mono text-[#00ff88]">{(stats ? stats.confidence_avg * 100 : 0).toFixed(1)}% AVG</div>
+                            </div>
+                            {loading ? <SkeletonCard lines={8} height="100%" /> : <ConfidenceCascade confidenceHistory={[]} currentScore={stats ? stats.confidence_avg : 0} />}
+                        </div>
+
+                        <div className="lg:col-span-2 flex flex-col min-h-[500px]">
+                            <div className="mb-4 flex items-center justify-between">
+                                <h3 className="text-lg font-sans uppercase tracking-widest text-white">Fleet Status</h3>
+                                <a href="/agents" className="text-xs font-mono text-[#00d4ff] hover:text-white transition-colors uppercase tracking-wider">Manage Fleet ↗</a>
+                            </div>
+                            {/* Assuming AgentStatusGrid handles its own internal loading/fetch or receives mocked props if null for now */}
+                            <div className="flex-1 bg-[rgba(26,31,58,0.8)] rounded-xl border border-[rgba(0,255,136,0.2)] p-4 overflow-hidden shadow-[0_0_20px_rgba(0,255,136,0.1)] backdrop-blur-[20px]">
+                                <AgentStatusGrid agents={[]} onStart={() => { }} onStop={() => { }} onRestart={() => { }} />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* BOTTOM ROW (55/45) */}
+                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 pb-12">
+                        <div className="xl:col-span-7 flex flex-col">
+                            <div className="mb-4 flex items-center justify-between">
+                                <h3 className="text-lg font-sans uppercase tracking-widest text-white">Live Signals Feeds</h3>
+                                <a href="/signals" className="text-xs font-mono text-[#00d4ff] hover:text-white transition-colors uppercase tracking-wider">View All ↗</a>
+                            </div>
+                            <div className="flex-1 bg-[rgba(26,31,58,0.8)] rounded-xl border border-[rgba(0,255,136,0.2)] p-6 shadow-[0_0_20px_rgba(0,255,136,0.1)] backdrop-blur-[20px]">
+                                <SignalFeed signals={[]} />
+                            </div>
+                        </div>
+
+                        <div className="xl:col-span-5 flex flex-col">
+                            <div className="mb-4 flex items-center justify-between">
+                                <h3 className="text-lg font-sans uppercase tracking-widest text-white">Latest Prediction</h3>
+                                <a href="/predictions" className="text-xs font-mono text-[#00d4ff] hover:text-white transition-colors uppercase tracking-wider">All Forecasts ↗</a>
+                            </div>
+                            <div className="flex-1 bg-[rgba(26,31,58,0.8)] rounded-xl border border-[rgba(0,255,136,0.2)] p-6 shadow-[0_0_20px_rgba(0,255,136,0.1)] backdrop-blur-[20px]">
+                                {/* Dummy PredictionCard instance */}
+                                <PredictionCard
+                                    prediction={{
+                                        id: "p-dash",
+                                        title: "AI Agents Will Surpass Human App Usage",
+                                        description: "The volume of API requests handled by autonomous agents will exceed human-driven front-end clicks.",
+                                        probability: 0.88,
+                                        timeframe: "Q4 2026",
+                                        evidence: ["Rising API token usage in cloud providers", "Decrease in DAU for traditional web apps"],
+                                        created_at: new Date().toISOString(),
+                                        resolved: false,
+                                        outcome: null,
+                                        accuracy: null,
+                                        shared_count: 42
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     );
 }

@@ -1,22 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 
-export type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'error';
-
-export type WebSocketEventType =
-    | 'reasoning_updated'
-    | 'confidence_changed'
-    | 'prediction_made'
-    | 'agent_started'
-    | 'agent_stopped'
-    | 'agent_error'
-    | 'agent_task_updated'
-    | 'signal_detected'
-    | 'insight_generated'
-    | 'network_signal_received'
-    | 'peer_joined'
-    | 'peer_left'
-    | 'ping'
-    | 'pong';
+import { ConnectionState, WebSocketEventType } from '../types';
 
 export interface WebSocketMessage<T = any> {
     type: WebSocketEventType;

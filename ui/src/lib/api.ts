@@ -40,6 +40,13 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
 
 // ── System ─────────────────────────────────────────
 export const getStats = () => fetchApi<SystemStats>('/system/stats');
+export const getSystemHealth = () => fetchApi<any>('/system/health');
+export const saveConfig = (key_name: string, value: string) => fetchApi<any>('/system/config', { method: 'POST', body: JSON.stringify({ key_name, value }) });
+export const testKey = (provider: string, key: string) => fetchApi<{ valid: boolean, message: string }>('/system/test-key', { method: 'POST', body: JSON.stringify({ provider, key }) });
+
+// ── Assistant ──────────────────────────────────────
+export const getAssistantContext = () => fetchApi<any>('/assistant/context', { method: 'POST' });
+export const executeAssistantAction = (actions: any[]) => fetchApi<{ results: any[] }>('/assistant/execute', { method: 'POST', body: JSON.stringify({ actions }) });
 
 // ── Agents ─────────────────────────────────────────
 export const getAgents = () => fetchApi<Agent[]>('/agents');

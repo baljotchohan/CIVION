@@ -2,6 +2,12 @@ import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { Sidebar } from '../components/layout/Sidebar';
+import { ToastProvider } from '../contexts/ToastContext';
+import { SystemStateProvider } from '../contexts/SystemStateContext';
+import { AssistantProvider } from '../contexts/AssistantContext';
+import { ToastNotifications } from '../components/ui/ToastNotifications';
+import { AssistantButton } from '../components/assistant/AssistantButton';
+import { AssistantPanel } from '../components/assistant/AssistantPanel';
 
 const inter = Inter({
     subsets: ['latin'],
@@ -26,19 +32,28 @@ export default function RootLayout({
     return (
         <html lang="en" className="dark scroll-smooth">
             <body className={`${inter.variable} ${jetbrains.variable} font-sans bg-[#0a0e27] text-white min-h-screen flex selection:bg-[#00ff88]/30 overflow-x-hidden`}>
-                {/* Fixed background effects */}
-                <div className="fixed inset-0 pointer-events-none z-[-1]">
-                    <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#00ff88] opacity-[0.03] blur-[150px] rounded-full"></div>
-                    <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-[#9b59b6] opacity-[0.03] blur-[150px] rounded-full"></div>
-                </div>
+                <ToastProvider>
+                    <SystemStateProvider>
+                        <AssistantProvider>
+                            {/* Fixed background effects */}
+                            <div className="fixed inset-0 pointer-events-none z-[-1]">
+                                <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#00ff88] opacity-[0.03] blur-[150px] rounded-full"></div>
+                                <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-[#9b59b6] opacity-[0.03] blur-[150px] rounded-full"></div>
+                            </div>
 
-                {/* Global Sidebar layout wrapper */}
-                <Sidebar />
+                            <Sidebar />
 
-                {/* Main Application Area */}
-                <main className="flex-1 min-w-0 max-h-screen overflow-y-auto overflow-x-hidden relative custom-scrollbar">
-                    {children}
-                </main>
+                            <main className="flex-1 min-w-0 max-h-screen overflow-y-auto overflow-x-hidden relative custom-scrollbar pl-[80px] lg:pl-[240px] pt-12 lg:pt-0 transition-all duration-300">
+                                {children}
+                            </main>
+
+                            {/* Global Overlays */}
+                            <ToastNotifications />
+                            <AssistantButton />
+                            <AssistantPanel />
+                        </AssistantProvider>
+                    </SystemStateProvider>
+                </ToastProvider>
             </body>
         </html>
     );

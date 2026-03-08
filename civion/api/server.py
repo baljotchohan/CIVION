@@ -64,7 +64,7 @@ app.add_middleware(
 from civion.api.routes import (
     goals, agents, signals, insights, predictions,
     personas, reasoning, network, events, memory,
-    marketplace, system,
+    marketplace, system, assistant,
 )
 
 API_PREFIX = "/api/v1"
@@ -80,6 +80,7 @@ app.include_router(events.router, prefix=API_PREFIX)
 app.include_router(memory.router, prefix=API_PREFIX)
 app.include_router(marketplace.router, prefix=API_PREFIX)
 app.include_router(system.router, prefix=API_PREFIX)
+app.include_router(assistant.router, prefix=API_PREFIX)
 
 
 # ── Root & Legacy Endpoints ─────────────────────────

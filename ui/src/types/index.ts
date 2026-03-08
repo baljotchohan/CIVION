@@ -18,7 +18,48 @@ export type WebSocketEventType =
     | 'peer_joined'
     | 'peer_left'
     | 'ping'
-    | 'pong';
+    | 'pong'
+    | 'config_updated';
+
+// ── System State & Config ─────────────────────────
+export type SystemHealth = 'dead' | 'idle' | 'alive' | 'degraded';
+
+export interface ApiKeyStatus {
+    anthropic: boolean;
+    openai: boolean;
+    github: boolean;
+    arxiv: boolean;
+    coingecko: boolean;
+}
+
+export interface SystemState {
+    health: SystemHealth;
+    apiKeys: ApiKeyStatus;
+    backendOnline: boolean;
+    wsConnected: boolean;
+    agentsRunning: number;
+    agentsTotal: number;
+    lastChecked: string;
+}
+
+export type DataMode = 'live' | 'demo' | 'empty';
+
+// ── Assistant (ARIA) ──────────────────────────────
+export interface AssistantAction {
+    type: string;
+    params: Record<string, unknown>;
+    executed: boolean;
+    result?: string;
+}
+
+export interface AssistantMessage {
+    id: string;
+    role: 'user' | 'aria';
+    content: string;
+    timestamp: string;
+    actions?: AssistantAction[];
+    isStreaming?: boolean;
+}
 
 export interface ConfidenceStep {
     agent: string;
