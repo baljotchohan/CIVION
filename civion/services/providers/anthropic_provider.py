@@ -33,11 +33,16 @@ class AnthropicProvider(BaseProvider):
         try:
             import anthropic
             client = anthropic.AsyncAnthropic(api_key=self.api_key)
+            # Prepare messages: if history provided, use it, otherwise use current prompt
+            if not messages:
+                messages = [{"role": "user", "content": prompt}]
+            
             async with client.messages.stream(
                 model=self.model or "claude-3-5-sonnet-20240620",
                 max_tokens=max_tokens,
                 temperature=temperature,
-                messages=[{"role": "user", "content": prompt}]
+                system=system,
+                messages=messages
             ) as stream:
                 async for text in stream.text_stream:
                     yield text

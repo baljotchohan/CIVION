@@ -33,11 +33,22 @@ class OpenAIProvider(BaseProvider):
         try:
             import openai
             client = openai.AsyncOpenAI(api_key=self.api_key)
+            # Prepare messages: include system prompt if provided
+            if not messages:
+                messages = []
+                if system:
+                    messages.append({"role": "system", "content": system})
+                messages.append({"role": "user", "content": prompt})
+            elif system:
+                # Prepend system message to existing history if not there
+                if messages[0].get("role") != "system":
+                    messages = [{"role": "system", "content": system}] + messages
+
             stream = await client.chat.completions.create(
                 model=self.model or "gpt-4o",
                 max_tokens=max_tokens,
                 temperature=temperature,
-                messages=[{"role": "user", "content": prompt}],
+                messages=messages,
                 stream=True
             )
             async for chunk in stream:

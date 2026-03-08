@@ -18,6 +18,8 @@ export const useSystemState = () => {
                 wsConnected: true, // If we can fetch, we might have ws, but ws connection state is separate
                 agentsRunning: healthData.agents_running,
                 agentsTotal: healthData.agents_total,
+                signalsToday: healthData.signals_today || 0,
+                confidenceAvg: healthData.confidence_avg || 0,
                 lastChecked: new Date().toISOString()
             });
         } catch (error) {

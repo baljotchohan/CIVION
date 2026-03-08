@@ -76,7 +76,7 @@ class EventStream:
         """Get recent events."""
         events = self._event_history
         if event_type:
-            events = [e for e in events if e["type"] == event_type]
+            events = [e for e in events if e.get("type") == event_type]
         return list(reversed(events[-limit:]))
 
     @property

@@ -54,7 +54,7 @@ def start(
     console.print(Panel(
         f"[bold green]Starting CIVION...[/bold green]\n\n"
         f"Backend + Frontend: [link=http://localhost:{run_port}]http://localhost:{run_port}[/link]\n"
-        f"API Documentation: [link=http://localhost:{run_port}/docs]http://localhost:{run_port}/docs[/link]",
+        f"API Documentation: [link=http://localhost:{run_port}/api/docs]http://localhost:{run_port}/api/docs[/link]",
         title="CIVION v2.0", border_style="cyan"
     ))
 

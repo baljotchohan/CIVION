@@ -39,6 +39,8 @@ export interface SystemState {
     wsConnected: boolean;
     agentsRunning: number;
     agentsTotal: number;
+    signalsToday: number;
+    confidenceAvg: number;
     lastChecked: string;
 }
 
@@ -48,6 +50,7 @@ export type DataMode = 'live' | 'demo' | 'empty';
 export interface AssistantAction {
     type: string;
     params: Record<string, unknown>;
+    agent_id?: string; // Add optional agent_id for start_agent actions
     executed: boolean;
     result?: string;
 }

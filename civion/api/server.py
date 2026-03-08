@@ -53,7 +53,7 @@ app = FastAPI(
 # ── CORS ─────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_url, "http://localhost:3000", "http://localhost:3001"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -84,15 +84,7 @@ app.include_router(assistant.router, prefix=API_PREFIX)
 
 
 # ── Root & Legacy Endpoints ─────────────────────────
-@app.get("/")
-async def root():
-    return {
-        "name": "CIVION",
-        "version": "2.0.0",
-        "status": "online",
-        "docs": "/api/docs",
-        "api": "/api/v1",
-    }
+# Root handler moved to static mount at the end
 
 
 @app.get("/api/status")
@@ -102,8 +94,9 @@ async def legacy_status():
 
 
 # ── WebSocket ────────────────────────────────────────
+@app.websocket("/ws")
 @app.websocket("/ws/{client_id}")
-async def websocket_endpoint(websocket: WebSocket, client_id: str):
+async def websocket_endpoint(websocket: WebSocket, client_id: str = "default"):
     """WebSocket endpoint for real-time updates"""
     try:
         await manager.connect(websocket, client_id)
@@ -122,8 +115,23 @@ from pathlib import Path
 # Serve bundled frontend
 static_path = Path(__file__).parent.parent / "static" / "ui"
 if static_path.exists():
-    # Mount the static files at /ui to avoid overlap with API/WS at root
-    app.mount("/ui", StaticFiles(directory=str(static_path), html=True), name="frontend")
+    # Mount specific subdirectories first for direct access
+    if (static_path / "_next").exists():
+        app.mount("/_next", StaticFiles(directory=str(static_path / "_next")), name="nextjs")
+    if (static_path / "static").exists():
+        app.mount("/static", StaticFiles(directory=str(static_path / "static")), name="static_assets")
+    
+    # Root handler for the main index page
+    @app.get("/")
+    async def serve_index():
+        index_file = static_path / "index.html"
+        if index_file.exists():
+            from fastapi.responses import FileResponse
+            return FileResponse(index_file)
+        return {"status": "online", "message": "UI found but index.html missing"}
+    
+    # Catch-all for any other files in the static root
+    app.mount("/", StaticFiles(directory=str(static_path), html=True), name="frontend")
 else:
     @app.get("/")
     async def root():

@@ -22,6 +22,8 @@ const defaultState: SystemState = {
     wsConnected: false,
     agentsRunning: 0,
     agentsTotal: 0,
+    signalsToday: 0,
+    confidenceAvg: 0,
     lastChecked: new Date().toISOString()
 };
 

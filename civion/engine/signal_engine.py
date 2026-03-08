@@ -27,7 +27,7 @@ class SignalEngine:
             "confidence": confidence,
             "strength": data.get("strength", confidence),
             "signal_type": data.get("type", "generic"),
-            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
             "evidence": data.get("evidence", []),
             "tags": data.get("tags", []),
             "url": data.get("url", None)

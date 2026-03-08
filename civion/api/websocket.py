@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import List, Dict, Set, Any
+from typing import List, Dict, Set, Any, Optional
 from fastapi import WebSocket
 
 logger = logging.getLogger(__name__)
@@ -68,7 +68,7 @@ class ConnectionManager:
             self.disconnected_clients[client_id] = True
             logger.info(f"WebSocket client disconnected: {client_id}")
 
-    def _get_client_id(self, client_id_or_ws: Any) -> str | None:
+    def _get_client_id(self, client_id_or_ws: Any) -> Optional[str]:
         """Helper to resolve client_id from either a string or a WebSocket object."""
         if isinstance(client_id_or_ws, str):
             return client_id_or_ws

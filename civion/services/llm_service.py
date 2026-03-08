@@ -78,7 +78,14 @@ class LLMService:
         """Streaming completion from active provider"""
         try:
             provider = self._get_provider(self.primary_provider_name, self.primary_model)
-            async for chunk in provider.stream(prompt, **kwargs):
+            async for chunk in provider.stream(
+                prompt=prompt,
+                system=system,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                **kwargs
+            ):
                 yield chunk
         except Exception as e:
             logging.error(f"Streaming failed: {e}")
