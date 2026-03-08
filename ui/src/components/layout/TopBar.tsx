@@ -12,19 +12,18 @@ export function TopBar() {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
 
     const getPageTitle = () => {
-        switch (pathname) {
-            case '/': return 'Dashboard';
-            case '/reasoning': return 'Reasoning';
-            case '/signals': return 'Signal Intelligence';
-            case '/predictions': return 'Predictions';
-            case '/agents': return 'Fleet Management';
-            case '/vault': return 'Data Vault';
-            case '/personas': return 'Personas';
-            case '/network': return 'Network';
-            case '/settings': return 'Settings';
-            case '/guide': return 'Guide';
-            default: return 'CIVION';
-        }
+        const path = pathname;
+        if (path.startsWith('/reasoning')) return 'Reasoning';
+        if (path.startsWith('/signals')) return 'Signal Intelligence';
+        if (path.startsWith('/predictions')) return 'Predictions';
+        if (path.startsWith('/agents')) return 'Fleet Management';
+        if (path.startsWith('/vault')) return 'Data Vault';
+        if (path.startsWith('/personas')) return 'Personas';
+        if (path.startsWith('/network')) return 'Network';
+        if (path.startsWith('/settings')) return 'Settings';
+        if (path.startsWith('/guide')) return 'Guide';
+        if (path === '/') return 'Dashboard';
+        return 'CIVION';
     };
 
     const toggleTheme = () => {

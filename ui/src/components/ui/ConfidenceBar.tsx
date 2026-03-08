@@ -27,6 +27,7 @@ export function ConfidenceBar({
             title={`${label}: ${percent}%`}
             description="Shows how certain agents are about this finding. Grows as more agents verify the same signal from independent sources."
             position="top"
+            className="w-full"
         >
             <div className={`flex flex-col gap-1.5 ${className}`}>
                 {showPercent && (

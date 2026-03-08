@@ -47,7 +47,7 @@ export default function RootLayout({
                                     <div className="flex-1 flex flex-col min-w-0">
                                         <TopBar />
                                         <main className="flex-1 overflow-y-auto overflow-x-hidden relative">
-                                            <div className="container mx-auto p-6 lg:p-10 max-w-7xl">
+                                            <div className="p-6 lg:p-10 max-w-7xl w-full">
                                                 {children}
                                             </div>
                                         </main>

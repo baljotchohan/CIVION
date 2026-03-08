@@ -8,6 +8,7 @@ export interface InfoTooltipProps {
     learnMore?: string;
     children: React.ReactNode;
     position?: 'top' | 'bottom' | 'left' | 'right';
+    className?: string;
 }
 
 export function InfoTooltip({
@@ -15,7 +16,8 @@ export function InfoTooltip({
     description,
     learnMore,
     children,
-    position = 'top'
+    position = 'top',
+    className = ''
 }: InfoTooltipProps) {
     const [isVisible, setIsVisible] = useState(false);
     const timeoutRef = useRef<NodeJS.Timeout>();
@@ -40,7 +42,7 @@ export function InfoTooltip({
 
     return (
         <div
-            className="relative inline-flex items-center"
+            className={`relative inline-flex items-center ${className}`}
             onMouseEnter={show}
             onMouseLeave={hide}
             onClick={() => setIsVisible(!isVisible)}

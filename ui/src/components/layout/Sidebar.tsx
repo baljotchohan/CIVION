@@ -49,7 +49,7 @@ export function Sidebar() {
             className={`relative h-screen bg-bg-subtle border-r border-border transition-all duration-300 flex flex-col z-40 ${collapsed ? 'w-16' : 'w-[220px]'}`}
         >
             {/* Header Logo */}
-            <div className="h-[52px] flex items-center border-b border-border pl-4">
+            <div className="h-[52px] flex items-center border-b border-border pl-6">
                 <Link href="/" className="flex items-center gap-2 group">
                     <div className="relative w-6 h-6 shrink-0 text-accent group-hover:scale-105 transition-transform">
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

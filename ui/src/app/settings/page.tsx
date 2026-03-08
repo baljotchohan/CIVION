@@ -124,7 +124,7 @@ export default function SettingsPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                        <label className="text-sm font-medium text-text-primary">Log Level</label>
+                        <label className="text-sm font-medium text-text-primary flex items-center h-full">Log Level</label>
                         <div className="md:col-span-2">
                             <select
                                 value={settings.log_level}
@@ -140,7 +140,7 @@ export default function SettingsPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                        <label className="text-sm font-medium text-text-primary">Auto-Start Agents</label>
+                        <label className="text-sm font-medium text-text-primary flex items-center h-full">Auto-Start Agents</label>
                         <div className="md:col-span-2">
                             <label className="relative inline-flex items-center cursor-pointer">
                                 <input
