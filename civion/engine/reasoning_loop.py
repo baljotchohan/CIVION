@@ -35,6 +35,7 @@ class ReasoningLoop:
     consensus: str = ""
     final_confidence: float = 0.5
     state: str = "debating"
+    active_goal: Any = None
     created_at: str = ""
 
     def dict(self):
@@ -42,20 +43,28 @@ class ReasoningLoop:
             "id": self.id, "topic": self.topic, "hypothesis": self.hypothesis,
             "arguments": [a.dict() for a in self.arguments],
             "consensus": self.consensus, "final_confidence": self.final_confidence,
-            "state": self.state, "created_at": self.created_at,
+            "state": self.state,
+            "active_goal": self.active_goal.dict() if hasattr(self.active_goal, 'dict') else self.active_goal,
+            "created_at": self.created_at,
         }
 
-    def run_cycle(self, *args, **kwargs):
+    async def run_cycle(self, *args, **kwargs):
         """Execute one cycle of the reasoning loop."""
-        pass
+        return None
 
-    def set_active_goal(self, goal: str, *args, **kwargs):
+    def set_active_goal(self, goal: Any, *args, **kwargs):
         """Set the active goal for the reasoning loop."""
-        self.topic = goal
+        self.active_goal = goal
+        if hasattr(goal, 'title'):
+            self.topic = goal.title
 
-    def get_state(self, *args, **kwargs) -> str:
+    def get_state(self, *args, **kwargs) -> dict:
         """Get the current state of the reasoning loop."""
-        return self.state
+        return {"state": self.state, "active_goal": self.active_goal}
+
+    def clear_debate(self):
+        """Clear the current active goal."""
+        self.active_goal = None
 
 
 class ReasoningEngine:

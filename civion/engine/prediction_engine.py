@@ -68,4 +68,12 @@ class PredictionEngine:
                     return p
         return None
 
+    async def generate_predictions(self, insights: List[dict]) -> List[dict]:
+        """Alias for analyze when processing insights."""
+        if not insights:
+            return []
+        # Use first insight goal or generic topic
+        goal = insights[0].get("content") or insights[0].get("goal") or "Aggregated Insights"
+        return await self.analyze(goal, insights)
+
 prediction_engine = PredictionEngine()

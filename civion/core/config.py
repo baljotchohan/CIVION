@@ -34,6 +34,8 @@ class CivionConfig:
         self.enable_p2p_network: bool = True
         self.mock_mode: bool = False
         self.debug: bool = False
+        self.network_enabled: bool = True
+        self.autonomous_enabled: bool = False
         self.log_level: str = "INFO"
         
         # Ensure directories exist
@@ -120,6 +122,8 @@ class CivionConfig:
             "enable_p2p_network": self.enable_p2p_network,
             "mock_mode": self.mock_mode,
             "debug": self.debug,
+            "network_enabled": self.network_enabled,
+            "autonomous_enabled": self.autonomous_enabled,
             "log_level": self.log_level
         }
 

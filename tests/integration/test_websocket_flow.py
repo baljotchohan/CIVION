@@ -78,13 +78,17 @@ async def test_manager_broadcast(manager):
     await manager.connect(ws1, "c1")
     await manager.connect(ws2, "c2")
     
+    # Each MockWS now has a system_event in self.sent
+    assert len(ws1.sent) == 1
+    assert len(ws2.sent) == 1
+    
     manager.subscribe("c1", "test_event")
     manager.subscribe("c2", "test_event")
     
     await manager.broadcast("test_event", {"msg": "hello"})
-    assert len(ws1.sent) == 1
-    assert len(ws2.sent) == 1
-    assert ws1.sent[0]["type"] == "test_event"
+    assert len(ws1.sent) == 2
+    assert len(ws2.sent) == 2
+    assert ws1.sent[1]["type"] == "test_event"
 
 @pytest.mark.asyncio
 async def test_manager_broadcast_filtered(manager):
@@ -105,8 +109,8 @@ async def test_manager_broadcast_filtered(manager):
     manager.subscribe("c2", "event_B")
     
     await manager.broadcast("event_A", {"msg": "hello"})
-    assert len(ws1.sent) == 1
-    assert len(ws2.sent) == 0
+    assert len(ws1.sent) == 2 # 1 connect + 1 event
+    assert len(ws2.sent) == 1 # 1 connect + 0 event
 
 @pytest.mark.asyncio
 async def test_manager_reconnect_queue(manager):
@@ -131,8 +135,8 @@ async def test_manager_reconnect_queue(manager):
     
     ws2 = MockWS()
     await manager.connect(ws2, "c1")
-    assert len(ws2.sent) == 1
-    assert ws2.sent[0]["type"] == "event_A"
+    assert len(ws2.sent) == 2 # 1 connect + 1 missed
+    assert ws2.sent[1]["type"] == "event_A"
     assert "c1" not in manager.message_queue
 
 def test_websocket_invalid_message(client):

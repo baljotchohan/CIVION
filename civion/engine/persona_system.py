@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 from civion.core.logger import engine_logger
 from civion.services.llm_service import llm_service
 from civion.utils.helpers import generate_id, now_iso
+from datetime import datetime
 
 log = engine_logger("persona_system")
 
@@ -21,6 +22,7 @@ class Persona:
     reasoning_style: str = "analytical"
     is_shared: bool = False
     created_by: str = "system"
+    usage_count: int = 0
     created_at: str = ""
 
     def dict(self):
@@ -28,6 +30,7 @@ class Persona:
             "id": self.id, "name": self.name, "description": self.description,
             "system_prompt": self.system_prompt, "reasoning_style": self.reasoning_style,
             "is_shared": self.is_shared, "created_by": self.created_by,
+            "usage_count": self.usage_count,
             "created_at": self.created_at,
         }
 
@@ -54,12 +57,23 @@ class PersonaSystem:
                 created_at=now_iso(),
             ))
 
-    async def create_persona(self, name: str, description: str, system_prompt: str, style: str, created_by: str) -> Persona:
+    async def create_persona(self, name: str, description: str, **kwargs) -> Persona:
+        """Create a new persona."""
+        persona_id = generate_id("pers")
+        
+        # Flexibly handle arguments from positional-heavy tests or keyword-heavy calls
+        system_prompt = kwargs.get("system_prompt", f"You are {name}, a {description} AI analyst.")
+        style = kwargs.get("style", kwargs.get("reasoning_style", "analytical"))
+        created_by = kwargs.get("created_by", kwargs.get("user_id", "system"))
+        
         persona = Persona(
-            id=generate_id("per"),
-            name=name, description=description,
-            system_prompt=system_prompt, reasoning_style=style,
-            created_by=created_by, created_at=now_iso(),
+            id=persona_id,
+            name=name,
+            description=description,
+            system_prompt=system_prompt,
+            reasoning_style=style,
+            created_by=created_by,
+            created_at=datetime.utcnow().isoformat() + "Z"
         )
         self._personas.append(persona)
         log.info(f"Persona created: {name}")
@@ -67,6 +81,9 @@ class PersonaSystem:
 
     async def list_personas(self) -> List[Persona]:
         return self._personas
+
+    async def get_persona(self, persona_id: str) -> Optional[Persona]:
+        return next((p for p in self._personas if p.id == persona_id), None)
 
     async def analyze_with_persona(self, persona_id: str, data: str) -> str:
         persona = next((p for p in self._personas if p.id == persona_id), None)
@@ -80,7 +97,8 @@ Analyze the following intelligence data:
 
 Provide your unique perspective and analysis.
 """
-        return await llm_service.generate(prompt)
+        persona.usage_count += 1
+        return await llm_service.complete(prompt)
 
 
 # Singleton

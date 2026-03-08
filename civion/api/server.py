@@ -102,34 +102,17 @@ async def legacy_status():
 
 
 # ── WebSocket ────────────────────────────────────────
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+@app.websocket("/ws/{client_id}")
+async def websocket_endpoint(websocket: WebSocket, client_id: str):
     """WebSocket endpoint for real-time updates"""
     try:
-        await manager.connect(websocket)
+        await manager.connect(websocket, client_id)
         while True:
             # Keep connection alive, listen for messages
             data_str = await websocket.receive_text()
-            
-            try:
-                import json
-                data = json.loads(data_str)
-                msg_type = data.get("type")
-                
-                if msg_type == "ping":
-                    from datetime import datetime
-                    await websocket.send_json({"type": "pong", "timestamp": datetime.now().isoformat()})
-                elif msg_type == "subscribe":
-                    events = data.get("events", [])
-                    await manager.subscribe(websocket, events)
-                elif msg_type == "unsubscribe":
-                    events = data.get("events", [])
-                    await manager.unsubscribe(websocket, events)
-            except json.JSONDecodeError:
-                if data_str == "ping":
-                    await websocket.send_json({"type": "pong"})
+            await manager.handle_client_message(websocket, data_str)
     except WebSocketDisconnect:
-        await manager.disconnect(websocket)
+        manager.disconnect(websocket)
 
 
 # ── Static Files & Frontend ─────────────────────────
@@ -139,9 +122,8 @@ from pathlib import Path
 # Serve bundled frontend
 static_path = Path(__file__).parent.parent / "static" / "ui"
 if static_path.exists():
-    # Mount the static files at root
-    # Note: This should be after API routes to avoid overlap
-    app.mount("/", StaticFiles(directory=str(static_path), html=True), name="frontend")
+    # Mount the static files at /ui to avoid overlap with API/WS at root
+    app.mount("/ui", StaticFiles(directory=str(static_path), html=True), name="frontend")
 else:
     @app.get("/")
     async def root():

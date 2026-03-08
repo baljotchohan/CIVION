@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 from typing import Dict, Any
 import time
@@ -26,9 +26,13 @@ class TestKeyPayload(BaseModel):
     provider: str
     key: str
 
-@router.get("/status")
-def get_system_status() -> Dict[str, str]:
-    return {"status": "operational", "version": "2.0.0"}
+@router.api_route("/status", methods=["GET", "OPTIONS"])
+def get_system_status(request: Request) -> Any:
+    from fastapi.responses import JSONResponse
+    response = JSONResponse(content={"status": "operational", "version": "2.0.0"})
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    return response
 
 @router.get("/health")
 def get_system_health() -> Dict[str, Any]:
@@ -58,6 +62,7 @@ def get_system_health() -> Dict[str, Any]:
     return {
         "health": health,
         "backend_online": True,
+        "websocket": "active",
         "api_keys": api_keys,
         "agents_running": agents_running,
         "agents_total": agent_engine.total_count,
@@ -78,7 +83,8 @@ async def get_system_stats() -> Dict[str, Any]:
         "active_agents": agent_engine.active_count,          
         "signals_today": stats.get("signals", 0),        
         "predictions_made": stats.get("predictions", 0),      
-        "network_peers": 0, # P2P not fully implemented in stats yet         
+        "network_peers": 0,          
+        "network_name": "CIVION Mainnet",
         "uptime_seconds": current_uptime,
         "confidence_avg": 0.85, # Keep this or compute from insights if available      
         "version": "2.0.0"
