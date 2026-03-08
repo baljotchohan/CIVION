@@ -30,6 +30,7 @@ export default function OnboardingPage() {
             });
             // Simulate delay for effect
             await new Promise(r => setTimeout(r, 1500));
+            localStorage.setItem('civion_onboarded', '1');
             router.push('/');
         } catch (e) {
             console.error(e);

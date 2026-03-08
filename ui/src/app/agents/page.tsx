@@ -5,9 +5,17 @@ import { useSystemState } from '@/contexts/SystemStateContext';
 import { AgentStatusGrid } from '@/components/agents/AgentStatusGrid';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 
 export default function AgentsPage() {
-    const { activeAgents, startAgent, stopAgent, restartAgent } = useSystemState();
+    const { activeAgents, health, startAgent, stopAgent, restartAgent } = useSystemState();
+
+    const totalSignals = activeAgents.reduce(
+        (sum, a) => sum + (a.signals_found || 0), 0
+    );
+    const runningCount = activeAgents.filter(
+        a => a.status === 'running'
+    ).length;
 
     return (
         <div className="space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-500 max-w-6xl mx-auto">
@@ -32,19 +40,19 @@ export default function AgentsPage() {
                 <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <span className="text-sm font-medium text-text-secondary">Fleet Status</span>
-                        <span className="font-bold text-success">Healthy</span>
+                        <StatusBadge status={health} />
                     </CardContent>
                 </Card>
                 <Card>
                     <CardContent className="p-4 flex items-center justify-between">
-                        <span className="text-sm font-medium text-text-secondary">Total Processed</span>
-                        <span className="font-bold text-text-primary">12,450 Tasks</span>
+                        <span className="text-sm font-medium text-text-secondary">Total Signals Found</span>
+                        <span className="font-bold text-text-primary">{totalSignals.toLocaleString()}</span>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardContent className="p-4 flex items-center justify-between">
-                        <span className="text-sm font-medium text-text-secondary">Resource Usage</span>
-                        <span className="font-bold text-accent-amber">Moderate</span>
+                        <span className="text-sm font-medium text-text-secondary">Agents Running</span>
+                        <span className="font-bold text-text-primary">{runningCount} / {activeAgents.length}</span>
                     </CardContent>
                 </Card>
             </div>

@@ -66,6 +66,7 @@ export interface SystemStateContextType {
 
     error: string | null;
     isLoading: boolean;
+    needsOnboarding: boolean;
 }
 
 const SystemStateContext = createContext<SystemStateContextType | undefined>(undefined);
@@ -78,6 +79,7 @@ export function SystemStateProvider({ children }: { children: ReactNode }) {
     const [confidenceHistory, setConfidenceHistory] = useState<ConfidenceDataPoint[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
     const signalCount = signals.length;
     // Compute average confidence from latest history
@@ -98,6 +100,20 @@ export function SystemStateProvider({ children }: { children: ReactNode }) {
             if (healthRes && healthRes.ok) {
                 const data = await healthRes.json();
                 setHealth(data.status);
+
+                if (data.status === 'dead' && typeof window !== 'undefined' && !window.localStorage.getItem('civion_onboarded')) {
+                    const profileRes = await fetch('/api/v1/nick/profile').catch(() => null);
+                    if (profileRes && profileRes.ok) {
+                        const profileData = await profileRes.json();
+                        if (!profileData.name) {
+                            setNeedsOnboarding(true);
+                        } else {
+                            window.localStorage.setItem('civion_onboarded', '1');
+                        }
+                    } else if (!profileRes || profileRes.status === 404) {
+                        setNeedsOnboarding(true);
+                    }
+                }
             } else {
                 setHealth('dead');
                 throw new Error('Failed to fetch system health');
@@ -106,6 +122,27 @@ export function SystemStateProvider({ children }: { children: ReactNode }) {
             if (agentsRes && agentsRes.ok) {
                 const data = await agentsRes.json();
                 setActiveAgents(data.agents || []);
+            }
+
+            // Fetch signals
+            const signalsRes = await fetch('/api/v1/signals?limit=20').catch(() => null);
+            if (signalsRes && signalsRes.ok) {
+                const data = await signalsRes.json();
+                setSignals(data.signals || []);
+            }
+
+            // Fetch confidence history
+            const confRes = await fetch('/api/v1/reasoning/confidence-history').catch(() => null);
+            if (confRes && confRes.ok) {
+                const data = await confRes.json();
+                setConfidenceHistory(data.history || []);
+            }
+
+            // Fetch active debates
+            const debatesRes = await fetch('/api/v1/reasoning/active').catch(() => null);
+            if (debatesRes && debatesRes.ok) {
+                const data = await debatesRes.json();
+                setActiveDebates(data.debates || []);
             }
 
         } catch (err: any) {
@@ -123,10 +160,32 @@ export function SystemStateProvider({ children }: { children: ReactNode }) {
         return () => clearInterval(interval);
     }, [refreshState]);
 
-    // Mock functions for missing endpoints currently
-    const startAgent = (id: string) => console.log('Start', id);
-    const stopAgent = (id: string) => console.log('Stop', id);
-    const restartAgent = (id: string) => console.log('Restart', id);
+    const startAgent = async (id: string) => {
+        try {
+            await fetch(`/api/v1/agents/${id}/start`, { method: 'POST' });
+            await refreshState();
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const stopAgent = async (id: string) => {
+        try {
+            await fetch(`/api/v1/agents/${id}/stop`, { method: 'POST' });
+            await refreshState();
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const restartAgent = async (id: string) => {
+        try {
+            await fetch(`/api/v1/agents/${id}/restart`, { method: 'POST' });
+            await refreshState();
+        } catch (e) {
+            console.error(e);
+        }
+    };
 
     return (
         <SystemStateContext.Provider value={{
@@ -142,7 +201,8 @@ export function SystemStateProvider({ children }: { children: ReactNode }) {
             restartAgent,
             refreshState,
             error,
-            isLoading
+            isLoading,
+            needsOnboarding
         }}>
             {children}
         </SystemStateContext.Provider>
