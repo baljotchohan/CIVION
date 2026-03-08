@@ -1,48 +1,55 @@
-'use client';
-
 import React from 'react';
-import { SystemHealth } from '../../types';
-import { classNames } from '../../lib/utils';
-import { motion } from 'framer-motion';
-import { scaleIn } from '../../lib/animations';
+import { Card, CardContent } from './Card';
+import { Button } from './Button';
 
-interface EmptyStateProps {
-    icon: React.ReactNode;
+export interface EmptyStateProps {
     title: string;
-    message: string;
-    action?: { label: string, href: string };
-    health: SystemHealth;
+    description: string;
+    actionText?: string;
+    onAction?: () => void;
+    className?: string;
+    icon?: React.ReactNode;
 }
 
-export const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, message, action, health }) => {
+export function EmptyState({
+    title,
+    description,
+    actionText,
+    onAction,
+    className = '',
+    icon
+}: EmptyStateProps) {
     return (
-        <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            variants={scaleIn}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col items-center justify-center p-12 text-center h-full min-h-[300px] border border-white/5 bg-[rgba(10,14,39,0.3)] rounded-xl relative overflow-hidden"
-        >
-            {/* Subtle dot pattern background */}
-            <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
+        <Card className={`border-dashed border-border-strong bg-bg-subtle/30 ${className}`}>
+            <CardContent className="p-10 flex flex-col items-center justify-center text-center">
 
-            <div className="w-16 h-16 rounded-2xl bg-[#1a1f3a] border border-white/10 flex items-center justify-center text-[#a0a0a0] mb-6 shadow-inner relative z-10">
-                {icon}
-            </div>
-            <h3 className="text-xl font-sans tracking-wide text-white mb-2 relative z-10">{title}</h3>
-            <p className="text-[#a0a0a0] max-w-sm mb-6 relative z-10">{message}</p>
-
-            {health === 'dead' ? (
-                <div className="relative z-10">
-                    <p className="text-sm text-[#ff006e] mb-4">Configure API keys in Settings to get started</p>
-                    <a href="/settings" className="px-6 py-2 rounded-lg border border-[#00ff88]/30 text-[#00ff88] bg-[#00ff88]/10 hover:bg-[#00ff88]/20 transition-colors uppercase tracking-wider text-xs font-mono">
-                        Go to Settings
-                    </a>
+                {/* NICK-style simple visual if no explicit icon provided */}
+                <div className="mb-6 relative">
+                    {icon ? icon : (
+                        <div className="w-20 h-24 relative flex items-center justify-center">
+                            <div className="w-16 h-16 rounded-2xl bg-bg-card border-2 border-border shadow-sm flex items-center justify-center relative z-10 animate-[bounce_3s_infinite]">
+                                <div className="flex gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-text-primary"></div>
+                                    <div className="w-2 h-2 rounded-full bg-text-primary"></div>
+                                </div>
+                            </div>
+                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-0.5 h-3 bg-border"></div>
+                            <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-accent animate-pulse"></div>
+                        </div>
+                    )}
                 </div>
-            ) : action && (
-                <a href={action.href} className="relative z-10 px-6 py-2 rounded-lg border border-[#00d4ff]/30 text-[#00d4ff] bg-[#00d4ff]/10 hover:bg-[#00d4ff]/20 transition-colors uppercase tracking-wider text-xs font-mono">
-                    {action.label}
-                </a>
-            )}
-        </motion.div>
+
+                <h3 className="font-semibold text-text-primary text-xl mb-2">{title}</h3>
+                <p className="text-text-secondary text-base mb-8 max-w-md leading-relaxed">
+                    {description}
+                </p>
+
+                {actionText && onAction && (
+                    <Button onClick={onAction} size="md">
+                        {actionText}
+                    </Button>
+                )}
+            </CardContent>
+        </Card>
     );
-};
+}

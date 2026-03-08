@@ -6,6 +6,8 @@ import os
 import sys
 import time
 import asyncio
+import json
+from pathlib import Path
 from typing import List, Optional
 
 import typer
@@ -15,11 +17,14 @@ from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.prompt import Prompt, IntPrompt, Confirm
 
-from civion.core.config import config
+from civion.core.config import config, settings
 from civion.services.provider_registry import PROVIDERS
 from civion.services.llm_service import LLMService
 
 console = Console()
+
+CIVION_DIR = Path.home() / ".civion"
+PROFILE_FILE = CIVION_DIR / "profile.json"
 
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -120,6 +125,16 @@ async def run_setup():
     clear_screen()
     show_logo()
     
+    # Map the testing settings so LLMService works
+    old_provider = settings.llm_provider
+    old_model = settings.llm_model
+    settings.llm_provider = provider_id
+    settings.llm_model = selected_model
+    if api_key:
+        setattr(settings, f"{provider_id.lower()}_api_key", api_key)
+        
+    success = False
+    error_msg = ""
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
@@ -127,27 +142,51 @@ async def run_setup():
     ) as progress:
         progress.add_task(description="Testing connection...", total=None)
         
-        # Temp save for testing
-        if api_key:
-            config.set_secret(provider_meta["env_key"], api_key)
-        if provider_id == "gemini" and api_key:
-            config.set_secret("GOOGLE_API_KEY", api_key)
-            
-        svc = LLMService(provider=provider_id, model=selected_model)
         try:
-            # We don't actually call it here to avoid burning credits, 
-            # but in a real app we would. Let's mock a success.
-            await asyncio.sleep(1)
-            success = True
-        except:
+            if provider_id.lower() == "ollama":
+                import requests
+                res = requests.get("http://localhost:11434/api/tags", timeout=5)
+                res.raise_for_status()
+                success = True
+            else:
+                svc = LLMService()
+                result = await svc.complete("Say 'CIVION connection test successful' and nothing else.", max_tokens=20)
+                success = "successful" in result.lower() or len(result) > 5
+                if not success:
+                    error_msg = f"Unexpected response: {result}"
+        except Exception as e:
             success = False
+            error_msg = str(e)
 
     if success:
         console.print("[green]✓ Connection successful![/green]")
     else:
-        console.print("[red]✗ Connection failed.[/red]")
+        console.print(f"[red]✗ Connection failed: {error_msg}[/red]")
+        console.print("[yellow]AI features won't work until a valid key is added.[/yellow]")
         if not Confirm.ask("Use these settings anyway?", default=True):
+            settings.llm_provider = old_provider
+            settings.llm_model = old_model
             return
+
+    # User Profile setup
+    if success:
+        clear_screen()
+        show_logo()
+        console.print("\n[bold]Let's get to know you for NICK (your AI assistant)...[/bold]")
+        name = Prompt.ask("What's your name?", default="")
+        occupation = Prompt.ask("What do you do? (e.g. Developer, Researcher)", default="")
+        
+        os.makedirs(CIVION_DIR, exist_ok=True)
+        profile = {}
+        if PROFILE_FILE.exists():
+            with open(PROFILE_FILE, "r") as f:
+                try:
+                    profile = json.load(f)
+                except: pass
+        if name: profile["name"] = name
+        if occupation: profile["occupation"] = occupation
+        with open(PROFILE_FILE, "w") as f:
+            json.dump(profile, f, indent=2)
 
     # SCREEN 6: DATA SOURCES
     clear_screen()
@@ -164,7 +203,7 @@ async def run_setup():
         for name, key, url in sources:
             val = Prompt.ask(f"{name} Token (Enter to skip)\n→ {url}", password=True)
             if val:
-                config.set_secret(key, val)
+                setattr(settings, key.lower(), val)
 
     # SCREEN 7: ADVANCED
     clear_screen()
@@ -189,7 +228,14 @@ async def run_setup():
     
     if Confirm.ask("Save this configuration?", default=True):
         config.save()
-        
+        if api_key:
+            from civion.core.config import _save_env_file
+            _save_env_file({provider_meta["env_key"]: api_key})
+            for s_name, s_key, _ in sources:
+                val = getattr(settings, s_key.lower(), "")
+                if val:
+                    _save_env_file({s_key: val})
+
         # SCREEN 10: COMPLETE
         clear_screen()
         show_logo()

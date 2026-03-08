@@ -1,250 +1,167 @@
-'use client';
+"use client";
 
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { useWebSocket } from '../hooks/useWebSocket';
-import { useSystemState } from '../hooks/useSystemState';
-import { useAliveState } from '../hooks/useAliveState';
-import { getStats } from '../lib/api';
-import { SystemStats } from '../types';
-import { classNames } from '../lib/utils';
-import { Bot, Zap, Target, Globe, Activity, Terminal, Database } from 'lucide-react';
-import { AgentStatusGrid } from '../components/agents/AgentStatusGrid';
+import { useSystemState, SystemState } from '../contexts/SystemStateContext';
+import { Card, CardContent } from '../components/ui/Card';
 import { ConfidenceCascade } from '../components/dashboard/ConfidenceCascade';
-import { SignalFeed } from '../components/signals/SignalFeed';
-import { PredictionCard } from '../components/predictions/PredictionCard';
+import { AgentStatusGrid } from '../components/agents/AgentStatusGrid';
+import { SignalFeed, Signal } from '../components/signals/SignalFeed';
 import { SkeletonCard } from '../components/ui/SkeletonCard';
-import { EmptyState } from '../components/ui/EmptyState';
-import { DemoModeBanner } from '../components/ui/DemoModeBanner';
+import { ErrorCard } from '../components/ui/ErrorCard';
 
 export default function DashboardPage() {
-    const { connectionState } = useWebSocket();
-    const { systemState } = useSystemState();
-    const { dataMode } = useAliveState();
+    const {
+        health,
+        activeAgents,
+        signalCount,
+        confidenceAvg,
+        confidenceHistory,
+        signals,
+        startAgent,
+        stopAgent,
+        restartAgent,
+        refreshState,
+        error,
+        isLoading
+    } = useSystemState();
 
-    const [stats, setStats] = useState<SystemStats | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [currentTime, setCurrentTime] = useState<string>('');
+    const [mounted, setMounted] = useState(false);
 
-    // Live clock
     useEffect(() => {
-        const timer = setInterval(() => {
-            setCurrentTime(new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-        }, 1000);
-        return () => clearInterval(timer);
+        setMounted(true);
+        // Initial fetch handled by context, could force here if needed
     }, []);
 
-    const fetchStats = async () => {
-        try {
-            const data = await getStats();
-            setStats(data);
-            setError(null);
-        } catch (err) {
-            setError("System offline — falling back if possible");
-            // If we are in demo mode, our stats will naturally be empty or mocked by backend, 
-            // but the UI relies on dataMode to decide if it shows empty state anyway.
-        } finally {
-            setLoading(false);
-        }
-    };
+    if (!mounted) return null;
 
-    useEffect(() => {
-        if (dataMode !== 'empty') {
-            fetchStats();
-            const poll = setInterval(fetchStats, 30000);
-            return () => clearInterval(poll);
-        } else {
-            setLoading(false);
-        }
-    }, [dataMode]);
-
-    const wsColor = connectionState === 'connected' ? '#00ff88' : connectionState === 'connecting' ? '#00d4ff' : '#ff006e';
+    if (error && !isLoading && activeAgents.length === 0) {
+        return (
+            <div className="max-w-xl mx-auto mt-20">
+                <ErrorCard
+                    title="System Connection Error"
+                    message={`Failed to connect to the CIVION backend: ${error}`}
+                    onRetry={refreshState}
+                />
+            </div>
+        );
+    }
 
     return (
-        <div className="min-h-screen bg-[#0a0e27] text-white p-6 space-y-6 flex flex-col pt-16 lg:pt-6">
-            <DemoModeBanner />
+        <div className="space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
 
-            {dataMode === 'empty' ? (
-                <EmptyState
-                    health={systemState.health}
-                    icon={<Database className="w-8 h-8" />}
-                    title="Intelligence Command Offline"
-                    message="The dashboard requires active data streams and configured API keys to begin orchestration."
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <MetricCard
+                    title="System Core"
+                    value={health === 'alive' ? 'Online' : 'Dead'}
+                    icon={<svg className={`w-5 h-5 ${health === 'alive' ? 'text-success' : 'text-danger'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>}
+                    trend="All systems nominal"
                 />
-            ) : (
-                <>
-                    {/* ERROR BOUNDARY FALLBACK BAR */}
-                    {error && (
-                        <motion.div
-                            initial={{ opacity: 0, y: -20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="p-3 bg-[#ff006e]/20 border border-[#ff006e] rounded-lg text-[#ff006e] flex items-center justify-center font-mono text-sm tracking-wider uppercase"
-                        >
-                            <Activity className="w-4 h-4 mr-2" />
-                            {error}
-                        </motion.div>
+                <MetricCard
+                    title="Active Agents"
+                    value={activeAgents.length.toString()}
+                    icon={<svg className="w-5 h-5 text-accent-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>}
+                    trend={`${activeAgents.filter(a => a.status === 'running').length} running`}
+                />
+                <MetricCard
+                    title="Signals Prosessed"
+                    value={signalCount.toLocaleString()}
+                    icon={<svg className="w-5 h-5 text-accent-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>}
+                    trend="+12% today"
+                />
+                <MetricCard
+                    title="Network Confidence"
+                    value={`${Math.round(confidenceAvg * 100)}%`}
+                    icon={<svg className="w-5 h-5 text-accent-amber" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>}
+                    trend="High consensus"
+                />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                {/* Main Feed */}
+                <div className="col-span-1 lg:col-span-2 space-y-6">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-semibold text-text-primary tracking-tight">Active Fleet</h2>
+                    </div>
+
+                    {isLoading && activeAgents.length === 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <SkeletonCard lines={2} />
+                            <SkeletonCard lines={2} />
+                        </div>
+                    ) : (
+                        <AgentStatusGrid
+                            agents={activeAgents}
+                            onStartAgent={startAgent}
+                            onStopAgent={stopAgent}
+                            onRestartAgent={restartAgent}
+                        />
                     )}
 
-                    {/* HEADER */}
-                    <header className="flex flex-col md:flex-row justify-between items-start md:items-center bg-[rgba(26,31,58,0.8)] backdrop-blur-[20px] p-6 rounded-xl border border-[rgba(0,255,136,0.2)] shadow-[0_0_20px_rgba(0,255,136,0.1)] gap-4">
-                        <div className="flex items-center space-x-4">
-                            <Terminal className="w-8 h-8 text-[#00ff88]" />
-                            <div>
-                                <h1 className="text-2xl font-sans tracking-widest font-bold text-[#00ff88] uppercase" style={{ textShadow: '0 0 10px rgba(0,255,136,0.5)' }}>CIVION Command Center</h1>
-                                <div className="text-[#a0a0a0] font-mono text-sm mt-1">v{stats?.version || '2.0.0'}</div>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center space-x-4 md:space-x-8 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 hide-scrollbar">
-                            {/* Live Clock */}
-                            <div className="text-xl md:text-2xl font-mono text-white tracking-widest bg-[#1a1f3a] px-4 py-2 rounded-lg border border-white/10 shrink-0" suppressHydrationWarning>
-                                {currentTime || '00:00:00'}
-                            </div>
-
-                            {/* WS Status Dot */}
-                            <div className="flex items-center space-x-3 bg-[#1a1f3a] px-4 py-2.5 rounded-lg border border-white/10 shrink-0">
-                                <span className="relative flex h-3 w-3">
-                                    {connectionState === 'connected' && (
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: wsColor }}></span>
-                                    )}
-                                    <span className="relative inline-flex rounded-full h-3 w-3" style={{ backgroundColor: wsColor }}></span>
-                                </span>
-                                <span className="font-mono text-xs uppercase tracking-wider text-[#a0a0a0]">{connectionState}</span>
-                            </div>
-                        </div>
-                    </header>
-
-                    {/* 4 STAT CARDS ROW */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <StatCard
-                            title="Active Agents"
-                            value={stats?.active_agents}
-                            icon={<Bot size={24} />}
-                            color="#00ff88"
-                            loading={loading}
-                        />
-                        <StatCard
-                            title="Signals Today"
-                            value={stats?.signals_today}
-                            icon={<Zap size={24} />}
-                            color="#00d4ff"
-                            loading={loading}
-                        />
-                        <StatCard
-                            title="Predictions"
-                            value={stats?.predictions_made}
-                            icon={<Target size={24} />}
-                            color="#9b59b6"
-                            loading={loading}
-                        />
-                        <StatCard
-                            title="Network Peers"
-                            value={stats?.network_peers}
-                            icon={<Globe size={24} />}
-                            color="#ff006e"
-                            loading={loading}
-                        />
+                    <div className="flex items-center justify-between mt-8 mb-4">
+                        <h2 className="text-xl font-semibold text-text-primary tracking-tight">Recent Signals</h2>
                     </div>
 
-                    {/* MIDDLE ROW (60/40) */}
-                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                        <div className="lg:col-span-3 flex flex-col min-h-[500px]">
-                            <div className="mb-4 flex items-center justify-between">
-                                <h3 className="text-lg font-sans uppercase tracking-widest text-white">System Confidence</h3>
-                                <div className="text-sm font-mono text-[#00ff88]">{(stats ? stats.confidence_avg * 100 : 0).toFixed(1)}% AVG</div>
-                            </div>
-                            {loading ? <SkeletonCard lines={8} height="100%" /> : <ConfidenceCascade confidenceHistory={[]} currentScore={stats ? stats.confidence_avg : 0} />}
-                        </div>
+                    <SignalFeed
+                        signals={signals.slice(0, 5)}
+                    />
+                </div>
 
-                        <div className="lg:col-span-2 flex flex-col min-h-[500px]">
-                            <div className="mb-4 flex items-center justify-between">
-                                <h3 className="text-lg font-sans uppercase tracking-widest text-white">Fleet Status</h3>
-                                <a href="/agents" className="text-xs font-mono text-[#00d4ff] hover:text-white transition-colors uppercase tracking-wider">Manage Fleet ↗</a>
-                            </div>
-                            {/* Assuming AgentStatusGrid handles its own internal loading/fetch or receives mocked props if null for now */}
-                            <div className="flex-1 bg-[rgba(26,31,58,0.8)] rounded-xl border border-[rgba(0,255,136,0.2)] p-4 overflow-hidden shadow-[0_0_20px_rgba(0,255,136,0.1)] backdrop-blur-[20px]">
-                                <AgentStatusGrid agents={[]} onStart={() => { }} onStop={() => { }} onRestart={() => { }} />
-                            </div>
-                        </div>
-                    </div>
+                {/* Sidebar widgets */}
+                <div className="col-span-1 space-y-6">
+                    <ConfidenceCascade
+                        data={confidenceHistory}
+                        currentConfidence={confidenceAvg}
+                    />
 
-                    {/* BOTTOM ROW (55/45) */}
-                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 pb-12">
-                        <div className="xl:col-span-7 flex flex-col">
-                            <div className="mb-4 flex items-center justify-between">
-                                <h3 className="text-lg font-sans uppercase tracking-widest text-white">Live Signals Feeds</h3>
-                                <a href="/signals" className="text-xs font-mono text-[#00d4ff] hover:text-white transition-colors uppercase tracking-wider">View All ↗</a>
+                    <Card>
+                        <CardContent className="p-5">
+                            <h3 className="font-semibold text-text-primary mb-4 flex items-center gap-2">
+                                <svg className="w-5 h-5 text-accent-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                System Events
+                            </h3>
+                            <div className="space-y-4">
+                                {[
+                                    { time: '10m ago', msg: 'Started Web Researcher', type: 'info' },
+                                    { time: '1h ago', msg: 'Analyzed 150 new inputs', type: 'success' },
+                                    { time: '2h ago', msg: 'Data vault synchronization', type: 'info' }
+                                ].map((event, i) => (
+                                    <div key={i} className="flex gap-3">
+                                        <div className={`mt-1 h-2 w-2 rounded-full shrink-0 ${event.type === 'info' ? 'bg-accent-blue' : 'bg-success'}`} />
+                                        <div>
+                                            <p className="text-sm text-text-primary">{event.msg}</p>
+                                            <span className="text-xs text-text-muted">{event.time}</span>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                            <div className="flex-1 bg-[rgba(26,31,58,0.8)] rounded-xl border border-[rgba(0,255,136,0.2)] p-6 shadow-[0_0_20px_rgba(0,255,136,0.1)] backdrop-blur-[20px]">
-                                <SignalFeed signals={[]} />
-                            </div>
-                        </div>
+                        </CardContent>
+                    </Card>
+                </div>
 
-                        <div className="xl:col-span-5 flex flex-col">
-                            <div className="mb-4 flex items-center justify-between">
-                                <h3 className="text-lg font-sans uppercase tracking-widest text-white">Latest Prediction</h3>
-                                <a href="/predictions" className="text-xs font-mono text-[#00d4ff] hover:text-white transition-colors uppercase tracking-wider">All Forecasts ↗</a>
-                            </div>
-                            <div className="flex-1 bg-[rgba(26,31,58,0.8)] rounded-xl border border-[rgba(0,255,136,0.2)] p-6 shadow-[0_0_20px_rgba(0,255,136,0.1)] backdrop-blur-[20px]">
-                                {/* Dummy PredictionCard instance */}
-                                <PredictionCard
-                                    prediction={{
-                                        id: "p-dash",
-                                        title: "AI Agents Will Surpass Human App Usage",
-                                        description: "The volume of API requests handled by autonomous agents will exceed human-driven front-end clicks.",
-                                        probability: 0.88,
-                                        timeframe: "Q4 2026",
-                                        evidence: ["Rising API token usage in cloud providers", "Decrease in DAU for traditional web apps"],
-                                        created_at: new Date().toISOString(),
-                                        resolved: false,
-                                        outcome: null,
-                                        accuracy: null,
-                                        shared_count: 42
-                                    }}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </>
-            )}
+            </div>
         </div>
     );
 }
 
-// Simple internal sub-component for the stat blocks
-function StatCard({ title, value, icon, color, loading }: { title: string; value?: number; icon: React.ReactNode; color: string; loading: boolean }) {
+function MetricCard({ title, value, icon, trend }: { title: string, value: string, icon: React.ReactNode, trend?: string }) {
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center p-6 bg-[rgba(26,31,58,0.8)] rounded-xl border backdrop-blur-[20px] shadow-lg group hover:shadow-[0_0_20px_rgba(0,255,136,0.2)] transition-all duration-300"
-            style={{ borderColor: `${color}40` }}
-        >
-            <div
-                className="w-14 h-14 rounded-xl flex items-center justify-center mr-5 shrink-0 transition-transform group-hover:scale-110"
-                style={{ backgroundColor: `${color}15`, color: color, border: `1px solid ${color}80` }}
-            >
-                {icon}
-            </div>
-            <div className="flex flex-col flex-1">
-                <span className="text-xs font-sans uppercase tracking-widest text-[#a0a0a0] mb-1">{title}</span>
-                {loading ? (
-                    <div className="h-8 w-24 bg-[#1a1f3a] animate-pulse rounded"></div>
-                ) : (
-                    <motion.span
-                        key={value}
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="text-3xl font-mono font-bold text-white tracking-wider"
-                    >
-                        {value?.toLocaleString() || '0'}
-                    </motion.span>
-                )}
-            </div>
-            <div className="self-start text-[#a0a0a0] opacity-50">
-                ↗
-            </div>
-        </motion.div>
+        <Card hoverable className="h-full">
+            <CardContent className="p-5 flex flex-col justify-between h-full">
+                <div className="flex justify-between items-start mb-4">
+                    <h3 className="text-sm font-medium text-text-secondary">{title}</h3>
+                    <div className="p-2.5 bg-bg-subtle rounded-xl border border-border">
+                        {icon}
+                    </div>
+                </div>
+                <div>
+                    <div className="text-3xl font-bold text-text-primary">{value}</div>
+                    {trend && <div className="text-sm text-text-muted mt-2">{trend}</div>}
+                </div>
+            </CardContent>
+        </Card>
     );
 }

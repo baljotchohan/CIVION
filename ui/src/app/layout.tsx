@@ -1,28 +1,33 @@
 import type { Metadata } from 'next';
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { Inter, Space_Grotesk } from 'next/font/google';
 import './globals.css';
-import { Sidebar } from '../components/layout/Sidebar';
-import { ToastProvider } from '../contexts/ToastContext';
+
+import { ThemeProvider } from '../lib/theme';
 import { SystemStateProvider } from '../contexts/SystemStateContext';
-import { AssistantProvider } from '../contexts/AssistantContext';
-import { ToastNotifications } from '../components/ui/ToastNotifications';
-import { AssistantButton } from '../components/assistant/AssistantButton';
-import { AssistantPanel } from '../components/assistant/AssistantPanel';
-import { SystemWakeAnimation } from '../components/ui/SystemWakeAnimation';
+import { AssistantProvider } from '../hooks/useAssistant';
+import { ToastProvider, ToastContainer } from '../components/ui/Toast';
+
+import { Sidebar } from '../components/layout/Sidebar';
+import { TopBar } from '../components/layout/TopBar';
+import { NickButton } from '../components/nick/NickButton';
+import { NickPanel } from '../components/nick/NickPanel';
+import { GlobalLayoutClient } from './GlobalLayoutClient';
 
 const inter = Inter({
     subsets: ['latin'],
     variable: '--font-sans',
+    display: 'swap',
 });
 
-const jetbrains = JetBrains_Mono({
+const spaceGrotesk = Space_Grotesk({
     subsets: ['latin'],
     variable: '--font-mono',
+    display: 'swap',
 });
 
 export const metadata: Metadata = {
-    title: 'CIVION | Intelligence Command Center',
-    description: 'Multi-agent AI platform with transparent reasoning and P2P global networking.',
+    title: 'CIVION | AI Intelligence System',
+    description: 'Glass-box artificial intelligence network',
 };
 
 export default function RootLayout({
@@ -31,31 +36,28 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     return (
-        <html lang="en" className="dark scroll-smooth">
-            <body className={`${inter.variable} ${jetbrains.variable} font-sans bg-[#0a0e27] text-white min-h-screen flex selection:bg-[#00ff88]/30 overflow-x-hidden`}>
-                <ToastProvider>
-                    <SystemStateProvider>
-                        <AssistantProvider>
-                            {/* Fixed background effects */}
-                            <div className="fixed inset-0 pointer-events-none z-[-1]">
-                                <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#00ff88] opacity-[0.03] blur-[150px] rounded-full"></div>
-                                <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-[#9b59b6] opacity-[0.03] blur-[150px] rounded-full"></div>
-                            </div>
-
-                            <Sidebar />
-
-                            <main className="flex-1 min-w-0 max-h-screen overflow-y-auto overflow-x-hidden relative custom-scrollbar pl-[80px] lg:pl-[240px] pt-12 lg:pt-0 transition-all duration-300">
-                                {children}
-                            </main>
-
-                            {/* Global Overlays */}
-                            <ToastNotifications />
-                            <AssistantButton />
-                            <AssistantPanel />
-                            <SystemWakeAnimation />
-                        </AssistantProvider>
-                    </SystemStateProvider>
-                </ToastProvider>
+        <html lang="en" suppressHydrationWarning>
+            <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans antialiased text-text-primary bg-bg-base overflow-hidden`}>
+                <ThemeProvider>
+                    <ToastProvider>
+                        <SystemStateProvider>
+                            <AssistantProvider>
+                                <div className="flex h-screen w-full">
+                                    <Sidebar />
+                                    <div className="flex-1 flex flex-col min-w-0">
+                                        <TopBar />
+                                        <main className="flex-1 overflow-y-auto overflow-x-hidden relative">
+                                            <div className="container mx-auto p-6 lg:p-10 max-w-7xl">
+                                                {children}
+                                            </div>
+                                        </main>
+                                    </div>
+                                    <GlobalLayoutClient />
+                                </div>
+                            </AssistantProvider>
+                        </SystemStateProvider>
+                    </ToastProvider>
+                </ThemeProvider>
             </body>
         </html>
     );

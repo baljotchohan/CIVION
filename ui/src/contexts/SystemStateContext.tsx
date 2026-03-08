@@ -1,64 +1,158 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { SystemState, SystemHealth } from '../types';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 
-interface SystemStateContextProps {
-    systemState: SystemState;
-    setSystemState: React.Dispatch<React.SetStateAction<SystemState>>;
-    showWakeAnimation: boolean;
+// The new system state types based on my pages
+export type SystemHealth = 'alive' | 'idle' | 'dead' | 'degraded' | 'error';
+
+export interface Agent {
+    id: string;
+    name: string;
+    type: string;
+    status: 'running' | 'idle' | 'paused' | 'error' | 'dead';
+    last_active: string;
+    signals_found: number;
+    current_task: string;
+    uptime_seconds: number;
 }
 
-const defaultState: SystemState = {
-    health: 'dead',
-    apiKeys: {
-        anthropic: false,
-        openai: false,
-        github: false,
-        arxiv: false,
-        coingecko: false,
-    },
-    backendOnline: false,
-    wsConnected: false,
-    agentsRunning: 0,
-    agentsTotal: 0,
-    signalsToday: 0,
-    confidenceAvg: 0,
-    lastChecked: new Date().toISOString()
-};
+export interface Signal {
+    id: string;
+    title: string;
+    description: string;
+    source: string;
+    confidence: number;
+    agent: string;
+    timestamp: string;
+    tags?: string[];
+}
 
-const SystemStateContext = createContext<SystemStateContextProps>({
-    systemState: defaultState,
-    setSystemState: () => { },
-    showWakeAnimation: false,
-});
+export interface DebateMessage {
+    agent_id: string;
+    role: 'proposer' | 'challenger' | 'verifier' | 'synthesizer' | 'system';
+    content: string;
+    confidence_delta?: number;
+    timestamp: string;
+}
 
-export const SystemStateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [systemState, setSystemState] = useState<SystemState>(defaultState);
-    const [showWakeAnimation, setShowWakeAnimation] = useState(false);
-    const prevHealth = React.useRef<SystemHealth>('dead');
+export interface ActiveDebate {
+    id: string;
+    topic: string;
+    status: 'active' | 'completed' | 'error';
+    messages: DebateMessage[];
+    conclusion?: string;
+    final_confidence?: number;
+}
 
-    useEffect(() => {
-        if (
-            (prevHealth.current === 'dead' || prevHealth.current === 'idle')
-            && systemState.health === 'alive'
-        ) {
-            setShowWakeAnimation(true);
-            setTimeout(() => setShowWakeAnimation(false), 2600);
+export interface ConfidenceDataPoint {
+    time: string;
+    confidence: number;
+}
+
+export interface SystemStateContextType {
+    health: SystemHealth;
+    activeAgents: Agent[];
+    signalCount: number;
+    confidenceAvg: number;
+    confidenceHistory: ConfidenceDataPoint[];
+    signals: Signal[];
+    activeDebates: ActiveDebate[];
+
+    startAgent: (id: string) => void;
+    stopAgent: (id: string) => void;
+    restartAgent: (id: string) => void;
+
+    refreshState: () => void;
+
+    error: string | null;
+    isLoading: boolean;
+}
+
+const SystemStateContext = createContext<SystemStateContextType | undefined>(undefined);
+
+export function SystemStateProvider({ children }: { children: ReactNode }) {
+    const [health, setHealth] = useState<SystemHealth>('dead');
+    const [activeAgents, setActiveAgents] = useState<Agent[]>([]);
+    const [signals, setSignals] = useState<Signal[]>([]);
+    const [activeDebates, setActiveDebates] = useState<ActiveDebate[]>([]);
+    const [confidenceHistory, setConfidenceHistory] = useState<ConfidenceDataPoint[]>([]);
+    const [error, setError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const signalCount = signals.length;
+    // Compute average confidence from latest history
+    const confidenceAvg = confidenceHistory.length > 0
+        ? confidenceHistory[confidenceHistory.length - 1].confidence
+        : 0;
+
+    const refreshState = useCallback(async () => {
+        try {
+            setIsLoading(true);
+            setError(null);
+
+            const [healthRes, agentsRes] = await Promise.all([
+                fetch('/api/v1/system/health').catch(() => null),
+                fetch('/api/v1/agents').catch(() => null)
+            ]);
+
+            if (healthRes && healthRes.ok) {
+                const data = await healthRes.json();
+                setHealth(data.status);
+            } else {
+                setHealth('dead');
+                throw new Error('Failed to fetch system health');
+            }
+
+            if (agentsRes && agentsRes.ok) {
+                const data = await agentsRes.json();
+                setActiveAgents(data.agents || []);
+            }
+
+        } catch (err: any) {
+            setError(err.message || 'Connection error');
+            console.error(err);
+        } finally {
+            setIsLoading(false);
         }
-        prevHealth.current = systemState.health;
-    }, [systemState.health]);
+    }, []);
 
-    // Watch for major state transitions to log
+    // Poll for updates every 5 seconds
     useEffect(() => {
-        console.log(`[SystemState] Health transitioned to: ${systemState.health}`);
-    }, [systemState.health]);
+        refreshState();
+        const interval = setInterval(refreshState, 5000);
+        return () => clearInterval(interval);
+    }, [refreshState]);
+
+    // Mock functions for missing endpoints currently
+    const startAgent = (id: string) => console.log('Start', id);
+    const stopAgent = (id: string) => console.log('Stop', id);
+    const restartAgent = (id: string) => console.log('Restart', id);
 
     return (
-        <SystemStateContext.Provider value={{ systemState, setSystemState, showWakeAnimation }}>
+        <SystemStateContext.Provider value={{
+            health,
+            activeAgents,
+            signalCount,
+            confidenceAvg,
+            confidenceHistory,
+            signals,
+            activeDebates,
+            startAgent,
+            stopAgent,
+            restartAgent,
+            refreshState,
+            error,
+            isLoading
+        }}>
             {children}
         </SystemStateContext.Provider>
     );
-};
+}
 
-export const useSystemStateContext = () => useContext(SystemStateContext);
+export function useSystemState() {
+    const context = useContext(SystemStateContext);
+    if (context === undefined) {
+        throw new Error('useSystemState must be used within a SystemStateProvider');
+    }
+    return context;
+}

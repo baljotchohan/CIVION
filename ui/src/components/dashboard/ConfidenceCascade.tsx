@@ -1,155 +1,106 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, XCircle, Activity } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Card, CardContent, CardHeader } from '../ui/Card';
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
+import { InfoTooltip } from '../ui/InfoTooltip';
 
-export type ConfidenceAction = "verified" | "challenged" | "confirmed" | "verifying" | "rejected";
-
-export interface ConfidenceStep {
-    agent: string;
-    action: ConfidenceAction;
-    confidence_before: number;
-    confidence_after: number;
-    timestamp: string;
-    reason: string;
+export interface ConfidenceDataPoint {
+    time: string;
+    confidence: number;
 }
 
-interface ConfidenceCascadeProps {
-    confidenceHistory: ConfidenceStep[];
-    currentScore: number;
+export interface ConfidenceCascadeProps {
+    data: ConfidenceDataPoint[];
+    currentConfidence: number;
+    className?: string;
 }
 
-const getColorForScore = (score: number) => {
-    if (score < 40) return 'rgb(255, 0, 110)'; // Accent Pink
-    if (score < 70) return 'rgb(255, 214, 0)'; // Yellow
-    return 'rgb(0, 255, 136)'; // Accent Green
-};
+export function ConfidenceCascade({ data, currentConfidence, className = '' }: ConfidenceCascadeProps) {
 
-const getIconForAction = (action: ConfidenceAction) => {
-    switch (action) {
-        case 'verified':
-        case 'confirmed':
-            return <CheckCircle2 className="w-5 h-5 text-[#00ff88]" />;
-        case 'challenged':
-        case 'rejected':
-            return <XCircle className="w-5 h-5 text-[#ff006e]" />;
-        case 'verifying':
-        default:
-            return <Activity className="w-5 h-5 text-[#00d4ff] animate-pulse" />;
-    }
-};
+    const formattedData = useMemo(() => {
+        return data.map(d => ({
+            ...d,
+            percent: Math.round(d.confidence * 100)
+        }));
+    }, [data]);
 
-export const ConfidenceCascade: React.FC<ConfidenceCascadeProps> = ({ confidenceHistory, currentScore }) => {
-    const [prevScore, setPrevScore] = useState(currentScore);
-    const [displayScore, setDisplayScore] = useState(currentScore);
+    const latestVal = formattedData.length > 0 ? formattedData[formattedData.length - 1].percent : 0;
 
-    useEffect(() => {
-        if (currentScore !== prevScore) {
-            setPrevScore(displayScore);
-            setDisplayScore(currentScore);
-        }
-    }, [currentScore, prevScore, displayScore]);
-
-    const delta = displayScore - prevScore;
-    const isPositive = delta >= 0;
-
-    const barColor = getColorForScore(displayScore * 100);
+    // Choose color based on trend/value
+    let strokeColor = 'var(--success)';
+    if (latestVal < 40) strokeColor = 'var(--danger)';
+    else if (latestVal < 70) strokeColor = 'var(--accent-amber)';
 
     return (
-        <div className="w-full flex flex-col space-y-6">
-            {/* Main Glassmorphism Card */}
-            <div className="relative rounded-xl border border-[#00ff88]/20 bg-[rgba(26,31,58,0.8)] backdrop-blur-[20px] p-6 shadow-[0_0_20px_rgba(0,255,136,0.1)] overflow-hidden">
+        <Card className={className}>
+            <CardHeader className="flex items-center justify-between">
+                <InfoTooltip
+                    title="Confidence Cascade"
+                    description="Shows how the collective confidence of the agent network changes over time as new signals are analyzed and debated."
+                >
+                    <span className="font-semibold flex items-center gap-1.5 cursor-help">
+                        System Confidence
+                        <svg className="w-4 h-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </span>
+                </InfoTooltip>
 
-                {/* Header Info */}
-                <div className="flex justify-between items-end mb-4">
-                    <div>
-                        <h3 className="text-sm uppercase tracking-wider text-[#a0a0a0] mb-1 font-sans">System Confidence</h3>
-                        <div className="flex items-center space-x-3">
-                            <motion.span
-                                key={displayScore}
-                                initial={{ scale: 1.5, opacity: 0, color: barColor }}
-                                animate={{ scale: 1, opacity: 1, color: barColor }}
-                                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                                className="text-4xl font-bold font-mono"
-                            >
-                                {(displayScore * 100).toFixed(1)}%
-                            </motion.span>
-
-                            <AnimatePresence mode="popLayout">
-                                {delta !== 0 && (
-                                    <motion.span
-                                        key={delta}
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: -10 }}
-                                        className={`text-sm font-mono px-2 py-1 rounded-md bg-opacity-20 ${isPositive ? 'text-[#00ff88] bg-[#00ff88]' : 'text-[#ff006e] bg-[#ff006e]'
-                                            }`}
-                                    >
-                                        {isPositive ? '+' : ''}{(delta * 100).toFixed(1)}%
-                                    </motion.span>
-                                )}
-                            </AnimatePresence>
-                        </div>
-                    </div>
-
-                    <div className="text-right text-[#a0a0a0] text-sm font-mono">
-                        <div>Prev: {(prevScore * 100).toFixed(1)}%</div>
-                    </div>
+                <div className="flex items-baseline gap-1 bg-bg-subtle px-2.5 py-1 rounded-md border border-border">
+                    <span className="text-xl font-mono font-bold text-text-primary" style={{ color: strokeColor }}>
+                        {Math.round(currentConfidence * 100)}%
+                    </span>
                 </div>
+            </CardHeader>
 
-                {/* Animated Progress Bar */}
-                <div className="h-4 w-full bg-[#1a1f3a] rounded-full overflow-hidden border border-[#00ff88]/10 relative">
-                    <motion.div
-                        className="absolute top-0 left-0 h-full rounded-full"
-                        initial={{ width: `${prevScore * 100}%`, backgroundColor: getColorForScore(prevScore * 100) }}
-                        animate={{ width: `${displayScore * 100}%`, backgroundColor: barColor }}
-                        transition={{ type: "spring", stiffness: 50, damping: 15 }}
-                        style={{
-                            boxShadow: `0 0 15px ${barColor}`
-                        }}
-                    />
-                </div>
-            </div>
-
-            {/* History Timeline */}
-            <div className="flex flex-col space-y-3">
-                <AnimatePresence>
-                    {confidenceHistory.map((step, idx) => (
-                        <motion.div
-                            key={idx + step.timestamp}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: idx * 0.1, type: "spring" }}
-                            className="rounded-xl border border-[#00ff88]/20 bg-[rgba(26,31,58,0.5)] backdrop-blur-[10px] p-4 flex items-center justify-between group hover:shadow-[0_0_15px_rgba(0,255,136,0.15)] transition-shadow overflow-hidden"
-                        >
-                            <div className="flex items-center space-x-4">
-                                <div className="p-2 rounded-full bg-[#1a1f3a] border border-[#00ff88]/10">
-                                    {getIconForAction(step.action)}
-                                </div>
-                                <div>
-                                    <div className="flex items-center space-x-2">
-                                        <span className="font-bold text-[#ffffff] font-sans">{step.agent}</span>
-                                        <span className="text-xs text-[#a0a0a0] font-mono px-2 py-0.5 rounded-full border border-white/5 bg-white/5 uppercase tracking-wider">
-                                            {step.action}
-                                        </span>
-                                    </div>
-                                    <p className="text-sm text-[#a0a0a0] mt-1 font-sans line-clamp-1">{step.reason}</p>
-                                </div>
-                            </div>
-
-                            <div className="flex flex-col items-end">
-                                <div className="font-mono text-sm mb-1">
-                                    <span className="text-white">{(step.confidence_after * 100).toFixed(0)}%</span>
-                                </div>
-                                <div className="text-xs text-[#a0a0a0] font-mono opacity-60" suppressHydrationWarning>
-                                    {new Date(step.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                                </div>
-                            </div>
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
-            </div>
-        </div>
+            <CardContent className="p-0 h-[220px]">
+                {formattedData.length < 2 ? (
+                    <div className="flex items-center justify-center h-full text-text-muted text-sm">
+                        Insufficient data to show timeline
+                    </div>
+                ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={formattedData} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+                            <XAxis
+                                dataKey="time"
+                                tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
+                                axisLine={false}
+                                tickLine={false}
+                                minTickGap={30}
+                            />
+                            <YAxis
+                                domain={[0, 100]}
+                                tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
+                                axisLine={false}
+                                tickLine={false}
+                                width={30}
+                            />
+                            <RechartsTooltip
+                                contentStyle={{
+                                    backgroundColor: 'var(--bg-card)',
+                                    borderColor: 'var(--border)',
+                                    borderRadius: '8px',
+                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                                }}
+                                itemStyle={{ color: strokeColor, fontWeight: 'bold' }}
+                                labelStyle={{ color: 'var(--text-secondary)', marginBottom: '4px' }}
+                                formatter={(value: number) => [`${value}%`, 'Confidence']}
+                            />
+                            <Line
+                                type="monotone"
+                                dataKey="percent"
+                                stroke={strokeColor}
+                                strokeWidth={3}
+                                dot={false}
+                                activeDot={{ r: 6, fill: strokeColor, stroke: 'var(--bg-card)', strokeWidth: 2 }}
+                                animationDuration={1500}
+                                animationEasing="ease-out"
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
+                )}
+            </CardContent>
+        </Card>
     );
-};
+}

@@ -71,91 +71,147 @@ Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
 Requires-Dist: black>=23.0.0; extra == "dev"
 Requires-Dist: ruff>=0.1.0; extra == "dev"
 
-# CIVION v2 — AI Intelligence Command Center
+# CIVION
+[![License: MIT](https://img.shields.io/badge/License-MIT-teal.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI version](https://badge.fury.io/py/civion.svg)](https://badge.fury.io/py/civion)
 
-> Watch AI think in real-time. 
-> Multi-agent reasoning. Confidence cascades. Predictions.
+CIVION is an AI Intelligence Command Center focused on transparent machine reasoning, enabling specialized agents to debate, synthesize, and predict outcomes in real-time.
 
-## ⚡ Quick Start (30 seconds)
+![CIVION Dashboard](assets/dashboard_preview.png)
 
+## Quick Start
 ```bash
+# 1. Install CIVION
 pip install civion
+
+# 2. Run the interactive setup wizard
 civion setup
+
+# 3. Start the dashboard
 civion start
 ```
+Then visit `http://localhost:8000` in your web browser.
 
-That's it. CIVION opens in your browser automatically.
+---
 
-## 🤖 Supported AI Providers
+## What is CIVION?
+CIVION sits between a simple chatbot and an entirely autonomous company. It comprises five core features:
+1. **Multi-Agent Execution**: Specialized agents constantly scour different parts of the internet (GitHub, arXiv, news) for data.
+2. **Reasoning Loop**: Agents debate each other. Proposers introduce evidence, Challengers find flaws, Verifiers cross-check, and Synthesizers summarize.
+3. **Confidence Tracking**: You can watch as the system algorithmically adjusts its conviction on a topic round-by-round.
+4. **Probabilistic Predictions**: If confidence exceeds 70%, the system generates a prediction indicating what is likely to happen next.
+5. **Peer-To-Peer Networking**: Connect with other CIVION users directly to share findings securely without a centralized coordinator.
 
-| Provider | Models | Cost | Notes |
-|---|---|---|---|
-| Anthropic | Claude 3.5, Claude 3 | Medium | Best reasoning |
-| OpenAI | GPT-4o, GPT-3.5 | Medium | General purpose |
-| Google | Gemini 1.5 Pro/Flash | Low | Long context |
-| Mistral | Large, Medium, Small | Low | EU data |
-| Groq | Llama 3.1, Mixtral | Very Low | Ultra fast |
-| Cohere | Command R+ | Low | Enterprise |
-| Together AI | 50+ open models | Very Low | Open source |
-| Perplexity | Sonar models | Low | Web search |
-| **Ollama** | **Any local model** | **FREE** | **100% private** |
-| Azure OpenAI | GPT-4 deployments | Enterprise | Azure |
-| AWS Bedrock | Claude, Llama | Pay/use | AWS |
-| HuggingFace | Any HF model | Free tier | Research |
+---
 
-## 🛠 CLI Commands
+## AI Providers
+CIVION supports 12 different foundational models, ranging from premium hosted APIs to fully local private runs.
 
-```bash
-civion setup          # Configure CIVION (run first)
-civion start          # Start the system
-civion status         # Check what's running
-civion guide          # Interactive user guide
-civion doctor         # Diagnose and fix issues
-civion update         # Update to latest version
-civion agent start --all  # Start all agents
-civion config add-key openai  # Add API key
+| Provider | Best Models | Cost Est. | Best For | Free Tier |
+|----------|-------------|-----------|----------|-----------|
+| Anthropic | Claude 3.5 Sonnet | $$$ | Top-tier intelligence | None |
+| OpenAI | GPT-4o | $$$ | General reasoning | None |
+| Gemini | Gemini 1.5 Pro | 🆓 Free | Fast throughput | Generous free tier |
+| Groq | Llama 3 70B | 🆓 Free | Instant response | Generous free tier |
+| Ollama | Llama 3 | 🆓 Free | Privacy / local execution | Fully Free |
+| Mistral | Mistral Large | $$ | Complex reasoning | None |
+| Cohere | Command R+ | $$ | Semantic search | Limited |
+| Together | Mixtral 8x7B | $ | Balancing cost and perf | Trial |
+| Perplexity| Sonar Large | $$ | Search integration | None |
+| Azure | OAI GPT-4 | $$$ | Enterprise security | None |
+| Bedrock | Claude 3 | $$$ | AWS ecosystem | None |
+| HF | Open Source | $ | Custom workflows | None |
+
+---
+
+## Command Line Interface (CLI)
+| Command | Description |
+|---------|-------------|
+| `civion setup` | Run interactive setup wizard |
+| `civion start` | Start CIVION (backend + frontend) |
+| `civion doctor` | Check system health and find port conflicts |
+| `civion agent list`| List available AI agents |
+| `civion agent start <id>` | Start a specific agent in the background |
+| `civion config list` | Show current settings |
+| `civion config add-key <x>`| Add provider API key securely |
+| `civion config test-key <x>`| Validate API credentials |
+| `civion reset` | Clear configuration and reset parameters |
+
+---
+
+## Configuration & Getting API Keys
+CIVION automatically stores API keys in a local, encrypted `~/.civion/.secrets` store.
+
+### Using Ollama (FREE, 100% Private Run)
+1. Download Ollama from [ollama.ai](https://ollama.ai).
+2. Start Ollama and run: `ollama run llama3`.
+3. In CIVION, run `civion setup` and select Ollama as your provider.
+
+### Using Google Gemini (Generous Free API Tier)
+1. Get a key from Google AI Studio.
+2. In CIVION: `civion config add-key gemini` 
+
+---
+
+## Architecture Overview
+```text
+┌─────────────────┐       ┌─────────────────┐
+│                 │       │                 │
+│  Data Sources   │ ◄───► │   AI Agents     │
+│                 │       │                 │
+└─────────────────┘       └────────┬────────┘
+                                   │
+                           ┌───────▼────────┐
+                           │ Reasoning Loop │ (Debate Engine)
+                           └───────┬────────┘
+                                   │
+┌─────────────────┐       ┌────────▼────────┐
+│  CIVION UI      │ ◄───► │ Engine/Backend  │
+└─────────────────┘       └─────────────────┘
 ```
 
-## 📖 What is CIVION?
+---
 
-CIVION is an AI intelligence platform where you watch AI 
-agents reason in real-time:
-
-- **Multi-Agent Debates** — Agents propose, challenge, verify
-- **Confidence Cascades** — Watch confidence grow from 55% to 92%  
-- **Predictions** — Probabilistic forecasts with evidence
-- **Custom Personas** — Analyze through any lens
-- **Global Network** — Share findings with researchers worldwide
-- **ARIA Assistant** — Built-in AI that knows your entire system
-
-## 📋 Requirements
-
-- Python 3.10+
-- At least ONE LLM API key (or Ollama for free local AI)
-- 500MB disk space
-- Internet connection (or Ollama for offline use)
-
-## 🔑 Getting API Keys
-
-### Free Options
-- **Ollama**: https://ollama.ai (runs locally, no key needed)
-- **Groq**: https://console.groq.com (generous free tier)
-- **HuggingFace**: https://huggingface.co/settings/tokens
-
-### Paid Options  
-- **Anthropic**: https://console.anthropic.com ($5 free credits)
-- **OpenAI**: https://platform.openai.com/api-keys ($5 free)
-- **Google**: https://aistudio.google.com/app/apikey (free tier)
-
-## 🐛 Troubleshooting
-
+## Development Setup
+If you want to contribute or run from source:
 ```bash
-civion doctor    # auto-diagnose and fix
-civion logs      # view logs
-civion reset     # start fresh
+# Clone the repo
+git clone https://github.com/civion/civion
+cd civion
+
+# Install in developer mode with test deps
+pip install -e ".[dev]"
+
+# Terminal 1: Run the backend API
+python -m civion.api.server
+
+# Terminal 2: Run the frontend
+cd ui
+npm install
+npm run dev
+
+# Terminal 3: Run the unit test suite
+pytest tests/ -v
 ```
 
-Common issues:
-- **Port in use**: civion doctor will offer to kill it
-- **Invalid API key**: civion config test-key anthropic
-- **Agents not starting**: check civion status
+---
+
+## Troubleshooting
+**Q: Port already in use when I run `civion start`**
+Run `civion doctor` to identify the hanging process, and kill it with `lsof -ti:8000 | xargs kill`.
+
+**Q: Agents show offline/grey immediately**
+You must configure an AI API Key. Open the dashboard and navigate to Settings to input a key.
+
+**Q: I get "Invalid logic loop" error**
+The model returned corrupted structural output. High-parameter models generally eliminate this.
+
+**Q: Where is data stored?**
+All states, database files and config are situated exactly at `~/.civion/`.
+
+---
+
+## License & Contributing
+Licensed under the [MIT License](LICENSE).
+Contributions are completely open! See [CONTRIBUTING.md](CONTRIBUTING.md) for details.

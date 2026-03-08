@@ -1,254 +1,164 @@
-'use client';
+"use client";
 
-import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Filter, ChevronDown, ChevronUp, Github, FileText, Globe, Activity, TrendingUp, AlertTriangle } from 'lucide-react';
-import { useWebSocket } from '@/hooks/useWebSocket';
+import React, { useState } from 'react';
+import { Card, CardContent } from '../ui/Card';
+import { Badge } from '../ui/Badge';
+import { ConfidenceBar } from '../ui/ConfidenceBar';
 
 export interface Signal {
     id: string;
-    source: string;
     title: string;
+    description: string;
+    source: string;
     confidence: number;
+    agent: string;
     timestamp: string;
-    strength: number;
-    signal_type: string;
-    evidence?: string[];
+    tags?: string[];
 }
 
-interface SignalFeedProps {
+export interface SignalFeedProps {
     signals: Signal[];
-    onFilter?: (filters: any) => void;
+    onSave?: (signalId: string) => void;
+    className?: string;
+    compact?: boolean;
 }
 
-const getSourceIcon = (source: string) => {
-    const s = source.toLowerCase();
-    if (s.includes('github') || s.includes('repo')) return <Github className="w-4 h-4" />;
-    if (s.includes('arxiv') || s.includes('research')) return <FileText className="w-4 h-4" />;
-    if (s.includes('market') || s.includes('trend')) return <TrendingUp className="w-4 h-4" />;
-    if (s.includes('threat') || s.includes('cyber')) return <AlertTriangle className="w-4 h-4" />;
-    return <Globe className="w-4 h-4" />;
-};
-
-const getStrengthColor = (strength: number) => {
-    if (strength >= 0.8) return '#00ff88'; // high
-    if (strength >= 0.5) return '#00d4ff'; // med
-    return '#ff006e'; // low
-};
-
-export const SignalFeed: React.FC<SignalFeedProps> = ({ signals, onFilter }) => {
-    const { subscribe } = useWebSocket();
+export function SignalFeed({ signals, onSave, className = '', compact = false }: SignalFeedProps) {
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
-    // Local filters state just for UI
-    const [activeType, setActiveType] = useState<string | null>(null);
+    if (signals.length === 0) {
+        return (
+            <div className={`p-8 text-center text-text-muted bg-bg-subtle rounded-xl border border-dashed border-border ${className}`}>
+                No signals detected recently.
+            </div>
+        );
+    }
 
-    // Merge prop signals with live incoming WebSocket signals (if any)
-    const [liveSignals, setLiveSignals] = useState<Signal[]>([]);
+    const formatTimeAgo = (timestamp: string) => {
+        // Basic formatting for demo, in real life use date-fns
+        const date = new Date(timestamp);
+        if (isNaN(date.getTime())) return 'Recently';
 
-    React.useEffect(() => {
-        const handleNewSignal = (data: any) => {
-            setLiveSignals(prev => [data as Signal, ...prev].slice(0, 50)); // Keep last 50
-        };
-        const unsub = subscribe('signal_detected', handleNewSignal);
-        return () => unsub();
-    }, [subscribe]);
+        const diff = (Date.now() - date.getTime()) / 1000;
+        if (diff < 60) return 'Just now';
+        if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+        return `${Math.floor(diff / 86400)}d ago`;
+    };
 
-    // Combine and sort
-    const allSignals = useMemo(() => {
-        // Basic deduplication
-        const map = new Map<string, Signal>();
-        [...signals, ...liveSignals].forEach(s => map.set(s.id, s));
-        const merged = Array.from(map.values())
-            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-        // Apply local filter
-        if (activeType) {
-            return merged.filter(s => s.signal_type === activeType);
-        }
-        return merged;
-    }, [signals, liveSignals, activeType]);
-
-    const uniqueTypes = useMemo(() => {
-        return Array.from(new Set(allSignals.map(s => s.signal_type))).filter(Boolean);
-    }, [allSignals]);
+    const getSourceColor = (source: string) => {
+        const s = source.toLowerCase();
+        if (s.includes('github')) return 'grey';
+        if (s.includes('arxiv')) return 'amber';
+        if (s.includes('news')) return 'blue';
+        if (s.includes('x') || s.includes('twitter')) return 'blue';
+        if (s.includes('coingecko') || s.includes('market')) return 'green';
+        return 'purple';
+    };
 
     return (
-        <div className="flex flex-col h-full bg-[rgba(26,31,58,0.8)] backdrop-blur-[20px] rounded-xl border border-[#00d4ff]/20 shadow-[0_0_20px_rgba(0,212,255,0.1)] overflow-hidden">
+        <div className={`space-y-3 ${className}`}>
+            {signals.map((signal) => {
+                const isExpanded = expandedId === signal.id;
 
-            {/* Header and Filters */}
-            <div className="p-5 border-b border-white/10 bg-[#1a1f3a] z-10 shadow-md">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold font-sans text-white flex items-center">
-                        <Activity className="w-5 h-5 mr-2 text-[#00ff88]" />
-                        Live Intelligence Feed
-                    </h2>
-                    <div className="text-xs font-mono text-[#a0a0a0] flex items-center bg-black/30 px-3 py-1.5 rounded-full border border-white/5">
-                        <span className="w-2 h-2 rounded-full bg-[#00ff88] mr-2 animate-pulse" />
-                        {allSignals.length} signals
-                    </div>
-                </div>
-
-                {/* Filters Panel */}
-                <div className="flex flex-wrap items-center gap-2">
-                    <div className="text-[10px] font-mono uppercase text-[#a0a0a0] mr-2 flex items-center">
-                        <Filter className="w-3 h-3 mr-1" />
-                        Filter by Type:
-                    </div>
-
-                    <button
-                        onClick={() => setActiveType(null)}
-                        className={`px-3 py-1 rounded-full text-xs font-mono transition-colors border ${!activeType ? 'bg-[#00d4ff]/20 text-[#00d4ff] border-[#00d4ff]/50' : 'bg-transparent text-[#a0a0a0] border-white/10 hover:border-white/30 hover:text-white'}`}
+                return (
+                    <Card
+                        key={signal.id}
+                        hoverable
+                        className={`transition-all duration-300 ${isExpanded ? 'ring-1 ring-accent/30' : ''}`}
+                        onClick={() => !compact && setExpandedId(isExpanded ? null : signal.id)}
                     >
-                        All
-                    </button>
+                        <CardContent className={`${compact ? 'p-3' : 'p-4'}`}>
+                            <div className="flex gap-4">
+                                {/* Source Icon Column */}
+                                <div className="flex flex-col items-center">
+                                    <div className={`w-10 h-10 rounded-xl bg-bg-subtle border border-border flex items-center justify-center shrink-0`}>
+                                        <span className="text-lg font-bold text-text-muted" title={signal.source}>
+                                            {signal.source.charAt(0).toUpperCase()}
+                                        </span>
+                                    </div>
+                                    {compact && (
+                                        <span className="mt-1 text-[10px] text-text-muted font-medium uppercase tracking-wider max-w-[40px] truncate">
+                                            {signal.source}
+                                        </span>
+                                    )}
+                                </div>
 
-                    {uniqueTypes.map(type => (
-                        <button
-                            key={type}
-                            onClick={() => setActiveType(type)}
-                            className={`px-3 py-1 rounded-full text-xs font-mono uppercase transition-colors border ${activeType === type ? 'bg-[#00d4ff]/20 text-[#00d4ff] border-[#00d4ff]/50' : 'bg-transparent text-[#a0a0a0] border-white/10 hover:border-white/30 hover:text-white'}`}
-                        >
-                            {type}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Feed List */}
-            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                <AnimatePresence>
-                    {allSignals.map((signal, idx) => {
-                        const isExpanded = expandedId === signal.id;
-                        const color = getStrengthColor(signal.strength);
-
-                        return (
-                            <motion.div
-                                key={signal.id}
-                                layout
-                                initial={{ opacity: 0, y: -20, scale: 0.95 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                transition={{ duration: 0.3 }}
-                                className="mb-4 bg-[#1a1f3a]/80 backdrop-blur-md rounded-xl border group hover:shadow-lg transition-all cursor-pointer overflow-hidden"
-                                style={{
-                                    borderColor: isExpanded ? `${color}50` : 'rgba(255,255,255,0.05)',
-                                    boxShadow: isExpanded ? `0 0 20px ${color}20` : 'none'
-                                }}
-                                onClick={() => setExpandedId(isExpanded ? null : signal.id)}
-                            >
-                                {/* collapsed row */}
-                                <div className="p-4 flex items-center justify-between">
-                                    {/* Left area: Icon & Title */}
-                                    <div className="flex items-center space-x-4 flex-1 min-w-0 pr-4">
-                                        <div
-                                            className="w-10 h-10 rounded-full flex items-center justify-center border bg-black/20 flex-shrink-0"
-                                            style={{ borderColor: `${color}30`, color: color }}
-                                        >
-                                            {getSourceIcon(signal.source)}
-                                        </div>
-
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center space-x-2 mb-1">
-                                                <span className="text-[10px] font-mono text-[#a0a0a0] uppercase tracking-wider bg-black/30 px-2 py-0.5 rounded border border-white/5">
-                                                    {signal.source}
-                                                </span>
-                                                <span className="text-[10px] text-gray-500 font-mono">
-                                                    {new Date(signal.timestamp).toLocaleTimeString()}
-                                                </span>
-
-                                                {/* "New" bounce indicator if it arrived within the last minute */}
-                                                {(new Date().getTime() - new Date(signal.timestamp).getTime()) < 60000 && (
-                                                    <span className="text-[10px] text-[#00ff88] animate-bounce font-bold">New</span>
-                                                )}
-                                            </div>
-                                            <h4 className="text-sm font-sans font-medium text-white line-clamp-1 group-hover:text-cyan-300 transition-colors">
-                                                {signal.title}
-                                            </h4>
-                                        </div>
+                                {/* Content Column */}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-start justify-between gap-4 mb-1">
+                                        <h4 className={`font-semibold text-text-primary ${compact ? 'text-sm' : 'text-base'} truncate leading-tight`}>
+                                            {signal.title}
+                                        </h4>
+                                        {!compact && (
+                                            <span className="text-xs text-text-muted whitespace-nowrap shrink-0">
+                                                {formatTimeAgo(signal.timestamp)}
+                                            </span>
+                                        )}
                                     </div>
 
-                                    {/* Right area: Badge */}
-                                    <div className="flex items-center space-x-4 flex-shrink-0">
-                                        {/* Badge */}
-                                        <div
-                                            className="px-3 py-1.5 rounded-lg border flex flex-col items-end shadow-inner"
-                                            style={{ backgroundColor: `${color}10`, borderColor: `${color}30` }}
-                                        >
-                                            <span className="text-[10px] font-mono text-white/50 uppercase leading-none mb-1">Strength</span>
-                                            <span className="text-sm font-bold font-mono leading-none" style={{ color }}>
-                                                {(signal.strength * 100).toFixed(0)}%
-                                            </span>
+                                    {/* Description */}
+                                    <p className={`text-text-secondary ${compact ? 'text-xs line-clamp-1' : (isExpanded ? 'text-sm mt-2 mb-3' : 'text-sm line-clamp-2 mt-1')}`}>
+                                        {signal.description}
+                                    </p>
+
+                                    {/* Expanded Details */}
+                                    {!compact && isExpanded && (
+                                        <div className="mt-4 pt-3 border-t border-border animate-in slide-in-from-top-2 fade-in duration-200">
+                                            <div className="grid grid-cols-2 gap-4 mb-3">
+                                                <div>
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1 block">Found By</span>
+                                                    <Badge color="blue" size="sm" className="font-mono">{signal.agent}</Badge>
+                                                </div>
+                                                <div>
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1 block">Source</span>
+                                                    <Badge color={getSourceColor(signal.source)} size="sm">{signal.source}</Badge>
+                                                </div>
+                                            </div>
+
+                                            {signal.tags && signal.tags.length > 0 && (
+                                                <div className="mt-3 flex gap-1.5 flex-wrap">
+                                                    {signal.tags.map(t => (
+                                                        <span key={t} className="text-[10px] text-text-secondary bg-bg-subtle px-2 py-0.5 rounded border border-border">
+                                                            #{t}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Footer / Meta */}
+                                    <div className={`flex items-center justify-between ${!compact && isExpanded ? 'mt-4' : 'mt-2'}`}>
+                                        <div className="w-1/3 min-w-[100px]">
+                                            <ConfidenceBar score={signal.confidence} showPercent={!compact} />
                                         </div>
 
-                                        {/* Chevron */}
-                                        <div className="text-[#a0a0a0] group-hover:text-white transition-colors">
-                                            {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                                        <div className="flex items-center gap-2">
+                                            {onSave && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); onSave(signal.id); }}
+                                                    className="p-1.5 text-text-muted hover:text-text-primary hover:bg-bg-subtle rounded transition-colors"
+                                                    title="Save to vault"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                                                    </svg>
+                                                </button>
+                                            )}
+                                            {compact && (
+                                                <span className="text-[10px] text-text-muted">
+                                                    {formatTimeAgo(signal.timestamp)}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
-
-                                {/* Expanded Details Panel */}
-                                <AnimatePresence>
-                                    {isExpanded && (
-                                        <motion.div
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: 'auto', opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                        >
-                                            <div className="px-4 pb-4 pt-2 border-t border-white/5 mx-4 flex flex-col space-y-4">
-
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div>
-                                                        <span className="text-[10px] font-mono uppercase text-[#a0a0a0] mb-1 block">Signal Confidence</span>
-                                                        <div className="flex items-center">
-                                                            <div className="h-1.5 flex-1 bg-black/50 rounded-full mr-3 overflow-hidden">
-                                                                <div className="h-full rounded-full" style={{ width: `${signal.confidence * 100}%`, backgroundColor: color }} />
-                                                            </div>
-                                                            <span className="text-xs font-mono text-white font-bold">{(signal.confidence * 100).toFixed(0)}%</span>
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-[10px] font-mono uppercase text-[#a0a0a0] mb-1 block">Signal Type</span>
-                                                        <span className="text-xs font-mono text-white bg-white/5 px-2 py-1 rounded uppercase tracking-wider">{signal.signal_type}</span>
-                                                    </div>
-                                                </div>
-
-                                                {signal.evidence && signal.evidence.length > 0 && (
-                                                    <div className="bg-black/20 p-3 rounded-lg border border-white/5">
-                                                        <span className="text-[10px] font-mono uppercase text-[#a0a0a0] mb-2 block">Extracted Evidence</span>
-                                                        <ul className="space-y-2">
-                                                            {signal.evidence.map((ev, i) => (
-                                                                <li key={i} className="text-xs font-sans text-gray-300 leading-relaxed flex items-start">
-                                                                    <span className="text-[#00d4ff] mr-2">•</span> {ev}
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    </div>
-                                                )}
-
-                                                {!signal.evidence && (
-                                                    <div className="text-xs font-mono italic text-gray-500 py-2">
-                                                        Awaiting synthesizer detail extraction...
-                                                    </div>
-                                                )}
-
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </motion.div>
-                        );
-                    })}
-
-                    {allSignals.length === 0 && (
-                        <div className="flex flex-col items-center justify-center h-40 text-gray-500 font-mono text-sm space-y-2">
-                            <Activity className="w-8 h-8 opacity-50" />
-                            <span>No signals detected matching filters.</span>
-                        </div>
-                    )}
-                </AnimatePresence>
-            </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                );
+            })}
         </div>
     );
-};
+}

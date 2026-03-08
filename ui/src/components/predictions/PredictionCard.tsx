@@ -1,195 +1,98 @@
-'use client';
-
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Share2, Clock, CheckCircle2, XCircle, ChevronDown, ChevronUp, FileText } from 'lucide-react';
+import React from 'react';
+import { Card, CardContent } from '../ui/Card';
+import { ConfidenceBar } from '../ui/ConfidenceBar';
+import { Badge } from '../ui/Badge';
+import { InfoTooltip } from '../ui/InfoTooltip';
 
 export interface Prediction {
     id: string;
     title: string;
-    description: string;
     probability: number;
     timeframe: string;
     evidence: string[];
-    created_at: string;
-    resolved: boolean;
-    outcome: boolean | null;
-    accuracy: number | null;
-    shared_count: number;
+    consensus_level: 'high' | 'medium' | 'low';
+    status: 'active' | 'resolved_correct' | 'resolved_incorrect';
 }
 
-interface PredictionCardProps {
+export interface PredictionCardProps {
     prediction: Prediction;
-    onShare?: (id: string) => void;
+    className?: string;
+    compact?: boolean;
 }
 
-const getProbabilityColor = (prob: number) => {
-    if (prob >= 0.8) return '#00ff88'; // High confidence - Green
-    if (prob >= 0.5) return '#00d4ff'; // Medium - Cyan
-    return '#ff006e'; // Low - Pink
-};
+export function PredictionCard({ prediction, className = '', compact = false }: PredictionCardProps) {
 
-export const PredictionCard: React.FC<PredictionCardProps> = ({ prediction, onShare }) => {
-    const [expanded, setExpanded] = useState(false);
-    const probColor = getProbabilityColor(prediction.probability);
+    const statusColor = {
+        active: 'blue',
+        resolved_correct: 'green',
+        resolved_incorrect: 'red'
+    } as const;
+
+    const statusLabel = {
+        active: 'Active Prediction',
+        resolved_correct: 'Resolved: Correct',
+        resolved_incorrect: 'Resolved: Incorrect'
+    };
+
+    const consensusColor = {
+        high: 'green',
+        medium: 'amber',
+        low: 'grey'
+    } as const;
 
     return (
-        <motion.div
-            layout
-            className="rounded-xl border bg-[rgba(26,31,58,0.8)] backdrop-blur-[20px] shadow-lg overflow-hidden flex flex-col"
-            style={{
-                borderColor: `${probColor}30`,
-                boxShadow: `0 0 20px ${probColor}10`
-            }}
-        >
-            {/* Top Banner (Status) */}
-            <div className="h-1 w-full" style={{ backgroundColor: probColor }} />
+        <Card className={`overflow-hidden ${className}`}>
+            <CardContent className={`flex flex-col h-full ${compact ? 'p-4' : 'p-5'}`}>
+                <div className="flex justify-between items-start mb-3">
+                    <Badge color={statusColor[prediction.status]} size="sm" dot={prediction.status === 'active'}>
+                        {statusLabel[prediction.status]}
+                    </Badge>
 
-            <div className="p-5 flex-1 flex flex-col">
-                {/* Header section */}
-                <div className="flex justify-between items-start mb-4">
-                    <div className="flex-1 pr-4">
-                        <h3 className="font-sans font-bold text-lg text-white leading-tight mb-2">
-                            {prediction.title}
-                        </h3>
-                        <div className="flex items-center text-xs font-mono text-[#a0a0a0] uppercase tracking-wider space-x-3">
-                            <span className="flex items-center">
-                                <Clock className="w-3 h-3 mr-1" />
-                                {prediction.timeframe}
-                            </span>
-                            <span>•</span>
-                            <span>
-                                {new Date(prediction.created_at).toLocaleDateString()}
-                            </span>
-                        </div>
-                    </div>
+                    <InfoTooltip title="Consensus" description={`Network agreement is ${prediction.consensus_level}`}>
+                        <Badge color={consensusColor[prediction.consensus_level]} size="sm">
+                            {prediction.consensus_level} consensus
+                        </Badge>
+                    </InfoTooltip>
+                </div>
 
-                    {/* Probability Circle */}
-                    <div className="flex flex-col items-center justify-center flex-shrink-0">
-                        <div
-                            className="w-14 h-14 rounded-full flex items-center justify-center border-4 font-bold font-mono text-lg shadow-lg relative"
-                            style={{
-                                borderColor: `${probColor}50`,
-                                color: probColor,
-                                backgroundColor: `${probColor}10`
-                            }}
-                        >
-                            {(prediction.probability * 100).toFixed(0)}<span className="text-xs">%</span>
+                <h3 className={`font-semibold text-text-primary ${compact ? 'text-base line-clamp-2' : 'text-lg'} mb-1`}>
+                    {prediction.title}
+                </h3>
 
-                            {/* Pulse effect for unresolved high prob */}
-                            {!prediction.resolved && prediction.probability >= 0.8 && (
-                                <span
-                                    className="absolute inset-0 rounded-full animate-ping opacity-30"
-                                    style={{ backgroundColor: probColor }}
-                                />
+                <div className="flex items-center gap-2 mt-1 mb-4">
+                    <svg className="w-4 h-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-sm font-medium text-text-secondary">{prediction.timeframe}</span>
+                </div>
+
+                <div className="mb-4">
+                    <ConfidenceBar
+                        score={prediction.probability}
+                        label="Probability"
+                        className="mb-1"
+                    />
+                </div>
+
+                {!compact && (
+                    <div className="mt-auto pt-4 border-t border-border">
+                        <span className="text-xs font-semibold text-text-muted uppercase tracking-wider block mb-2">Key Evidence</span>
+                        <ul className="space-y-1.5">
+                            {prediction.evidence.slice(0, 3).map((item, i) => (
+                                <li key={i} className="text-sm text-text-secondary flex items-start gap-2">
+                                    <span className="text-border mt-1 shrink-0">•</span>
+                                    <span className="line-clamp-2">{item}</span>
+                                </li>
+                            ))}
+                            {prediction.evidence.length > 3 && (
+                                <li className="text-xs text-text-muted italic pl-3">
+                                    + {prediction.evidence.length - 3} more pieces of evidence
+                                </li>
                             )}
-                        </div>
-                        <span className="text-[10px] text-[#a0a0a0] font-mono uppercase mt-1">Probability</span>
+                        </ul>
                     </div>
-                </div>
-
-                {/* Short Description */}
-                <p className="text-sm font-sans text-gray-300 leading-relaxed mb-4 line-clamp-2">
-                    {prediction.description}
-                </p>
-
-                {/* Timeline Bar UI */}
-                <div className="mt-auto mb-4">
-                    <div className="flex justify-between text-[10px] font-mono uppercase text-[#a0a0a0] mb-1">
-                        <span>Now</span>
-                        <span style={{ color: probColor }}>{prediction.timeframe} target</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-[#1a1f3a] rounded-full overflow-hidden relative">
-                        <motion.div
-                            className="absolute top-0 left-0 h-full rounded-full"
-                            style={{ backgroundColor: probColor }}
-                            initial={{ width: 0 }}
-                            animate={{ width: "60%" }} // Visual representation, would calculate from actual time elapsed
-                            transition={{ duration: 1.5, delay: 0.2 }}
-                        />
-                    </div>
-                </div>
-
-                {/* Actions Row */}
-                <div className="flex items-center justify-between pt-4 border-t border-white/10 mt-2">
-                    <button
-                        onClick={() => setExpanded(!expanded)}
-                        className="flex items-center text-xs font-mono text-[#a0a0a0] hover:text-white transition-colors"
-                    >
-                        {expanded ? (
-                            <><ChevronUp className="w-4 h-4 mr-1" /> Hide Details</>
-                        ) : (
-                            <><ChevronDown className="w-4 h-4 mr-1" /> View Evidence</>
-                        )}
-                    </button>
-
-                    <div className="flex items-center space-x-3">
-                        {prediction.resolved && (
-                            <div className={`flex items-center text-xs font-bold px-2 py-1 rounded bg-opacity-20 ${prediction.outcome ? 'text-[#00ff88] bg-[#00ff88]' : 'text-[#ff006e] bg-[#ff006e]'}`}>
-                                {prediction.outcome ? <CheckCircle2 className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
-                                {prediction.outcome ? 'Verified True' : 'Verified False'}
-                            </div>
-                        )}
-
-                        <button
-                            onClick={() => onShare && onShare(prediction.id)}
-                            className="p-1.5 rounded-md hover:bg-[#00d4ff]/10 text-[#00d4ff] transition-colors border border-transparent hover:border-[#00d4ff]/30 flex items-center text-xs font-mono"
-                        >
-                            <Share2 className="w-3 h-3 mr-1" />
-                            {prediction.shared_count}
-                        </button>
-                    </div>
-                </div>
-
-                {/* Expanded View */}
-                <AnimatePresence>
-                    {expanded && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="overflow-hidden"
-                        >
-                            <div className="pt-4 pb-2 border-t border-white/5 mt-4 space-y-4">
-
-                                {/* Full Description */}
-                                <div>
-                                    <h4 className="text-[10px] font-mono text-[#a0a0a0] uppercase tracking-wider mb-2">Detailed Analysis</h4>
-                                    <p className="text-sm text-gray-300 font-sans leading-relaxed">
-                                        {prediction.description}
-                                    </p>
-                                </div>
-
-                                {/* Evidence List */}
-                                <div>
-                                    <h4 className="text-[10px] font-mono text-[#a0a0a0] uppercase tracking-wider mb-2">Sourced Evidence ({prediction.evidence.length})</h4>
-                                    <ul className="space-y-2">
-                                        {prediction.evidence.map((ev, i) => (
-                                            <li key={i} className="flex items-start bg-[#1a1f3a]/50 p-2 rounded border border-white/5">
-                                                <FileText className="w-3 h-3 text-[#00d4ff] mt-0.5 mr-2 flex-shrink-0" />
-                                                <span className="text-xs font-mono text-gray-300">
-                                                    {ev}
-                                                </span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-
-                                {/* Accuracy Metrics if resolved */}
-                                {prediction.resolved && prediction.accuracy !== null && (
-                                    <div className="bg-[#1a1f3a] p-3 rounded-lg border border-[#00ff88]/20 flex justify-between items-center">
-                                        <span className="text-xs font-mono text-[#a0a0a0] uppercase tracking-wider">Historical Accuracy</span>
-                                        <span className="text-sm font-bold text-[#00ff88]">
-                                            {(prediction.accuracy * 100).toFixed(1)}%
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-            </div>
-        </motion.div>
+                )}
+            </CardContent>
+        </Card>
     );
-};
+}

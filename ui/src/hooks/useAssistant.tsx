@@ -1,20 +1,24 @@
-import { useState, useRef, useEffect } from 'react';
+"use client";
+
+import React, { createContext, useContext, useState, useRef, useEffect, ReactNode } from 'react';
 import { AssistantMessage, AssistantAction } from '../types';
-import { useSystemState } from './useSystemState';
+import { useSystemState } from '../contexts/SystemStateContext';
 
-export const useAssistant = () => {
+interface AssistantContextType {
+    messages: AssistantMessage[];
+    isLoading: boolean;
+    sendMessage: (content: string) => Promise<void>;
+    executeAction: (action: AssistantAction) => Promise<void>;
+    chatEndRef?: React.RefObject<HTMLDivElement>;
+}
+
+const AssistantContext = createContext<AssistantContextType | undefined>(undefined);
+
+export function AssistantProvider({ children }: { children: ReactNode }) {
     const [messages, setMessages] = useState<AssistantMessage[]>([]);
-    const [isThinking, setIsThinking] = useState(false);
-    const { systemState } = useSystemState();
+    const [isLoading, setIsLoading] = useState(false);
+    const { health } = useSystemState();
     const chatEndRef = useRef<HTMLDivElement>(null);
-
-    const scrollToBottom = () => {
-        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
-
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages, isThinking]);
 
     const sendMessage = async (content: string) => {
         if (!content.trim()) return;
@@ -27,11 +31,11 @@ export const useAssistant = () => {
         };
 
         setMessages(prev => [...prev, userMsg]);
-        setIsThinking(true);
+        setIsLoading(true);
 
-        const ariaMsgId = Math.random().toString(36).substring(7);
+        const nickMsgId = Math.random().toString(36).substring(7);
         setMessages(prev => [...prev, {
-            id: ariaMsgId,
+            id: nickMsgId,
             role: 'aria',
             content: '',
             timestamp: new Date().toISOString(),
@@ -39,13 +43,12 @@ export const useAssistant = () => {
         }]);
 
         try {
-            const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-            const response = await fetch(`${API_BASE}/api/v1/assistant/chat`, {
+            const response = await fetch('/api/v1/assistant/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: content,
-                    context: { system_health: systemState.health }
+                    context: { system_health: health }
                 })
             });
 
@@ -53,7 +56,6 @@ export const useAssistant = () => {
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
-
             let accumulatedText = "";
 
             while (true) {
@@ -70,7 +72,7 @@ export const useAssistant = () => {
                             if (data.token) {
                                 accumulatedText += data.token;
                                 setMessages(prev => prev.map(msg =>
-                                    msg.id === ariaMsgId
+                                    msg.id === nickMsgId
                                         ? { ...msg, content: accumulatedText }
                                         : msg
                                 ));
@@ -78,7 +80,7 @@ export const useAssistant = () => {
 
                             if (data.done) {
                                 setMessages(prev => prev.map(msg =>
-                                    msg.id === ariaMsgId
+                                    msg.id === nickMsgId
                                         ? { ...msg, isStreaming: false, actions: data.actions || [] }
                                         : msg
                                 ));
@@ -92,25 +94,30 @@ export const useAssistant = () => {
         } catch (error) {
             console.error(error);
             setMessages(prev => prev.map(msg =>
-                msg.id === ariaMsgId
+                msg.id === nickMsgId
                     ? { ...msg, content: "Sorry, I encountered an error connecting to my core.", isStreaming: false }
                     : msg
             ));
         } finally {
-            setIsThinking(false);
+            setIsLoading(false);
         }
     };
 
     const executeAction = async (action: AssistantAction) => {
-        // Here we would call the execute endpoint and handle the result
         console.log("Executing action:", action);
     };
 
-    return {
-        messages,
-        isThinking,
-        sendMessage,
-        executeAction,
-        chatEndRef
-    };
-};
+    return (
+        <AssistantContext.Provider value={{ messages, isLoading, sendMessage, executeAction, chatEndRef }}>
+            {children}
+        </AssistantContext.Provider>
+    );
+}
+
+export function useAssistant() {
+    const context = useContext(AssistantContext);
+    if (context === undefined) {
+        throw new Error('useAssistant must be used within an AssistantProvider');
+    }
+    return context;
+}

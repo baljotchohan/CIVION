@@ -128,5 +128,24 @@ class AgentController:
         """List all agents status"""
         return [instance.to_dict() for instance in self._instances.values()]
 
+    def list_agents(self) -> list:
+        """Alias for list_all_status for API routes"""
+        return self.list_all_status()
+
+    def get_agent(self, agent_name: str) -> Optional[dict]:
+        """Get agent details"""
+        if agent_name not in self._instances:
+            return None
+        return self._instances[agent_name].to_dict()
+
+    def get_running_count(self) -> int:
+        """Get count of running agents"""
+        return sum(1 for a in self._instances.values() if a.status == AgentStatus.RUNNING)
+
+    async def start_all(self) -> None:
+        """Start all registered agents"""
+        for agent_name in self._instances:
+            await self.start_agent(agent_name)
+
 # Global instance
 agent_controller = AgentController()

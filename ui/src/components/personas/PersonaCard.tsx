@@ -1,142 +1,75 @@
-'use client';
-
 import React from 'react';
-import { motion } from 'framer-motion';
-import { Zap, Share2, Users, Calendar, Hash, ArrowRight } from 'lucide-react';
+import { Card, CardContent } from '../ui/Card';
+import { Button } from '../ui/Button';
 
 export interface Persona {
     id: string;
     name: string;
+    emoji: string;
     description: string;
-    analysis_style: string;
-    sample_analysis: string;
-    topics: string[];
     usage_count: number;
-    created_at: string;
-    primary_color?: string; // e.g. '#00ff88'
-    avatar_emoji?: string; // e.g. '🤖'
+    is_active: boolean;
 }
 
-interface PersonaCardProps {
+export interface PersonaCardProps {
     persona: Persona;
-    onApply?: (id: string) => void;
-    onShare?: (id: string) => void;
+    onApply: (id: string) => void;
+    onEdit?: (id: string) => void;
+    className?: string;
 }
 
-export const PersonaCard: React.FC<PersonaCardProps> = ({ persona, onApply, onShare }) => {
-    const color = persona.primary_color || '#00d4ff'; // Default to cyan
-    const emoji = persona.avatar_emoji || '🤖';
-
+export function PersonaCard({ persona, onApply, onEdit, className = '' }: PersonaCardProps) {
     return (
-        <motion.div
-            whileHover={{ y: -5, scale: 1.02 }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            className="relative rounded-xl border bg-[rgba(26,31,58,0.8)] backdrop-blur-[20px] p-6 shadow-lg group overflow-hidden flex flex-col h-full"
-            style={{
-                borderColor: `${color}30`,
-            }}
+        <Card
+            className={`relative overflow-hidden transition-all ${persona.is_active ? 'border-accent ring-1 ring-accent/50' : ''
+                } ${className}`}
         >
-            {/* Background Glow */}
-            <div
-                className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none"
-                style={{ background: `radial-gradient(circle at top right, ${color} 0%, transparent 70%)` }}
-            />
+            {persona.is_active && (
+                <div className="absolute top-0 right-0 w-12 h-12 bg-accent/10 border-b border-l border-accent/20 rounded-bl-2xl flex items-start justify-end p-1.5">
+                    <svg className="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                </div>
+            )}
 
-            {/* Header */}
-            <div className="flex justify-between items-start mb-4 relative z-10">
-                <div className="flex items-center space-x-4">
-                    <div
-                        className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-inner border border-white/5"
-                        style={{ backgroundColor: `${color}20`, boxShadow: `inset 0 0 10px ${color}10` }}
-                    >
-                        {emoji}
+            <CardContent className="p-5 flex flex-col h-full">
+                <div className="flex items-center gap-3 mb-3">
+                    <div className="w-12 h-12 rounded-2xl bg-bg-subtle border border-border flex items-center justify-center text-2xl shadow-sm">
+                        {persona.emoji}
                     </div>
                     <div>
-                        <h3 className="text-xl font-bold font-sans text-white decoration-2 underline-offset-4 group-hover:underline" style={{ textDecorationColor: color }}>
-                            {persona.name}
-                        </h3>
-                        <div className="text-xs font-mono text-[#a0a0a0] flex items-center mt-1">
-                            <Zap className="w-3 h-3 mr-1" style={{ color }} />
-                            {persona.analysis_style}
-                        </div>
+                        <h3 className="font-semibold text-text-primary">{persona.name}</h3>
+                        <span className="text-xs text-text-muted">Used {persona.usage_count} times</span>
                     </div>
                 </div>
-            </div>
 
-            {/* Description */}
-            <p className="text-sm font-sans text-gray-300 mb-4 line-clamp-2 relative z-10 flex-grow">
-                {persona.description}
-            </p>
-
-            {/* Sample Analysis Preview */}
-            <div className="bg-[#1a1f3a]/60 rounded-lg p-3 border border-white/5 mb-4 relative z-10 group-hover:bg-[#1a1f3a]/80 transition-colors">
-                <span className="text-[10px] font-mono text-[#a0a0a0] uppercase tracking-wider mb-1 block">Sample Output</span>
-                <p className="text-xs font-mono text-gray-400 italic line-clamp-2 leading-relaxed">
-                    "{persona.sample_analysis}"
+                <p className="text-sm text-text-secondary leading-relaxed mb-5 flex-1 line-clamp-3">
+                    {persona.description}
                 </p>
-            </div>
 
-            {/* Topics / Tags */}
-            <div className="flex flex-wrap gap-2 mb-5 relative z-10">
-                {persona.topics.slice(0, 3).map((topic, i) => (
-                    <span
-                        key={i}
-                        className="flex items-center text-[10px] font-mono px-2 py-1 rounded bg-black/30 border border-white/5 text-[#a0a0a0]"
+                <div className="flex items-center gap-2 mt-auto pt-4 border-t border-border">
+                    <Button
+                        variant={persona.is_active ? "secondary" : "primary"}
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => onApply(persona.id)}
+                        disabled={persona.is_active}
                     >
-                        <Hash className="w-2.5 h-2.5 mr-0.5 opacity-50" />
-                        {topic}
-                    </span>
-                ))}
-                {persona.topics.length > 3 && (
-                    <span className="text-[10px] font-mono px-2 py-1 rounded bg-black/30 border border-white/5 text-[#a0a0a0]">
-                        +{persona.topics.length - 3}
-                    </span>
-                )}
-            </div>
+                        {persona.is_active ? 'Active' : 'Apply'}
+                    </Button>
 
-            {/* Footer Stats & Actions */}
-            <div className="pt-4 border-t border-white/10 mt-auto flex items-center justify-between relative z-10">
-                {/* Stats */}
-                <div className="flex items-center space-x-4">
-                    <div className="flex items-center text-xs font-mono text-[#a0a0a0]" title="Usage Count">
-                        <Users className="w-3 h-3 mr-1" />
-                        {persona.usage_count.toLocaleString()}
-                    </div>
-                    <div className="flex items-center text-xs font-mono text-[#a0a0a0]" title="Created Date">
-                        <Calendar className="w-3 h-3 mr-1" />
-                        {new Date(persona.created_at).toLocaleDateString([], { month: 'short', year: 'numeric' })}
-                    </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex items-center space-x-2">
-                    {onShare && (
-                        <button
-                            onClick={() => onShare(persona.id)}
-                            className="p-2 rounded-lg bg-black/20 hover:bg-black/40 border border-transparent hover:border-white/10 text-[#a0a0a0] hover:text-white transition-all"
-                            title="Share to Network"
+                    {onEdit && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onEdit(persona.id)}
+                            className="px-3"
                         >
-                            <Share2 className="w-4 h-4" />
-                        </button>
-                    )}
-
-                    {onApply && (
-                        <button
-                            onClick={() => onApply(persona.id)}
-                            className="flex items-center px-3 py-1.5 rounded-lg text-sm font-bold font-sans transition-all hover:scale-105 active:scale-95"
-                            style={{
-                                backgroundColor: `${color}20`,
-                                color: color,
-                                border: `1px solid ${color}50`,
-                                boxShadow: `0 0 10px ${color}20`
-                            }}
-                        >
-                            Apply
-                            <ArrowRight className="w-3 h-3 ml-1.5" />
-                        </button>
+                            Edit
+                        </Button>
                     )}
                 </div>
-            </div>
-        </motion.div>
+            </CardContent>
+        </Card>
     );
-};
+}
