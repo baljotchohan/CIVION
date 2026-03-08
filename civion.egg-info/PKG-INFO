@@ -1,9 +1,22 @@
 Metadata-Version: 2.4
 Name: civion
 Version: 2.0.0
-Summary: CIVION - AI Intelligence Command Center
+Summary: CIVION — AI Intelligence Command Center
 Author: CIVION Team
 License: MIT
+Project-URL: Homepage, https://openclaw.ai
+Project-URL: Repository, https://github.com/civion/civion
+Project-URL: Documentation, https://docs.openclaw.ai
+Project-URL: Bug Tracker, https://github.com/civion/civion/issues
+Keywords: ai,intelligence,agents,llm,monitoring
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
 Requires-Python: >=3.10
 Description-Content-Type: text/markdown
 Requires-Dist: fastapi>=0.104.0
@@ -23,7 +36,126 @@ Requires-Dist: feedparser>=6.0.0
 Requires-Dist: beautifulsoup4>=4.12.0
 Requires-Dist: python-dateutil>=2.8.0
 Requires-Dist: python-multipart>=0.0.6
+Requires-Dist: click>=8.1.0
+Provides-Extra: anthropic
+Requires-Dist: anthropic>=0.20.0; extra == "anthropic"
+Provides-Extra: openai
+Requires-Dist: openai>=1.10.0; extra == "openai"
+Provides-Extra: gemini
+Requires-Dist: google-generativeai>=0.4.0; extra == "gemini"
+Provides-Extra: mistral
+Requires-Dist: mistralai>=0.4.0; extra == "mistral"
+Provides-Extra: groq
+Requires-Dist: groq>=0.4.0; extra == "groq"
+Provides-Extra: cohere
+Requires-Dist: cohere>=5.0.0; extra == "cohere"
+Provides-Extra: together
+Requires-Dist: together>=1.0.0; extra == "together"
+Provides-Extra: ollama
+Requires-Dist: ollama>=0.1.0; extra == "ollama"
+Provides-Extra: bedrock
+Requires-Dist: boto3>=1.34.0; extra == "bedrock"
+Provides-Extra: huggingface
+Requires-Dist: huggingface-hub>=0.20.0; extra == "huggingface"
+Provides-Extra: all-providers
+Requires-Dist: anthropic>=0.20.0; extra == "all-providers"
+Requires-Dist: openai>=1.10.0; extra == "all-providers"
+Requires-Dist: google-generativeai>=0.4.0; extra == "all-providers"
+Requires-Dist: mistralai>=0.4.0; extra == "all-providers"
+Requires-Dist: groq>=0.4.0; extra == "all-providers"
+Requires-Dist: cohere>=5.0.0; extra == "all-providers"
 Provides-Extra: dev
 Requires-Dist: pytest>=7.4.0; extra == "dev"
 Requires-Dist: pytest-asyncio>=0.23.0; extra == "dev"
 Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+
+# CIVION v2 — AI Intelligence Command Center
+
+> Watch AI think in real-time. 
+> Multi-agent reasoning. Confidence cascades. Predictions.
+
+## ⚡ Quick Start (30 seconds)
+
+```bash
+pip install civion
+civion setup
+civion start
+```
+
+That's it. CIVION opens in your browser automatically.
+
+## 🤖 Supported AI Providers
+
+| Provider | Models | Cost | Notes |
+|---|---|---|---|
+| Anthropic | Claude 3.5, Claude 3 | Medium | Best reasoning |
+| OpenAI | GPT-4o, GPT-3.5 | Medium | General purpose |
+| Google | Gemini 1.5 Pro/Flash | Low | Long context |
+| Mistral | Large, Medium, Small | Low | EU data |
+| Groq | Llama 3.1, Mixtral | Very Low | Ultra fast |
+| Cohere | Command R+ | Low | Enterprise |
+| Together AI | 50+ open models | Very Low | Open source |
+| Perplexity | Sonar models | Low | Web search |
+| **Ollama** | **Any local model** | **FREE** | **100% private** |
+| Azure OpenAI | GPT-4 deployments | Enterprise | Azure |
+| AWS Bedrock | Claude, Llama | Pay/use | AWS |
+| HuggingFace | Any HF model | Free tier | Research |
+
+## 🛠 CLI Commands
+
+```bash
+civion setup          # Configure CIVION (run first)
+civion start          # Start the system
+civion status         # Check what's running
+civion guide          # Interactive user guide
+civion doctor         # Diagnose and fix issues
+civion update         # Update to latest version
+civion agent start --all  # Start all agents
+civion config add-key openai  # Add API key
+```
+
+## 📖 What is CIVION?
+
+CIVION is an AI intelligence platform where you watch AI 
+agents reason in real-time:
+
+- **Multi-Agent Debates** — Agents propose, challenge, verify
+- **Confidence Cascades** — Watch confidence grow from 55% to 92%  
+- **Predictions** — Probabilistic forecasts with evidence
+- **Custom Personas** — Analyze through any lens
+- **Global Network** — Share findings with researchers worldwide
+- **ARIA Assistant** — Built-in AI that knows your entire system
+
+## 📋 Requirements
+
+- Python 3.10+
+- At least ONE LLM API key (or Ollama for free local AI)
+- 500MB disk space
+- Internet connection (or Ollama for offline use)
+
+## 🔑 Getting API Keys
+
+### Free Options
+- **Ollama**: https://ollama.ai (runs locally, no key needed)
+- **Groq**: https://console.groq.com (generous free tier)
+- **HuggingFace**: https://huggingface.co/settings/tokens
+
+### Paid Options  
+- **Anthropic**: https://console.anthropic.com ($5 free credits)
+- **OpenAI**: https://platform.openai.com/api-keys ($5 free)
+- **Google**: https://aistudio.google.com/app/apikey (free tier)
+
+## 🐛 Troubleshooting
+
+```bash
+civion doctor    # auto-diagnose and fix
+civion logs      # view logs
+civion reset     # start fresh
+```
+
+Common issues:
+- **Port in use**: civion doctor will offer to kill it
+- **Invalid API key**: civion config test-key anthropic
+- **Agents not starting**: check civion status

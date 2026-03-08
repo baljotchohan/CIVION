@@ -132,9 +132,45 @@ async def websocket_endpoint(websocket: WebSocket):
         await manager.disconnect(websocket)
 
 
+# ── Static Files & Frontend ─────────────────────────
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
+
+# Serve bundled frontend
+static_path = Path(__file__).parent.parent / "static" / "ui"
+if static_path.exists():
+    # Mount the static files at root
+    # Note: This should be after API routes to avoid overlap
+    app.mount("/", StaticFiles(directory=str(static_path), html=True), name="frontend")
+else:
+    @app.get("/")
+    async def root():
+        return {
+            "name": "CIVION",
+            "version": "2.0.0",
+            "status": "online",
+            "message": "Frontend bundle not found. Run 'civion setup' or build frontend.",
+            "docs": "/api/docs",
+            "api": "/api/v1",
+        }
+
 # ── Error Handlers ───────────────────────────────────
+# (Keep existing handlers but adjust for SPA if needed)
 @app.exception_handler(404)
 async def not_found_handler(request: Request, exc):
+    # If API request, return JSON
+    if request.url.path.startswith("/api"):
+        return JSONResponse(
+            status_code=404,
+            content={"error": "Not found", "path": str(request.url.path)},
+        )
+    
+    # If frontend request and index.html exists, return it (client-side routing)
+    index_file = static_path / "index.html"
+    if index_file.exists():
+        from fastapi.responses import FileResponse
+        return FileResponse(index_file)
+        
     return JSONResponse(
         status_code=404,
         content={"error": "Not found", "path": str(request.url.path)},

@@ -1,130 +1,88 @@
-<div align="center">
-  <img src="assets/logo.png" width="200" height="200" alt="CIVION Logo">
-  <h1>■ CIVION v2</h1>
-  <p><b>Global AI Intelligence Command Center</b></p>
+# CIVION v2 — AI Intelligence Command Center
 
-  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-  [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
-  [![Next.js](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org/)
-  [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.0-38B2AC.svg)](https://tailwindcss.com/)
-</div>
+> Watch AI think in real-time. 
+> Multi-agent reasoning. Confidence cascades. Predictions.
 
----
-
-## 🌟 Overview
-
-**CIVION** is a production-grade, multi-agent intelligence platform designed for real-time global monitoring, reasoning, and predictive analytics. It orchestrates a swarm of specialized AI agents to synthesize insights from heterogeneous data sources—ranging from GitHub trends and market signals to cyber threat feeds and research papers.
-
-Built with a **dark sci-fi aesthetic**, the platform provides a high-fidelity "Command Center" experience, combining glassmorphism, neon accents, and real-time data streaming through a robust FastAPI backend and an optimized Next.js frontend.
-
----
-
-## 📸 Interface Preview
-
-<div align="center">
-  <img src="assets/dashboard_preview.png" width="90%" alt="CIVION Dashboard">
-  <p><i>The COMMAND CENTER dashboard featuring real-time status, active signals, and confidence cascade.</i></p>
-</div>
-
----
-
-## 🚀 Key Features
-
-### 🤖 Intelligent Swarm
-- **7+ Specialized Agents**: Dedicated agents for Research (arXiv), Code (GitHub), Markets (Crypto), Security (CVEs), Startups (HN), and more.
-- **Concurrent Orchestration**: High-performance agent engine managing parallel data ingestion and analysis.
-- **Mock Fallback**: Robust design ensuring UI stability even during API rate limits or outages.
-
-### 🧠 Advanced Reasoning
-- **Multi-Agent Debate**: A unique consensus loop where agents debate contradictory evidence to reach a high-confidence synthesis.
-- **Confidence Cascade**: Probabilistic scoring system that tracks the evolution of intelligence from raw signals to verified insights.
-- **Persona System**: Analyze data through custom lenses (e.g., "The Skeptic", "The Optimist") to uncover hidden patterns.
-
-### 🔮 Predictive Intelligence
-- **Automated Forecasting**: Engines that generate probabilistic predictions for market shifts and tech breakthroughs.
-- **KPI Tracking**: Real-time accuracy monitoring with full verification history.
-
-### 🛠 Modern Tech Stack
-- **Backend**: FastAPI, Pydantic, Rich, Asyncio, SQLite.
-- **Frontend**: Next.js 14 (App Router), Tailwind CSS, Framer Motion, Lucide React.
-- **Workflow**: 60+ API endpoints, real-time WebSocket pub/sub, and a comprehensive CLI.
-
----
-
-## 🏗 System Architecture
-
-```mermaid
-graph TD
-    User([User]) <--> CLI[CIVION CLI]
-    User <--> Web[Next.js Dashboard]
-    
-    subgraph "CIVION Core"
-        API[FastAPI Server] <--> WS[WebSocket Stream]
-        API <--> DB[(SQLite Storage)]
-        
-        subgraph "AI Engines"
-            GP[Goal Planner]
-            AE[Agent Engine]
-            SE[Signal Engine]
-            PE[Prediction Engine]
-            RL[Reasoning Loop]
-        end
-        
-        AE --> Github[GitHub Agent]
-        AE --> Arxiv[arXiv Agent]
-        AE --> Market[Market Agent]
-        AE --> Threat[Cyber Threat Agent]
-    end
-    
-    Web <--> API
-    WS -.-> Web
-```
-
----
-
-## 🚦 Quick Start
-
-### 1. Installation
-
-Ensure you have Python 3.10+ installed. It is recommended to use a virtual environment.
+## ⚡ Quick Start (30 seconds)
 
 ```bash
-# Clone and install
-git clone https://github.com/baljotchohan/CIVION.git
-cd CIVION
-pip install -e .
-
-# Initial setup
+pip install civion
 civion setup
-```
-
-### 2. Launching the Command Center
-
-CIVION manages both the backend and frontend. Simply run:
-
-```bash
 civion start
 ```
 
-This will automatically:
-1. Start the **FastAPI Intelligence Server**.
-2. Start the **Next.js Command Dashboard**.
-3. **Launch your browser** to the dashboard interface.
+That's it. CIVION opens in your browser automatically.
 
-### 3. Maintenance
+## 🤖 Supported AI Providers
 
-Keep your installation up to date with a single command:
+| Provider | Models | Cost | Notes |
+|---|---|---|---|
+| Anthropic | Claude 3.5, Claude 3 | Medium | Best reasoning |
+| OpenAI | GPT-4o, GPT-3.5 | Medium | General purpose |
+| Google | Gemini 1.5 Pro/Flash | Low | Long context |
+| Mistral | Large, Medium, Small | Low | EU data |
+| Groq | Llama 3.1, Mixtral | Very Low | Ultra fast |
+| Cohere | Command R+ | Low | Enterprise |
+| Together AI | 50+ open models | Very Low | Open source |
+| Perplexity | Sonar models | Low | Web search |
+| **Ollama** | **Any local model** | **FREE** | **100% private** |
+| Azure OpenAI | GPT-4 deployments | Enterprise | Azure |
+| AWS Bedrock | Claude, Llama | Pay/use | AWS |
+| HuggingFace | Any HF model | Free tier | Research |
+
+## 🛠 CLI Commands
 
 ```bash
-civion update
+civion setup          # Configure CIVION (run first)
+civion start          # Start the system
+civion status         # Check what's running
+civion guide          # Interactive user guide
+civion doctor         # Diagnose and fix issues
+civion update         # Update to latest version
+civion agent start --all  # Start all agents
+civion config add-key openai  # Add API key
 ```
 
----
+## 📖 What is CIVION?
 
-## 🛡 License
+CIVION is an AI intelligence platform where you watch AI 
+agents reason in real-time:
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+- **Multi-Agent Debates** — Agents propose, challenge, verify
+- **Confidence Cascades** — Watch confidence grow from 55% to 92%  
+- **Predictions** — Probabilistic forecasts with evidence
+- **Custom Personas** — Analyze through any lens
+- **Global Network** — Share findings with researchers worldwide
+- **ARIA Assistant** — Built-in AI that knows your entire system
 
-<div align="center">
-  <p>Built with ❤️ by the CIVION Swarm</p>
-</div>
+## 📋 Requirements
+
+- Python 3.10+
+- At least ONE LLM API key (or Ollama for free local AI)
+- 500MB disk space
+- Internet connection (or Ollama for offline use)
+
+## 🔑 Getting API Keys
+
+### Free Options
+- **Ollama**: https://ollama.ai (runs locally, no key needed)
+- **Groq**: https://console.groq.com (generous free tier)
+- **HuggingFace**: https://huggingface.co/settings/tokens
+
+### Paid Options  
+- **Anthropic**: https://console.anthropic.com ($5 free credits)
+- **OpenAI**: https://platform.openai.com/api-keys ($5 free)
+- **Google**: https://aistudio.google.com/app/apikey (free tier)
+
+## 🐛 Troubleshooting
+
+```bash
+civion doctor    # auto-diagnose and fix
+civion logs      # view logs
+civion reset     # start fresh
+```
+
+Common issues:
+- **Port in use**: civion doctor will offer to kill it
+- **Invalid API key**: civion config test-key anthropic
+- **Agents not starting**: check civion status

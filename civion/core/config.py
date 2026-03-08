@@ -1,77 +1,125 @@
 """
 CIVION Core Configuration
-Loads settings from .env file with sensible defaults.
+Manages system settings and secrets stored in ~/.civion/
 """
-from __future__ import annotations
 import os
+import json
+import logging
 from pathlib import Path
-from typing import Optional
-from pydantic_settings import BaseSettings
-from pydantic import Field
+from typing import Any, Dict, List, Optional
 
+class CivionConfig:
+    """Universal configuration manager for CIVION"""
+    
+    # Storage paths
+    config_dir: Path = Path.home() / ".civion"
+    config_file: Path = config_dir / "config.json"
+    secrets_file: Path = config_dir / ".secrets"
+    db_path: Path = config_dir / "civion.db"
+    logs_dir: Path = config_dir / "logs"
+    
+    def __init__(self):
+        # Default settings
+        self.llm_provider: str = "anthropic"
+        self.llm_model: str = "claude-sonnet-4-5"
+        self.llm_fallback_providers: List[str] = []
+        
+        self.port: int = 8000
+        self.host: str = "0.0.0.0"
+        self.auto_open_browser: bool = True
+        
+        self.max_concurrent_agents: int = 5
+        self.agent_refresh_interval: int = 60
+        
+        self.enable_p2p_network: bool = True
+        self.mock_mode: bool = False
+        self.log_level: str = "INFO"
+        
+        # Ensure directories exist
+        self.config_dir.mkdir(parents=True, exist_ok=True)
+        self.logs_dir.mkdir(parents=True, exist_ok=True)
+        
+        # If config exists, load it
+        if self.config_exists():
+            self._load_from_file()
 
-class Settings(BaseSettings):
-    """Application settings loaded from environment variables."""
+    def _load_from_file(self):
+        """Load settings from config.json"""
+        try:
+            if self.config_file.exists():
+                with open(self.config_file, 'r') as f:
+                    data = json.load(f)
+                    for key, value in data.items():
+                        if hasattr(self, key):
+                            setattr(self, key, value)
+        except Exception as e:
+            logging.error(f"Failed to load config: {e}")
 
-    # ── App ──────────────────────────────────────────
-    app_name: str = "CIVION"
-    app_version: str = "2.0.0"
-    debug: bool = Field(default=True, alias="CIVION_DEBUG")
+    def save(self):
+        """Save settings to config.json"""
+        try:
+            self.config_dir.mkdir(parents=True, exist_ok=True)
+            with open(self.config_file, 'w') as f:
+                json.dump(self.to_dict(), f, indent=2)
+        except Exception as e:
+            logging.error(f"Failed to save config: {e}")
 
-    # ── Server ───────────────────────────────────────
-    host: str = Field(default="0.0.0.0", alias="CIVION_HOST")
-    port: int = Field(default=8000, alias="CIVION_PORT")
-    frontend_url: str = Field(default="http://localhost:3000", alias="FRONTEND_URL")
+    @classmethod
+    def load(cls) -> "CivionConfig":
+        """Factory method to load config"""
+        return cls()
 
-    # ── LLM Providers ────────────────────────────────
-    llm_provider: str = Field(default="mock", alias="LLM_PROVIDER")
-    openai_api_key: Optional[str] = Field(default=None, alias="OPENAI_API_KEY")
-    anthropic_api_key: Optional[str] = Field(default=None, alias="ANTHROPIC_API_KEY")
-    google_api_key: Optional[str] = Field(default=None, alias="GOOGLE_API_KEY")
+    def get_secret(self, key: str) -> Optional[str]:
+        """Get secret from .secrets file"""
+        try:
+            if not self.secrets_file.exists():
+                return os.environ.get(key)
+            
+            with open(self.secrets_file, 'r') as f:
+                secrets = json.load(f)
+                return secrets.get(key) or os.environ.get(key)
+        except Exception as e:
+            logging.error(f"Failed to read secrets: {e}")
+            return os.environ.get(key)
 
-    # ── External APIs ────────────────────────────────
-    github_token: Optional[str] = Field(default=None, alias="GITHUB_TOKEN")
-    news_api_key: Optional[str] = Field(default=None, alias="NEWS_API_KEY")
-    coingecko_api_key: Optional[str] = Field(default=None, alias="COINGECKO_API_KEY")
+    def set_secret(self, key: str, value: str):
+        """Save secret to .secrets file with restricted permissions"""
+        try:
+            secrets = {}
+            if self.secrets_file.exists():
+                with open(self.secrets_file, 'r') as f:
+                    secrets = json.load(f)
+            
+            secrets[key] = value
+            
+            # Write with restricted permissions
+            with open(self.secrets_file, 'w') as f:
+                json.dump(secrets, f, indent=2)
+            
+            # chmod 600
+            os.chmod(self.secrets_file, 0o600)
+        except Exception as e:
+            logging.error(f"Failed to save secret: {e}")
 
-    # ── Database ─────────────────────────────────────
-    database_url: str = Field(
-        default="sqlite+aiosqlite:///~/.civion/civion.db", alias="DATABASE_URL"
-    )
+    def config_exists(self) -> bool:
+        """Check if config file exists"""
+        return self.config_file.exists()
 
-    # ── Autonomous Mode ──────────────────────────────
-    autonomous_enabled: bool = Field(default=False, alias="AUTONOMOUS_ENABLED")
-    autonomous_interval_minutes: int = Field(
-        default=30, alias="AUTONOMOUS_INTERVAL_MINUTES"
-    )
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert settings to dict (excluding paths and methods)"""
+        return {
+            "llm_provider": self.llm_provider,
+            "llm_model": self.llm_model,
+            "llm_fallback_providers": self.llm_fallback_providers,
+            "port": self.port,
+            "host": self.host,
+            "auto_open_browser": self.auto_open_browser,
+            "max_concurrent_agents": self.max_concurrent_agents,
+            "agent_refresh_interval": self.agent_refresh_interval,
+            "enable_p2p_network": self.enable_p2p_network,
+            "mock_mode": self.mock_mode,
+            "log_level": self.log_level
+        }
 
-    # ── Network ──────────────────────────────────────
-    network_enabled: bool = Field(default=False, alias="NETWORK_ENABLED")
-    network_name: str = Field(default="civion-global", alias="NETWORK_NAME")
-
-    # ── Paths ────────────────────────────────────────
-    @property
-    def data_dir(self) -> Path:
-        d = Path.home() / ".civion"
-        d.mkdir(parents=True, exist_ok=True)
-        return d
-
-    @property
-    def db_path(self) -> Path:
-        return self.data_dir / "civion.db"
-
-    @property
-    def logs_dir(self) -> Path:
-        d = self.data_dir / "logs"
-        d.mkdir(parents=True, exist_ok=True)
-        return d
-
-    model_config = {
-        "env_file": ".env",
-        "env_file_encoding": "utf-8",
-        "extra": "ignore",
-    }
-
-
-# Singleton
-settings = Settings()
+# Global config instance
+config = CivionConfig()

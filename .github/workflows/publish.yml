@@ -1,0 +1,76 @@
+name: Build and Publish to PyPI
+
+on:
+  push:
+    tags:
+      - 'v*'  # triggers on v2.0.0, v2.1.0, etc.
+
+jobs:
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ui/package-lock.json
+      
+      - name: Install and Build Frontend
+        run: |
+          cd ui
+          npm ci
+          npm run build
+      
+      - name: Bundle Frontend into Package
+        run: |
+          mkdir -p civion/static/ui
+          cp -r ui/out/* civion/static/ui/
+      
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: civion/static/ui/
+
+  build-and-publish:
+    needs: build-frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Download frontend build
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: civion/static/ui/
+      
+      - name: Install build tools
+        run: pip install build twine
+      
+      - name: Build package
+        run: python -m build
+      
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload dist/* || echo "Skipping publish - missing token"
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/*
+          body: |
+            ## CIVION ${{ github.ref_name }}
+            
+            Install: `pip install civion==${{ github.ref_name }}`
+            
+            See CHANGELOG.md for details.

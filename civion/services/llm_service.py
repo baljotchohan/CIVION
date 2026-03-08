@@ -1,168 +1,93 @@
 """
-CIVION LLM Service
-Multi-provider abstraction for Claude, GPT, Gemini with mock fallback.
+CIVION Universal LLM Service
+Managed all providers and handles fallbacks.
 """
-from __future__ import annotations
-import json
-import random
-from typing import Optional, Dict, Any, List
-from civion.core.logger import get_logger
-from civion.core.config import settings
+import logging
+from typing import AsyncGenerator, Dict, List, Optional, Any
 
-log = get_logger("llm")
-
+from civion.core.config import config
+from civion.services.providers import (
+    AnthropicProvider, OpenAIProvider, GeminiProvider, MistralProvider,
+    GroqProvider, CohereProvider, TogetherProvider, PerplexityProvider,
+    OllamaProvider, AzureOpenAIProvider, BedrockProvider, HuggingFaceProvider
+)
 
 class LLMService:
-    """Unified interface to multiple LLM providers."""
+    """Universal LLM service supporting all providers"""
+    
+    PROVIDERS = {
+        "anthropic": AnthropicProvider,
+        "openai": OpenAIProvider,
+        "gemini": GeminiProvider,
+        "mistral": MistralProvider,
+        "groq": GroqProvider,
+        "cohere": CohereProvider,
+        "together": TogetherProvider,
+        "perplexity": PerplexityProvider,
+        "ollama": OllamaProvider,
+        "azure": AzureOpenAIProvider,
+        "bedrock": BedrockProvider,
+        "huggingface": HuggingFaceProvider,
+    }
 
-    def __init__(self):
-        self.provider = settings.llm_provider
-        self._client = None
+    def __init__(self, provider: str = None, model: str = None):
+        self.primary_provider_name = provider or config.llm_provider
+        self.primary_model = model or config.llm_model
+        self.fallbacks = config.llm_fallback_providers
 
-    async def generate(
-        self,
-        prompt: str,
-        system: str = "You are CIVION, an AI intelligence analyst.",
-        temperature: float = 0.7,
-        max_tokens: int = 1024,
-    ) -> str:
-        """Generate text from the configured LLM provider."""
-        if self.provider == "mock":
-            return await self._mock_generate(prompt)
-        elif self.provider == "openai":
-            return await self._openai_generate(prompt, system, temperature, max_tokens)
-        elif self.provider == "anthropic":
-            return await self._anthropic_generate(prompt, system, temperature, max_tokens)
-        elif self.provider == "google":
-            return await self._google_generate(prompt, system, temperature, max_tokens)
-        else:
-            log.warning(f"Unknown provider '{self.provider}', falling back to mock")
-            return await self._mock_generate(prompt)
+    def _get_provider(self, name: str, model: str = None) -> Any:
+        provider_cls = self.PROVIDERS.get(name)
+        if not provider_cls:
+            raise ValueError(f"Unknown provider: {name}")
+        
+        # Get credentials from config
+        api_key = config.get_secret(f"{name.upper()}_API_KEY")
+        # For Gemini, it's GOOGLE_API_KEY
+        if name == "gemini" and not api_key:
+            api_key = config.get_secret("GOOGLE_API_KEY")
+        
+        return provider_cls(api_key=api_key, model=model)
 
-    async def analyze(self, data: str, instruction: str) -> Dict[str, Any]:
-        """Analyze data and return structured JSON."""
-        prompt = f"""Analyze the following data and respond in JSON format.
+    async def complete(self, prompt: str, **kwargs) -> str:
+        """Completion with automated fallback"""
+        providers_to_try = [self.primary_provider_name] + self.fallbacks
+        
+        last_error = ""
+        for p_name in providers_to_try:
+            try:
+                provider = self._get_provider(p_name, self.primary_model if p_name == self.primary_provider_name else None)
+                result = await provider.complete(prompt, **kwargs)
+                if result and not result.startswith("Error"):
+                    return result
+                last_error = result
+            except Exception as e:
+                logging.error(f"Provider {p_name} failed: {e}")
+                last_error = str(e)
+        
+        return f"All LLM providers failed. Last error: {last_error}"
 
-Instruction: {instruction}
-
-Data:
-{data}
-
-Respond with valid JSON only."""
-        result = await self.generate(prompt)
+    async def stream(self, prompt: str, **kwargs) -> AsyncGenerator[str, None]:
+        """Streaming completion from active provider"""
         try:
-            return json.loads(result)
-        except json.JSONDecodeError:
-            return {"analysis": result, "raw": True}
-
-    async def _openai_generate(
-        self, prompt: str, system: str, temperature: float, max_tokens: int
-    ) -> str:
-        try:
-            import httpx
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(
-                    "https://api.openai.com/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {settings.openai_api_key}"},
-                    json={
-                        "model": "gpt-4o-mini",
-                        "messages": [
-                            {"role": "system", "content": system},
-                            {"role": "user", "content": prompt},
-                        ],
-                        "temperature": temperature,
-                        "max_tokens": max_tokens,
-                    },
-                    timeout=30.0,
-                )
-                resp.raise_for_status()
-                return resp.json()["choices"][0]["message"]["content"]
+            provider = self._get_provider(self.primary_provider_name, self.primary_model)
+            async for chunk in provider.stream(prompt, **kwargs):
+                yield chunk
         except Exception as e:
-            log.error(f"OpenAI error: {e}")
-            return await self._mock_generate(prompt)
+            logging.error(f"Streaming failed: {e}")
+            yield f"Error: {str(e)}"
 
-    async def _anthropic_generate(
-        self, prompt: str, system: str, temperature: float, max_tokens: int
-    ) -> str:
-        try:
-            import httpx
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(
-                    "https://api.anthropic.com/v1/messages",
-                    headers={
-                        "x-api-key": settings.anthropic_api_key,
-                        "anthropic-version": "2023-06-01",
-                        "content-type": "application/json",
-                    },
-                    json={
-                        "model": "claude-3-5-sonnet-20241022",
-                        "system": system,
-                        "messages": [{"role": "user", "content": prompt}],
-                        "temperature": temperature,
-                        "max_tokens": max_tokens,
-                    },
-                    timeout=30.0,
-                )
-                resp.raise_for_status()
-                return resp.json()["content"][0]["text"]
-        except Exception as e:
-            log.error(f"Anthropic error: {e}")
-            return await self._mock_generate(prompt)
+    @classmethod
+    async def test_all_connections(cls) -> Dict[str, bool]:
+        """Test all available providers"""
+        results = {}
+        for name in cls.PROVIDERS:
+            try:
+                svc = cls(provider=name)
+                provider = svc._get_provider(name)
+                results[name] = await provider.test_connection()
+            except:
+                results[name] = False
+        return results
 
-    async def _google_generate(
-        self, prompt: str, system: str, temperature: float, max_tokens: int
-    ) -> str:
-        try:
-            import httpx
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(
-                    f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={settings.google_api_key}",
-                    json={
-                        "contents": [{"parts": [{"text": f"{system}\n\n{prompt}"}]}],
-                        "generationConfig": {
-                            "temperature": temperature,
-                            "maxOutputTokens": max_tokens,
-                        },
-                    },
-                    timeout=30.0,
-                )
-                resp.raise_for_status()
-                return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
-        except Exception as e:
-            log.error(f"Google error: {e}")
-            return await self._mock_generate(prompt)
-
-    async def _mock_generate(self, prompt: str) -> str:
-        """Generate mock intelligence responses."""
-        topics = [
-            "emerging AI robotics ecosystem", "quantum computing breakthrough",
-            "decentralized finance disruption", "biotech convergence trend",
-            "cybersecurity threat evolution", "edge computing paradigm shift",
-        ]
-        analyses = [
-            f"Analysis indicates a significant shift in {random.choice(topics)}. "
-            f"Confidence level: {random.uniform(0.6, 0.95):.2f}. "
-            f"Multiple data sources confirm this trend with {random.randint(3, 12)} corroborating signals.",
-            f"Cross-referencing {random.randint(5, 20)} sources reveals "
-            f"convergence in {random.choice(topics)}. "
-            f"This pattern has historical parallels with a {random.uniform(0.7, 0.92):.0%} match rate.",
-            f"Predictive models suggest {random.choice(topics)} will accelerate "
-            f"within {random.randint(2, 18)} months. "
-            f"Key drivers: funding ({random.randint(10, 500)}M), talent migration, regulatory shifts.",
-        ]
-        return random.choice(analyses)
-
-    @property
-    def is_configured(self) -> bool:
-        """Check if a real LLM provider is configured."""
-        if self.provider == "openai":
-            return bool(settings.openai_api_key)
-        elif self.provider == "anthropic":
-            return bool(settings.anthropic_api_key)
-        elif self.provider == "google":
-            return bool(settings.google_api_key)
-        return True  # mock is always configured
-
-
-# Singleton
+# Singleton instance
 llm_service = LLMService()
