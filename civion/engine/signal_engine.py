@@ -2,7 +2,7 @@ import asyncio
 import logging
 from typing import List, Optional
 from uuid import uuid4
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 
 from civion.api.websocket import manager
 
@@ -27,7 +27,7 @@ class SignalEngine:
             "confidence": confidence,
             "strength": data.get("strength", confidence),
             "signal_type": data.get("type", "generic"),
-            "timestamp": datetime.now(UTC).isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
             "evidence": data.get("evidence", []),
             "tags": data.get("tags", []),
             "url": data.get("url", None)

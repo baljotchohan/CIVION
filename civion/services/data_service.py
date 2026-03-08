@@ -5,7 +5,7 @@ Central data persistence layer.
 from __future__ import annotations
 import json
 import uuid
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from civion.core.logger import get_logger
 
@@ -27,7 +27,7 @@ class DataService:
     async def save_goal(self, goal: Dict) -> str:
         if "id" not in goal:
             goal["id"] = str(uuid.uuid4())[:8]
-        goal["updated_at"] = datetime.now(UTC).isoformat()
+        goal["updated_at"] = datetime.now(timezone.utc).isoformat()
         self._goals[goal["id"]] = goal
         return goal["id"]
 
@@ -44,7 +44,7 @@ class DataService:
     async def save_insight(self, insight: Dict) -> str:
         if "id" not in insight:
             insight["id"] = str(uuid.uuid4())[:8]
-        insight["created_at"] = datetime.now(UTC).isoformat()
+        insight["created_at"] = datetime.now(timezone.utc).isoformat()
         self._insights[insight["id"]] = insight
         return insight["id"]
 
@@ -63,7 +63,7 @@ class DataService:
     async def save_signal(self, signal: Dict) -> str:
         if "id" not in signal:
             signal["id"] = str(uuid.uuid4())[:8]
-        signal["detected_at"] = datetime.now(UTC).isoformat()
+        signal["detected_at"] = datetime.now(timezone.utc).isoformat()
         self._signals[signal["id"]] = signal
         return signal["id"]
 
@@ -92,7 +92,7 @@ class DataService:
 
     # ── Events ───────────────────────────────────────
     async def log_event(self, event: Dict) -> None:
-        event["timestamp"] = datetime.now(UTC).isoformat()
+        event["timestamp"] = datetime.now(timezone.utc).isoformat()
         self._events.append(event)
         if len(self._events) > 1000:
             self._events = self._events[-500:]
@@ -107,7 +107,7 @@ class DataService:
     async def log_agent_activity(self, agent_name: str, entry: Dict) -> None:
         if agent_name not in self._agent_logs:
             self._agent_logs[agent_name] = []
-        entry["timestamp"] = datetime.now(UTC).isoformat()
+        entry["timestamp"] = datetime.now(timezone.utc).isoformat()
         self._agent_logs[agent_name].append(entry)
         if len(self._agent_logs[agent_name]) > 500:
             self._agent_logs[agent_name] = self._agent_logs[agent_name][-250:]

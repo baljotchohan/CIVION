@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 from civion.core.logger import engine_logger
 from civion.services.llm_service import llm_service
 from civion.utils.helpers import generate_id, now_iso
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 
 log = engine_logger("persona_system")
 
@@ -73,7 +73,7 @@ class PersonaSystem:
             system_prompt=system_prompt,
             reasoning_style=style,
             created_by=created_by,
-            created_at=datetime.now(UTC).isoformat() + "Z"
+            created_at=datetime.now(timezone.utc).isoformat() + "Z"
         )
         self._personas.append(persona)
         log.info(f"Persona created: {name}")
