@@ -119,7 +119,15 @@ def start(
     
     import uvicorn
     try:
-        uvicorn.run("civion.api.server:app", host=host, port=port, reload=True)
+        # Ensure project root is in path for uvicorn to resolve the package
+        sys.path.insert(0, str(PROJECT_ROOT))
+        uvicorn.run(
+            "civion.api.server:app", 
+            host=host, 
+            port=port, 
+            reload=True, 
+            reload_dirs=[str(PROJECT_ROOT / "civion")]
+        )
     finally:
         if frontend_proc:
             console.print("\n[yellow]⏹[/] Shutting down frontend...")

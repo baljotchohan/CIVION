@@ -14,20 +14,28 @@ class ConnectionManager:
         self._counter = 0
 
     async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self._counter += 1
-        client_id = f"client_{self._counter}"
-        
-        connection_data = {
-            "websocket": websocket,
-            "client_id": client_id,
-            "subscriptions": set() # Empty means receive all by default until subscribe sent, or explicit. Usually we start receiving all, but prompt implies explicit. We'll default to all for safety, but respect subscriptions if provided.
-        }
-        self.active_connections.append(connection_data)
-        logger.info(f"WebSocket client connected: {client_id}")
-        
-        # Send initial confirmation
-        await websocket.send_text(json.dumps({"type": "connected", "client_id": client_id}))
+        try:
+            await websocket.accept()
+            self._counter += 1
+            client_id = f"client_{self._counter}"
+            
+            connection_data = {
+                "websocket": websocket,
+                "client_id": client_id,
+                "subscriptions": set() 
+            }
+            self.active_connections.append(connection_data)
+            logger.info(f"WebSocket client connected: {client_id}")
+            
+            # Send initial confirmation with consistent format
+            await websocket.send_text(json.dumps({
+                "type": "connected", 
+                "data": {"client_id": client_id}
+            }))
+        except Exception as e:
+            logger.error(f"Error during WebSocket connect: {e}")
+            # Ensure cleanup if partially connected
+            self.disconnect(websocket)
 
     def disconnect(self, websocket: WebSocket):
         connection_to_remove = None

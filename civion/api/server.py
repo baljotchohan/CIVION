@@ -105,8 +105,8 @@ async def legacy_status():
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint for real-time updates"""
-    await manager.connect(websocket)
     try:
+        await manager.connect(websocket)
         while True:
             # Keep connection alive, listen for messages
             data_str = await websocket.receive_text()

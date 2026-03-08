@@ -33,10 +33,22 @@ def get_system_status() -> Dict[str, str]:
 @router.get("/health")
 def get_system_health() -> Dict[str, Any]:
     """Detailed health check for all subsystems, driving Alive vs Dead UI."""
-    keys_set = any(_config_store["api_keys"].values())
-    agents_running = 0 # Currently mocked to 0 to show IDLE state initially
+    from civion.engine.agent_engine import agent_engine
+    from civion.core.config import settings
+    from civion.api.websocket import manager
     
-    if not keys_set:
+    # Check if any real API keys are configured (not None and not empty)
+    api_keys = {
+        "openai": bool(settings.openai_api_key),
+        "anthropic": bool(settings.anthropic_api_key),
+        "google": bool(settings.google_api_key),
+        "github": bool(settings.github_token),
+    }
+    
+    keys_set = any(api_keys.values())
+    agents_running = agent_engine.active_count
+    
+    if not keys_set and settings.llm_provider != "mock":
         health = "dead"
     elif agents_running == 0:
         health = "idle"
@@ -46,37 +58,42 @@ def get_system_health() -> Dict[str, Any]:
     return {
         "health": health,
         "backend_online": True,
-        "api_keys": _config_store["api_keys"],
+        "api_keys": api_keys,
         "agents_running": agents_running,
-        "agents_total": 7,
-        "ws_clients": 0,  # We would inject real ConnectionManager stats here
+        "agents_total": agent_engine.total_count,
+        "ws_clients": len(manager.active_connections),
         "uptime_seconds": int(time.time() - SYSTEM_START_TIME),
         "version": "2.0.0"
     }
 
 @router.get("/stats")
-def get_system_stats() -> Dict[str, Any]:
+async def get_system_stats() -> Dict[str, Any]:
+    from civion.engine.agent_engine import agent_engine
+    from civion.services.data_service import data_service
+    
     current_uptime = int(time.time() - SYSTEM_START_TIME)
+    stats = await data_service.get_stats()
     
     return {
-        "active_agents": 4,          
-        "signals_today": 128,        
-        "predictions_made": 24,      
-        "network_peers": 12,         
+        "active_agents": agent_engine.active_count,          
+        "signals_today": stats.get("signals", 0),        
+        "predictions_made": stats.get("predictions", 0),      
+        "network_peers": 0, # P2P not fully implemented in stats yet         
         "uptime_seconds": current_uptime,
-        "confidence_avg": 0.85,      
+        "confidence_avg": 0.85, # Keep this or compute from insights if available      
         "version": "2.0.0"
     }
 
 @router.get("/config")
 def get_system_config() -> Dict[str, Any]:
+    from civion.core.config import settings
     return {
-        "environment": "development",
-        "llm_provider": "claude",
-        "log_level": "INFO",
+        "environment": "development" if settings.debug else "production",
+        "llm_provider": settings.llm_provider,
+        "log_level": "DEBUG" if settings.debug else "INFO",
         "features": {
-            "network_sharing": True,
-            "mock_mode": True
+            "network_sharing": settings.network_enabled,
+            "autonomous_mode": settings.autonomous_enabled
         }
     }
 

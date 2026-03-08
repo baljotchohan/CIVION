@@ -44,6 +44,7 @@ class BaseAgent(ABC):
         self._error_count = 0
         self._total_insights = 0
         self._total_signals = 0
+        self._start_time: Optional[float] = None
 
     # ── Abstract Methods ─────────────────────────────
     @abstractmethod
@@ -121,11 +122,13 @@ class BaseAgent(ABC):
     async def start(self):
         """Start continuous scanning."""
         self._running = True
+        self._start_time = asyncio.get_event_loop().time()
         self.log.info(f"[bold green]{self.name}[/] started")
 
     async def stop(self):
         """Stop continuous scanning."""
         self._running = False
+        self._start_time = None
         self.state = AgentState.STOPPED
         self.log.info(f"[bold yellow]{self.name}[/] stopped")
 
@@ -145,4 +148,5 @@ class BaseAgent(ABC):
             "error_count": self._error_count,
             "total_insights": self._total_insights,
             "total_signals": self._total_signals,
+            "uptime_seconds": int(asyncio.get_event_loop().time() - self._start_time) if self._running and self._start_time else 0,
         }

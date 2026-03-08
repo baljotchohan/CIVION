@@ -27,7 +27,7 @@ def map_agent_to_frontend_type(agent_dict: Dict[str, Any]) -> Dict[str, Any]:
         "last_active": agent_dict.get("last_run") or "",
         "signals_found": agent_dict.get("total_signals", 0),
         "current_task": agent_dict.get("description", ""),
-        "uptime_seconds": 0 if not agent_dict.get("running") else int(time.time()) # mock uptime if needed, ideally real
+        "uptime_seconds": agent_dict.get("uptime_seconds", 0)
     }
 
 @router.get("")

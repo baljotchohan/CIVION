@@ -36,7 +36,7 @@ class Settings(BaseSettings):
 
     # ── Database ─────────────────────────────────────
     database_url: str = Field(
-        default="sqlite+aiosqlite:///./civion.db", alias="DATABASE_URL"
+        default="sqlite+aiosqlite:///~/.civion/civion.db", alias="DATABASE_URL"
     )
 
     # ── Autonomous Mode ──────────────────────────────
