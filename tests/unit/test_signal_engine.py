@@ -1,79 +1,101 @@
 import pytest
-from datetime import datetime, timezone
+import asyncio
+from typing import Dict
+from unittest.mock import patch, AsyncMock
 from civion.engine.signal_engine import SignalEngine
-from civion.models.signal import Signal
 
 @pytest.fixture
-def engine():
+def signal_engine():
     return SignalEngine()
 
-def test_initialization(engine):
-    assert len(engine.signals) == 0
-    assert len(engine.subscribers) == 0
+@pytest.mark.asyncio
+async def test_engine_init(signal_engine):
+    assert len(signal_engine.signals) == 0
 
 @pytest.mark.asyncio
-async def test_process_signal_valid(engine):
-    sig = Signal(source="github", title="Test", confidence=0.8, strength=0.7, signal_type="code", timestamp=datetime.now(timezone.utc).isoformat())
-    await engine.process_signal(sig)
-    assert len(engine.signals) == 1
-    assert engine.signals[0].id == sig.id
+async def test_process_valid_signal(signal_engine):
+    data = {"title": "Test sig", "description": "desc", "tags": ["test"]}
+    sig = await signal_engine.process_signal("github", data, 0.9)
+    assert sig["source"] == "github"
+    assert sig["confidence"] == 0.9
+    assert sig["title"] == "Test sig"
+    assert len(signal_engine.signals) == 1
 
 @pytest.mark.asyncio
-async def test_process_signal_empty(engine):
-    with pytest.raises(ValueError):
-        await engine.process_signal(Signal(source="", title="", confidence=0, strength=0, signal_type="", timestamp=""))
+async def test_process_signal_generates_id(signal_engine):
+    data = {"title": "Test"}
+    sig = await signal_engine.process_signal("github", data, 0.5)
+    assert sig["id"].startswith("sig_")
+    
+@pytest.mark.asyncio
+async def test_process_signal_defaults(signal_engine):
+    data = {}
+    sig = await signal_engine.process_signal("source1", data, 0.5)
+    assert sig["title"] == "Event from source1"
+    assert sig["signal_type"] == "generic"
+    assert len(sig["tags"]) == 0
 
 @pytest.mark.asyncio
-async def test_subscribe(engine):
-    cb = lambda x: x
-    engine.subscribe(cb)
-    assert len(engine.subscribers) == 1
-    assert engine.subscribers[0] == cb
+async def test_get_recent_signals_empty(signal_engine):
+    sigs = await signal_engine.get_recent_signals(10)
+    assert len(sigs) == 0
 
 @pytest.mark.asyncio
-async def test_unsubscribe(engine):
-    cb = lambda x: x
-    engine.subscribe(cb)
-    engine.unsubscribe(cb)
-    assert len(engine.subscribers) == 0
-
-@pytest.mark.asyncio
-async def test_get_recent_signals(engine):
-    for i in range(15):
-        await engine.process_signal(Signal(source=f"src{i}", title=f"T{i}", confidence=0.8, strength=0.7, signal_type="code", timestamp=datetime.now(timezone.utc).isoformat()))
-    recent = engine.get_recent_signals(10)
-    assert len(recent) == 10
-    assert recent[0].title == "T14" # most recent
-
-@pytest.mark.asyncio
-async def test_filter_signals_by_source(engine):
-    await engine.process_signal(Signal(source="github", title="T1", confidence=0.8, strength=0.7, signal_type="code", timestamp=datetime.now(timezone.utc).isoformat()))
-    await engine.process_signal(Signal(source="arxiv", title="T2", confidence=0.8, strength=0.7, signal_type="code", timestamp=datetime.now(timezone.utc).isoformat()))
-    filtered = engine.filter_signals(source="github")
-    assert len(filtered) == 1
-    assert filtered[0].source == "github"
-
-@pytest.mark.asyncio
-async def test_filter_signals_by_type(engine):
-    await engine.process_signal(Signal(source="github", title="T1", confidence=0.8, strength=0.7, signal_type="type_a", timestamp=datetime.now(timezone.utc).isoformat()))
-    await engine.process_signal(Signal(source="arxiv", title="T2", confidence=0.8, strength=0.7, signal_type="type_b", timestamp=datetime.now(timezone.utc).isoformat()))
-    filtered = engine.filter_signals(signal_type="type_a")
-    assert len(filtered) == 1
-    assert filtered[0].signal_type == "type_a"
-
-@pytest.mark.asyncio
-async def test_calculate_signal_strength(engine):
-    s = engine.calculate_strength([
-        Signal(source="a", title="1", confidence=0.8, strength=0.7, signal_type="a", timestamp=""),
-        Signal(source="a", title="2", confidence=0.9, strength=0.8, signal_type="a", timestamp="")
-    ])
-    assert s > 0.0
-
-@pytest.mark.asyncio
-async def test_detect_patterns(engine):
-    # detect pattern should correlate signals
+async def test_get_recent_signals_count(signal_engine):
     for i in range(5):
-        await engine.process_signal(Signal(source="a", title="test cluster", confidence=0.8, strength=0.7, signal_type="a", timestamp=datetime.now(timezone.utc).isoformat()))
-    patterns = engine.detect_patterns()
-    assert len(patterns) >= 1
-    assert patterns[0]["type"] == "cluster"
+        await signal_engine.process_signal("src", {"title": f"T{i}"}, 0.5)
+    sigs = await signal_engine.get_recent_signals(3)
+    assert len(sigs) == 3
+
+@pytest.mark.asyncio
+async def test_get_recent_signals_ordering(signal_engine):
+    await signal_engine.process_signal("src", {"title": "First"}, 0.1)
+    await asyncio.sleep(0.01)
+    await signal_engine.process_signal("src", {"title": "Second"}, 0.2)
+    sigs = await signal_engine.get_recent_signals(10)
+    assert sigs[0]["title"] == "Second"  # reverse chron
+    assert sigs[1]["title"] == "First"
+
+@pytest.mark.asyncio
+async def test_process_signal_broadcasts(signal_engine):
+    with patch("civion.engine.signal_engine.manager.broadcast", new_callable=AsyncMock) as mock_broadcast:
+        data = {"title": "T"}
+        sig = await signal_engine.process_signal("github", data, 0.9)
+        mock_broadcast.assert_called_once_with("signal_detected", sig)
+
+@pytest.mark.asyncio
+async def test_signal_storage_limit(signal_engine):
+    # Could test pruning if implemented, for now just ensure addition works
+    for _ in range(100):
+        await signal_engine.process_signal("src", {}, 0.5)
+    assert len(signal_engine.signals) == 100
+
+@pytest.mark.asyncio
+async def test_signal_evidence_mapping(signal_engine):
+    data = {"evidence": ["link1", "link2"]}
+    sig = await signal_engine.process_signal("src", data, 0.5)
+    assert sig["evidence"] == ["link1", "link2"]
+
+@pytest.mark.asyncio
+async def test_signal_url_mapping(signal_engine):
+    data = {"url": "http://test.com"}
+    sig = await signal_engine.process_signal("src", data, 0.5)
+    assert sig["url"] == "http://test.com"
+
+@pytest.mark.asyncio
+async def test_signal_strength_mapping(signal_engine):
+    data = {"strength": 0.99}
+    sig = await signal_engine.process_signal("src", data, 0.5)
+    assert sig["strength"] == 0.99
+
+@pytest.mark.asyncio
+async def test_signal_strength_fallback(signal_engine):
+    data = {}
+    sig = await signal_engine.process_signal("src", data, 0.5)
+    assert sig["strength"] == 0.5
+
+@pytest.mark.asyncio
+async def test_massive_concurrency(signal_engine):
+    tasks = [signal_engine.process_signal("src", {}, 0.5) for _ in range(500)]
+    await asyncio.gather(*tasks)
+    assert len(signal_engine.signals) == 500

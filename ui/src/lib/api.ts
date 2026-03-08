@@ -1,122 +1,69 @@
-/**
- * CIVION API Client
- * Fetch-based API client for all backend endpoints.
- */
+import {
+    SystemStats,
+    Agent,
+    Prediction,
+    Persona,
+    Signal,
+    Peer
+} from '../types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const API_V1 = `${API_BASE}/api/v1`;
 
-async function request<T>(url: string, options?: RequestInit): Promise<T> {
-    const res = await fetch(url, {
+export class ApiError extends Error {
+    public status?: number;
+    constructor(message: string, status?: number) {
+        super(message);
+        this.status = status;
+        this.name = 'ApiError';
+    }
+}
+
+async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    const res = await fetch(`${API_V1}${endpoint}`, {
         headers: { 'Content-Type': 'application/json', ...options?.headers },
         ...options,
     });
     if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(err.error || `HTTP ${res.status}`);
+        let message = `HTTP ${res.status}`;
+        try {
+            const err = await res.json();
+            if (err.error) message = err.error;
+            else if (err.detail) message = err.detail;
+        } catch (e) {
+            message = res.statusText || message;
+        }
+        throw new ApiError(message, res.status);
     }
     return res.json();
 }
 
-// ── Goals ──────────────────────────────────────────
-export const goalsApi = {
-    list: () => request<any[]>(`${API_V1}/goals`),
-    get: (id: string) => request<any>(`${API_V1}/goals/${id}`),
-    create: (data: { title: string; description?: string; priority?: number }) =>
-        request<any>(`${API_V1}/goals`, { method: 'POST', body: JSON.stringify(data) }),
-    decompose: (id: string) => request<any>(`${API_V1}/goals/${id}/decompose`, { method: 'POST' }),
-    execute: (id: string) => request<any>(`${API_V1}/goals/${id}/execute`, { method: 'POST' }),
-    progress: (id: string) => request<any>(`${API_V1}/goals/${id}/progress`),
-    delete: (id: string) => request<any>(`${API_V1}/goals/${id}`, { method: 'DELETE' }),
-};
+// ── System ─────────────────────────────────────────
+export const getStats = () => fetchApi<SystemStats>('/system/stats');
 
 // ── Agents ─────────────────────────────────────────
-export const agentsApi = {
-    list: () => request<any[]>(`${API_V1}/agents`),
-    get: (name: string) => request<any>(`${API_V1}/agents/${name}`),
-    start: (name: string) => request<any>(`${API_V1}/agents/${name}/start`, { method: 'POST' }),
-    stop: (name: string) => request<any>(`${API_V1}/agents/${name}/stop`, { method: 'POST' }),
-    restart: (name: string) => request<any>(`${API_V1}/agents/${name}/restart`, { method: 'POST' }),
-    run: (name: string) => request<any>(`${API_V1}/agents/${name}/run`, { method: 'POST' }),
-    logs: (name: string) => request<any[]>(`${API_V1}/agents/${name}/logs`),
-    runAll: () => request<any[]>(`${API_V1}/agents/run-all`, { method: 'POST' }),
-};
-
-// ── Signals ────────────────────────────────────────
-export const signalsApi = {
-    list: (source?: string) => request<any[]>(`${API_V1}/signals${source ? `?source=${source}` : ''}`),
-    get: (id: string) => request<any>(`${API_V1}/signals/${id}`),
-    summary: () => request<any>(`${API_V1}/signals/summary`),
-    patterns: () => request<any[]>(`${API_V1}/signals/patterns`),
-};
-
-// ── Insights ───────────────────────────────────────
-export const insightsApi = {
-    list: (limit?: number) => request<any[]>(`${API_V1}/insights${limit ? `?limit=${limit}` : ''}`),
-    get: (id: string) => request<any>(`${API_V1}/insights/${id}`),
-    search: (query: string) => request<any[]>(`${API_V1}/insights/search/${query}`),
-};
+export const getAgents = () => fetchApi<Agent[]>('/agents');
+export const startAgent = (id: string) => fetchApi<void>(`/agents/${id}/start`, { method: 'POST' });
+export const stopAgent = (id: string) => fetchApi<void>(`/agents/${id}/stop`, { method: 'POST' });
+export const restartAgent = (id: string) => fetchApi<void>(`/agents/${id}/restart`, { method: 'POST' });
+export const getAgentLogs = (id: string) => fetchApi<string[]>(`/agents/${id}/logs`);
 
 // ── Predictions ────────────────────────────────────
-export const predictionsApi = {
-    list: () => request<any[]>(`${API_V1}/predictions`),
-    get: (id: string) => request<any>(`${API_V1}/predictions/${id}`),
-    accuracy: () => request<any>(`${API_V1}/predictions/accuracy`),
-    analyze: (insights: any[]) =>
-        request<any[]>(`${API_V1}/predictions/analyze`, { method: 'POST', body: JSON.stringify(insights) }),
-};
+export const getPredictions = (filters?: string) => fetchApi<Prediction[]>(`/predictions${filters || ''}`);
+export const analyzePrediction = (goal: string) => fetchApi<Prediction[]>('/predictions/analyze', { method: 'POST', body: JSON.stringify({ goal }) });
 
 // ── Personas ───────────────────────────────────────
-export const personasApi = {
-    list: () => request<any[]>(`${API_V1}/personas`),
-    get: (id: string) => request<any>(`${API_V1}/personas/${id}`),
-    create: (data: { name: string; description?: string; prompt?: string; style?: string }) =>
-        request<any>(`${API_V1}/personas`, { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: string, data: any) =>
-        request<any>(`${API_V1}/personas/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-    delete: (id: string) => request<any>(`${API_V1}/personas/${id}`, { method: 'DELETE' }),
-};
+export const getPersonas = () => fetchApi<Persona[]>('/personas');
+export const createPersona = (data: Partial<Persona>) => fetchApi<Persona>('/personas', { method: 'POST', body: JSON.stringify(data) });
+export const sharePersona = (id: string) => fetchApi<void>(`/personas/${id}/share`, { method: 'POST' });
 
-// ── Reasoning ──────────────────────────────────────
-export const reasoningApi = {
-    list: () => request<any[]>(`${API_V1}/reasoning`),
-    get: (id: string) => request<any>(`${API_V1}/reasoning/${id}`),
-    debate: (id: string) => request<any>(`${API_V1}/reasoning/${id}/debate`),
-    start: (topic: string) => request<any>(`${API_V1}/reasoning/start?topic=${topic}`, { method: 'POST' }),
-};
+// ── Signals ────────────────────────────────────────
+export const getSignals = (filters?: string) => fetchApi<Signal[]>(`/signals${filters || ''}`);
 
 // ── Network ────────────────────────────────────────
-export const networkApi = {
-    status: () => request<any>(`${API_V1}/network/status`),
-    peers: () => request<any[]>(`${API_V1}/network/peers`),
-    join: (network: string) =>
-        request<any>(`${API_V1}/network/join`, { method: 'POST', body: JSON.stringify({ network }) }),
-    consensus: () => request<any>(`${API_V1}/network/consensus`),
-};
+export const getNetwork = () => fetchApi<{ peers: Peer[], status: object }>('/network');
+export const joinNetwork = () => fetchApi<void>('/network/join', { method: 'POST' });
 
-// ── System ─────────────────────────────────────────
-export const systemApi = {
-    status: () => request<any>(`${API_V1}/system/status`),
-    health: () => request<any>(`${API_V1}/system/health`),
-    config: () => request<any>(`${API_V1}/system/config`),
-    stats: () => request<any>(`${API_V1}/system/stats`),
-};
-
-// ── Marketplace ────────────────────────────────────
-export const marketplaceApi = {
-    agents: (query?: string) => request<any[]>(`${API_V1}/marketplace/agents${query ? `?query=${query}` : ''}`),
-    personas: (query?: string) => request<any[]>(`${API_V1}/marketplace/personas${query ? `?query=${query}` : ''}`),
-    install: (name: string) => request<any>(`${API_V1}/marketplace/install/${name}`, { method: 'POST' }),
-};
-
-// ── Events ─────────────────────────────────────────
-export const eventsApi = {
-    list: (limit?: number) => request<any[]>(`${API_V1}/events${limit ? `?limit=${limit}` : ''}`),
-};
-
-// ── Memory ─────────────────────────────────────────
-export const memoryApi = {
-    graph: () => request<any>(`${API_V1}/memory`),
-    stats: () => request<any>(`${API_V1}/memory/stats`),
-    search: (query: string) => request<any[]>(`${API_V1}/memory/search/${query}`),
-};
+// ── Reasoning ──────────────────────────────────────
+export const getReasoningLoops = () => fetchApi<object[]>('/reasoning');
+export const startReasoningSession = (goal: string) => fetchApi<object>('/reasoning', { method: 'POST', body: JSON.stringify({ goal }) });

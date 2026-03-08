@@ -1,159 +1,232 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { AgentStatusGrid, Agent } from '@/components/agents/AgentStatusGrid';
-import { Bot, Play, Square, RefreshCcw, Cpu, MemoryStick, Activity, Terminal } from 'lucide-react';
-import { motion } from 'framer-motion';
-
-const mockAgents: Agent[] = [
-    { id: '1', name: 'Research Monitor', type: 'analysis', status: 'running', last_active: new Date().toISOString(), signals_found: 124, current_task: 'Scanning ArXiv for AI alignment papers', uptime_seconds: 3600 },
-    { id: '2', name: 'GitHub Trend', type: 'scanner', status: 'running', last_active: new Date().toISOString(), signals_found: 89, current_task: 'Analyzing new agent frameworks', uptime_seconds: 7200 },
-    { id: '3', name: 'Market Signal', type: 'finance', status: 'paused', last_active: new Date(Date.now() - 3600000).toISOString(), signals_found: 42, current_task: 'Awaiting market open', uptime_seconds: 0 },
-    { id: '4', name: 'Cyber Threat', type: 'security', status: 'error', last_active: new Date(Date.now() - 60000).toISOString(), signals_found: 5, current_task: 'API rate limit exceeded on Source D', uptime_seconds: 120 },
-    { id: '5', name: 'Sentiment Engine', type: 'analysis', status: 'running', last_active: new Date().toISOString(), signals_found: 432, current_task: 'Processing Twitter firehose for crypto sentiment', uptime_seconds: 14400 },
-    { id: '6', name: 'Startup Radar', type: 'discovery', status: 'stopped', last_active: new Date(Date.now() - 86400000).toISOString(), signals_found: 12, current_task: null, uptime_seconds: 0 }
-];
-
-const mockLogs = [
-    "[10:42:01] [sys] AgentController initialized",
-    "[10:42:05] [Research Monitor] Started scan cycle #42",
-    "[10:42:06] [Research Monitor] Found 3 new papers matching 'autonomous agents'",
-    "[10:42:10] [GitHub Trend] Detected fork velocity spike in repo A",
-    "[10:43:00] [Sentiment Engine] Processed 10k tweets. Polarity: +0.4",
-    "[10:45:12] [Cyber Threat] ERROR: Rate limit hit retrying in 60s...",
-];
+import React, { useState, useEffect, useRef } from 'react';
+import { useWebSocket } from '../../hooks/useWebSocket';
+import { getAgents, startAgent, stopAgent } from '../../lib/api';
+import { Agent } from '../../types';
+import { classNames, formatUptime } from '../../lib/utils';
+import { TerminalSquare, Play, Square, Activity, Cpu, Database } from 'lucide-react';
+import { AgentStatusGrid } from '../../components/agents/AgentStatusGrid';
+import { NeonButton } from '../../components/ui/NeonButton';
 
 export default function AgentsPage() {
-    const [agents, setAgents] = useState(mockAgents);
-    const [cpuUsage, setCpuUsage] = useState(45);
-    const [memUsage, setMemUsage] = useState(62);
+    const { subscribe } = useWebSocket();
+    const [agents, setAgents] = useState<Agent[]>([]);
+    const [logs, setLogs] = useState<string[]>([]);
+    const logsEndRef = useRef<HTMLDivElement>(null);
+    const [cpu, setCpu] = useState(35);
+    const [mem, setMem] = useState(45);
+    const [uptime, setUptime] = useState(3600);
+    const [isActionLoading, setIsActionLoading] = useState(false);
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            setCpuUsage(prev => Math.max(10, Math.min(95, prev + (Math.random() * 10 - 5))));
-            setMemUsage(prev => Math.max(20, Math.min(90, prev + (Math.random() * 4 - 2))));
-        }, 2000);
-        return () => clearInterval(interval);
+        const fetchAll = async () => {
+            try {
+                const data = await getAgents();
+                setAgents(data);
+
+                // Add an initial log
+                setLogs(prev => [...prev, `[${new Date().toLocaleTimeString('en-US', { hour12: false })}] [SYSTEM] Connected to agent control plane. Found ${data.length} agents.`]);
+            } catch (err) {
+                console.error("Failed to load agents");
+            }
+        };
+        fetchAll();
     }, []);
 
-    const handleStart = (id: string) => {
-        setAgents(prev => prev.map(a => a.id === id ? { ...a, status: 'running', uptime_seconds: 1 } : a));
+    // Live Uptime
+    useEffect(() => {
+        const timer = setInterval(() => setUptime(prev => prev + 1), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    // Fake System Resources Fluctuation
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCpu(prev => Math.max(20, Math.min(80, prev + (Math.random() * 10 - 5))));
+            setMem(prev => Math.max(30, Math.min(70, prev + (Math.random() * 6 - 3))));
+        }, 3000);
+        return () => clearInterval(timer);
+    }, []);
+
+    // Auto-scroll logs
+    useEffect(() => {
+        if (logsEndRef.current) {
+            logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [logs]);
+
+    // WebSocket Event Listeners
+    useEffect(() => {
+        const logEvent = (eventData: any, type: string) => {
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+            let msg = '';
+            let colorClass = 'text-white';
+
+            if (type === 'started') {
+                msg = `Initialized and active`;
+                colorClass = 'text-[#00d4ff]';
+            } else if (type === 'stopped') {
+                msg = `Safely halted`;
+                colorClass = 'text-[#a0a0a0]';
+            } else if (type === 'error') {
+                msg = `CRITICAL FAILURE: ${eventData.error_message || 'Unknown exception'}`;
+                colorClass = 'text-[#ff006e]';
+            } else if (type === 'task') {
+                msg = `Task update: ${eventData.task}`;
+                colorClass = 'text-[#00ff88]';
+            }
+
+            const logLine = `<span class="text-[#a0a0a0]">[${time}]</span> <span class="font-bold text-white">[${eventData.agent || eventData.name}]</span> <span class="${colorClass}">${msg}</span>`;
+
+            setLogs(prev => [...prev.slice(-99), logLine]);
+
+            // Also update the agent array state if needed, though AgentStatusGrid handles it via WS itself
+        };
+
+        const handleStart = (d: any) => logEvent(d, 'started');
+        const handleStop = (d: any) => logEvent(d, 'stopped');
+        const handleErr = (d: any) => logEvent(d, 'error');
+        const handleTask = (d: any) => logEvent(d, 'task');
+
+        const unsubStart = subscribe('agent_started', handleStart);
+        const unsubStop = subscribe('agent_stopped', handleStop);
+        const unsubError = subscribe('agent_error', handleErr);
+        const unsubTask = subscribe('agent_task_updated', handleTask);
+
+        return () => {
+            unsubStart();
+            unsubStop();
+            unsubError();
+            unsubTask();
+        };
+    }, [subscribe]);
+
+    // Handlers
+    const handleStartAll = async () => {
+        setIsActionLoading(true);
+        try {
+            // Ideally a dedicated endpoint for run-all, else loop
+            fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/agents/run-all`, { method: 'POST' });
+            setLogs(prev => [...prev, `[${new Date().toLocaleTimeString('en-US', { hour12: false })}] [SYSTEM] Executing cluster wide START sequence...`]);
+        } finally {
+            setIsActionLoading(false);
+        }
     };
 
-    const handleStop = (id: string) => {
-        setAgents(prev => prev.map(a => a.id === id ? { ...a, status: 'stopped', uptime_seconds: 0 } : a));
+    const handleStopAll = async () => {
+        setIsActionLoading(true);
+        try {
+            for (const a of agents) {
+                if (a.status !== 'stopped') await stopAgent(a.id);
+            }
+            setLogs(prev => [...prev, `[${new Date().toLocaleTimeString('en-US', { hour12: false })}] [SYSTEM] Executing cluster wide STOP sequence...`]);
+        } finally {
+            setIsActionLoading(false);
+        }
     };
-
-    const handleRestart = (id: string) => {
-        setAgents(prev => prev.map(a => a.id === id ? { ...a, status: 'running', uptime_seconds: 1 } : a));
-    };
-
-    const startAll = () => setAgents(prev => prev.map(a => ({ ...a, status: 'running', uptime_seconds: 1 })));
-    const stopAll = () => setAgents(prev => prev.map(a => ({ ...a, status: 'stopped', uptime_seconds: 0 })));
 
     return (
-        <div className="min-h-screen bg-[#0a0e27] text-white p-6 ml-[240px] flex flex-col space-y-6 pb-24 h-screen">
+        <div className="min-h-screen bg-[#0a0e27] text-white p-6 pb-64 flex flex-col space-y-6 relative">
 
-            {/* Header */}
-            <div className="flex justify-between items-center flex-shrink-0">
-                <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-lg bg-[#00ff88]/10 border border-[#00ff88]/30 flex items-center justify-center shadow-[0_0_15px_rgba(0,255,136,0.2)]">
-                        <Bot className="w-5 h-5 text-[#00ff88]" />
+            {/* HEADER */}
+            <header className="flex justify-between items-center bg-[rgba(26,31,58,0.8)] backdrop-blur-[20px] p-6 rounded-xl border border-[rgba(0,255,136,0.2)] shadow-[0_0_20px_rgba(0,255,136,0.1)] shrink-0">
+                <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 rounded-xl bg-[rgba(0,212,255,0.1)] border border-[#00d4ff]/50 flex items-center justify-center shadow-[0_0_15px_rgba(0,212,255,0.2)]">
+                        <TerminalSquare className="w-6 h-6 text-[#00d4ff]" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-black font-sans tracking-tight text-white">Agent Fleet</h1>
-                        <p className="text-xs font-mono text-[#a0a0a0]">Control and monitor autonomous agents</p>
+                        <h1 className="text-2xl font-sans tracking-widest font-bold text-white uppercase">Agent Control</h1>
+                        <p className="text-[#a0a0a0] font-sans text-sm mt-1">Autonomous fleet management and surveillance</p>
                     </div>
                 </div>
 
-                <div className="flex space-x-4">
-                    <button onClick={startAll} className="flex items-center px-4 py-2 rounded-lg bg-[#00ff88]/20 border border-[#00ff88]/50 text-[#00ff88] font-bold font-mono text-sm hover:bg-[#00ff88]/30 transition-colors shadow-[0_0_15px_rgba(0,255,136,0.2)]">
+                <div className="flex items-center space-x-4">
+                    <NeonButton variant="primary" onClick={handleStartAll} disabled={isActionLoading}>
                         <Play className="w-4 h-4 mr-2" /> Start All
-                    </button>
-                    <button onClick={stopAll} className="flex items-center px-4 py-2 rounded-lg bg-[#ff006e]/20 border border-[#ff006e]/50 text-[#ff006e] font-bold font-mono text-sm hover:bg-[#ff006e]/30 transition-colors shadow-[0_0_15px_rgba(255,0,110,0.2)]">
+                    </NeonButton>
+                    <NeonButton variant="danger" onClick={handleStopAll} disabled={isActionLoading}>
                         <Square className="w-4 h-4 mr-2" /> Stop All
-                    </button>
+                    </NeonButton>
+                </div>
+            </header>
+
+            {/* MIDDLE ROW */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-grow">
+
+                {/* SYSTEM RESOURCES PANEL (Left Col) */}
+                <div className="lg:col-span-1 flex flex-col space-y-6">
+                    <div className="bg-[rgba(26,31,58,0.8)] rounded-xl border border-[rgba(0,255,136,0.2)] backdrop-blur-[20px] p-6 shadow-[0_0_20px_rgba(0,255,136,0.1)]">
+                        <h3 className="text-sm font-sans uppercase tracking-widest text-white flex items-center mb-6">
+                            <Activity className="w-4 h-4 mr-2 text-[#00d4ff]" /> Cluster Health
+                        </h3>
+
+                        {/* CPU */}
+                        <div className="mb-6">
+                            <div className="flex justify-between text-xs font-mono mb-2">
+                                <span className="text-[#a0a0a0] flex items-center"><Cpu className="w-3 h-3 mr-1" /> CPU LOAD</span>
+                                <span className="text-[#00ff88]">{cpu.toFixed(1)}%</span>
+                            </div>
+                            <div className="w-full h-2 bg-[#1a1f3a] rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-[#00ff88] transition-all duration-1000 ease-out shadow-[0_0_10px_#00ff88]"
+                                    style={{ width: `${cpu}%` }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* MEMORY */}
+                        <div className="mb-6">
+                            <div className="flex justify-between text-xs font-mono mb-2">
+                                <span className="text-[#a0a0a0] flex items-center"><Database className="w-3 h-3 mr-1" /> MEMORY IO</span>
+                                <span className="text-[#00d4ff]">{mem.toFixed(1)}%</span>
+                            </div>
+                            <div className="w-full h-2 bg-[#1a1f3a] rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-[#00d4ff] transition-all duration-1000 ease-out shadow-[0_0_10px_#00d4ff]"
+                                    style={{ width: `${mem}%` }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* UPTIME */}
+                        <div className="pt-4 border-t border-[rgba(0,255,136,0.2)]">
+                            <div className="text-xs font-sans uppercase tracking-widest text-[#a0a0a0] mb-2">System Uptime</div>
+                            <div className="text-2xl font-mono text-white tracking-widest" suppressHydrationWarning>
+                                {formatUptime(uptime)}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* AGENT GRID (Right Cols) */}
+                <div className="lg:col-span-3 bg-[rgba(26,31,58,0.8)] rounded-xl border border-[rgba(0,255,136,0.2)] backdrop-blur-[20px] p-6 shadow-lg">
+                    <AgentStatusGrid
+                        agents={agents}
+                        onStart={startAgent}
+                        onStop={stopAgent}
+                        onRestart={async (id) => { await stopAgent(id); await new Promise(r => setTimeout(r, 1000)); await startAgent(id); }}
+                    />
                 </div>
             </div>
 
-            {/* System Resources */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-shrink-0">
-                <div className="bg-[#1a1f3a]/80 backdrop-blur rounded-xl border border-white/5 p-5 shadow-lg flex items-center space-x-6">
-                    <div className="p-3 bg-black/30 rounded-lg">
-                        <Cpu className="w-6 h-6 text-[#00d4ff]" />
-                    </div>
-                    <div className="flex-1">
-                        <div className="flex justify-between text-xs font-mono mb-2">
-                            <span className="text-[#a0a0a0] uppercase">CPU Load</span>
-                            <span className="text-[#00d4ff] font-bold">{cpuUsage.toFixed(1)}%</span>
-                        </div>
-                        <div className="h-2 w-full bg-black/50 rounded-full overflow-hidden">
-                            <motion.div
-                                className="h-full bg-gradient-to-r from-[#00d4ff] to-[#00ff88]"
-                                animate={{ width: `${cpuUsage}%` }}
-                                transition={{ duration: 1 }}
-                            />
-                        </div>
+            {/* FIXED BOTTOM TERMINAL LOGS */}
+            <div className="fixed bottom-0 left-[260px] right-0 h-56 bg-[#0a0e27] border-t border-[#00ff88]/30 shadow-[0_-10px_30px_rgba(0,255,136,0.1)] flex flex-col z-40 ml-1">
+                <div className="flex items-center justify-between px-4 py-2 border-b border-[#00ff88]/20 bg-[#1a1f3a]/80 shrink-0">
+                    <span className="text-xs font-sans uppercase tracking-widest text-[#00ff88] flex items-center">
+                        <TerminalSquare className="w-3 h-3 mr-2" /> Global stdout stream
+                    </span>
+                    <div className="flex space-x-2">
+                        <div className="w-2 h-2 rounded-full bg-[#ff006e]/50"></div>
+                        <div className="w-2 h-2 rounded-full bg-[#00d4ff]/50"></div>
+                        <div className="w-2 h-2 rounded-full bg-[#00ff88]/50"></div>
                     </div>
                 </div>
-
-                <div className="bg-[#1a1f3a]/80 backdrop-blur rounded-xl border border-white/5 p-5 shadow-lg flex items-center space-x-6">
-                    <div className="p-3 bg-black/30 rounded-lg">
-                        <MemoryStick className="w-6 h-6 text-[#9b59b6]" />
-                    </div>
-                    <div className="flex-1">
-                        <div className="flex justify-between text-xs font-mono mb-2">
-                            <span className="text-[#a0a0a0] uppercase">Memory Pkg</span>
-                            <span className="text-[#9b59b6] font-bold">{memUsage.toFixed(1)}%</span>
-                        </div>
-                        <div className="h-2 w-full bg-black/50 rounded-full overflow-hidden">
-                            <motion.div
-                                className="h-full bg-gradient-to-r from-[#9b59b6] to-[#ff006e]"
-                                animate={{ width: `${memUsage}%` }}
-                                transition={{ duration: 1 }}
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-[#1a1f3a]/80 backdrop-blur rounded-xl border border-white/5 p-5 shadow-lg flex items-center space-x-6">
-                    <div className="p-3 bg-black/30 rounded-lg">
-                        <Activity className="w-6 h-6 text-[#00ff88]" />
-                    </div>
-                    <div className="flex-1">
-                        <div className="text-xs font-mono text-[#a0a0a0] uppercase mb-1">Fleet Performance</div>
-                        <div className="text-2xl font-black font-sans text-white">
-                            {agents.reduce((acc, a) => acc + a.signals_found, 0).toLocaleString()}
-                            <span className="text-sm font-normal text-gray-500 ml-2 font-mono">signals/24h</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Main Grid */}
-            <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar pb-52 pr-2">
-                <AgentStatusGrid
-                    agents={agents}
-                    onStart={handleStart}
-                    onStop={handleStop}
-                    onRestart={handleRestart}
-                />
-            </div>
-
-            {/* Terminal Logs (Fixed Bottom) */}
-            <div className="fixed bottom-0 left-[240px] right-0 h-48 bg-[#050814] border-t border-[#00d4ff]/30 shadow-[0_-10px_30px_rgba(0,0,0,0.5)] flex flex-col">
-                <div className="p-2 border-b border-white/10 flex items-center bg-[#0a0e27]/80">
-                    <Terminal className="w-4 h-4 text-[#00d4ff] mr-2" />
-                    <span className="text-xs font-mono text-[#00d4ff] uppercase tracking-wider">System Activity Stream</span>
-                </div>
-                <div className="flex-1 p-4 overflow-y-auto font-mono text-xs custom-scrollbar space-y-1">
-                    {mockLogs.map((log, i) => (
-                        <div key={i} className="text-green-400 opacity-80 hover:opacity-100 flex items-baseline">
-                            <span className="text-blue-400 mr-2 opacity-50">$</span>
-                            <span dangerouslySetInnerHTML={{ __html: log.replace(/\[([^\]]+)\]/g, '<span class="text-pink-400">[$1]</span>') }} />
-                        </div>
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 font-mono text-sm tracking-tight space-y-1">
+                    {logs.map((log, i) => (
+                        <div key={i} dangerouslySetInnerHTML={{ __html: log }} />
                     ))}
-                    <div className="animate-pulse text-[#00d4ff] mt-2">_</div>
+                    <div ref={logsEndRef} />
                 </div>
             </div>
 

@@ -1,141 +1,134 @@
-'use client';
-
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { DebateMessage } from '../../types';
+import { classNames } from '../../lib/utils';
+import { CheckCircle2, MoreHorizontal } from 'lucide-react';
 
-export type AgentRole = "proposer" | "challenger" | "verifier" | "synthesizer";
-
-export interface DebateMessage {
-    id: string;
-    agent_name: string;
-    role: AgentRole;
-    content: string;
-    confidence: number;
-    timestamp: string;
-    is_final: boolean;
-}
-
-interface DebateViewerProps {
+export interface DebateViewerProps {
     debate: DebateMessage[];
     isActive: boolean;
 }
 
-const getRoleColor = (role: AgentRole) => {
-    switch (role) {
-        case 'proposer': return '#00d4ff'; // Cyan
-        case 'challenger': return '#ff006e'; // Pink
-        case 'verifier': return '#00ff88'; // Green
-        case 'synthesizer': return '#9b59b6'; // Purple
-        default: return '#ffffff';
-    }
-};
-
-const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-};
-
 export const DebateViewer: React.FC<DebateViewerProps> = ({ debate, isActive }) => {
-    const scrollRef = useRef<HTMLDivElement>(null);
+    const endRef = useRef<HTMLDivElement>(null);
 
-    // Auto-scroll to latest message
+    // Auto-scroll to bottom mathematically
     useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        if (endRef.current) {
+            endRef.current.scrollIntoView({ behavior: 'smooth' });
         }
-    }, [debate, isActive]);
+    }, [debate]);
 
-    const hasConclusion = debate.length > 0 && debate[debate.length - 1].is_final;
+    const getRoleColor = (role: string) => {
+        switch (role) {
+            case 'proposer': return '#00d4ff'; // Cyan
+            case 'challenger': return '#ff006e'; // Pink
+            case 'verifier': return '#00ff88'; // Green
+            case 'synthesizer': return '#9b59b6'; // Purple
+            default: return '#a0a0a0';
+        }
+    };
+
+    const isFinished = debate.length > 0 && debate[debate.length - 1].is_final;
+    const isTyping = isActive && !isFinished;
+    const finalMessage = isFinished ? debate[debate.length - 1] : null;
+
+    if (debate.length === 0) {
+        return (
+            <div className="flex-1 rounded-xl border border-[rgba(0,255,136,0.2)] bg-[rgba(26,31,58,0.8)] backdrop-blur-[20px] p-8 flex flex-col items-center justify-center text-center shadow-[0_0_20px_rgba(0,255,136,0.1)]">
+                <div className="w-16 h-16 rounded-full bg-[#1a1f3a] border border-[#00ff88]/20 flex items-center justify-center mb-4 text-[#a0a0a0] animate-pulse">
+                    🤖
+                </div>
+                <h3 className="text-xl font-sans text-white mb-2 tracking-wider">NO ACTIVE DEBATE</h3>
+                <p className="text-[#a0a0a0] font-sans">Start a goal to begin multi-agent reasoning.</p>
+            </div>
+        );
+    }
 
     return (
-        <div className="flex flex-col h-full bg-[rgba(26,31,58,0.8)] backdrop-blur-[20px] rounded-xl border border-[#00ff88]/20 shadow-[0_0_20px_rgba(0,255,136,0.1)] overflow-hidden">
+        <div className="flex flex-col h-full rounded-xl border border-[rgba(0,255,136,0.2)] bg-[rgba(26,31,58,0.8)] backdrop-blur-[20px] shadow-[0_0_20px_rgba(0,255,136,0.1)] overflow-hidden relative">
 
-            {/* Header */}
-            <div className="p-4 border-b border-[#00ff88]/20 flex justify-between items-center bg-[#1a1f3a]">
-                <h2 className="text-lg font-sans font-bold text-white flex items-center">
-                    <span className="mr-2">Live Debate Stream</span>
-                    {isActive && (
-                        <span className="flex h-3 w-3 relative">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00ff88] opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-3 w-3 bg-[#00ff88]"></span>
-                        </span>
-                    )}
-                </h2>
-
-                {hasConclusion && (
-                    <div className="px-3 py-1 rounded-full bg-[#9b59b6]/20 border border-[#9b59b6]/50 text-[#9b59b6] text-xs font-bold font-mono tracking-widest uppercase shadow-[0_0_10px_rgba(155,89,182,0.3)]">
-                        Consensus Reached
-                    </div>
-                )}
+            {/* Header Area */}
+            <div className="p-4 border-b border-[rgba(0,255,136,0.2)] bg-[#1a1f3a]/80 backdrop-blur-md flex justify-between items-center shrink-0 z-10">
+                <div className="flex items-center space-x-2">
+                    <span className="relative flex h-3 w-3">
+                        <span className={classNames("animate-ping absolute inline-flex h-full w-full rounded-full opacity-75", isActive ? "bg-[#00ff88]" : "bg-[#a0a0a0]")}></span>
+                        <span className={classNames("relative inline-flex rounded-full h-3 w-3", isActive ? "bg-[#00ff88]" : "bg-[#a0a0a0]")}></span>
+                    </span>
+                    <h2 className="text-sm font-sans uppercase tracking-widest text-[#00ff88]">Live Debate Stream</h2>
+                </div>
+                <div className="text-xs font-mono text-[#a0a0a0]">
+                    {debate.length} messages
+                </div>
             </div>
 
-            {/* Messages Area */}
-            <div
-                ref={scrollRef}
-                className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar scroll-smooth"
-            >
+            {/* Scrollable Message List */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
                 <AnimatePresence initial={false}>
-                    {debate.map((msg, i) => {
+                    {debate.map((msg, idx) => {
                         const color = getRoleColor(msg.role);
                         const isSynthesizer = msg.role === 'synthesizer';
+                        const isProposer = msg.role === 'proposer';
 
                         return (
                             <motion.div
                                 key={msg.id}
                                 initial={{ opacity: 0, y: 20, scale: 0.95 }}
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                                transition={{
-                                    type: 'spring',
-                                    stiffness: 260,
-                                    damping: 20,
-                                    delay: 0.1 // staggered feel
-                                }}
-                                className={`flex w-full ${isSynthesizer ? 'justify-center' : (msg.role === 'proposer' ? 'justify-start' : 'justify-end')}`}
+                                transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                                className={classNames(
+                                    "flex w-full",
+                                    isSynthesizer ? "justify-center" : (isProposer ? "justify-start" : "justify-end")
+                                )}
                             >
-                                <div className={`flex max-w-[85%] min-w-0 ${isSynthesizer ? 'flex-col items-center text-center' : (msg.role === 'proposer' ? 'flex-row' : 'flex-row-reverse')} gap-4`}>
+                                <div className={classNames(
+                                    "flex max-w-[85%] gap-4",
+                                    isSynthesizer ? "flex-col items-center" : (isProposer ? "flex-row" : "flex-row-reverse")
+                                )}>
 
                                     {/* Avatar */}
                                     <div
-                                        className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold font-mono text-sm border-2 shadow-lg"
-                                        style={{
-                                            borderColor: color,
-                                            backgroundColor: `${color}20`,
-                                            color: color,
-                                            boxShadow: `0 0 15px ${color}40`
-                                        }}
+                                        className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 font-bold font-mono text-sm shadow-lg overflow-hidden relative"
+                                        style={{ backgroundColor: `${color}15`, border: `1px solid ${color}` }}
                                     >
-                                        {getInitials(msg.agent_name)}
+                                        <span style={{ color }}>{msg.agent_name.substring(0, 2).toUpperCase()}</span>
+                                        <div className="absolute inset-0 opacity-20" style={{ background: `radial-gradient(circle at center, ${color} 0%, transparent 70%)` }} />
                                     </div>
 
-                                    {/* Message Bubble */}
-                                    <div className={`flex flex-col min-w-0 ${isSynthesizer ? 'items-center mt-3' : (msg.role === 'proposer' ? 'items-start' : 'items-end')}`}>
-                                        <div className="flex items-baseline space-x-2 mb-1 px-1">
-                                            <span className="text-xs font-bold font-sans" style={{ color }}>
-                                                {msg.agent_name}
-                                            </span>
-                                            <span className="text-[10px] text-[#a0a0a0] font-mono uppercase tracking-wider">
+                                    {/* Bubble */}
+                                    <div className={classNames(
+                                        "flex flex-col",
+                                        isSynthesizer ? "items-center text-center mt-2" : (isProposer ? "items-start" : "items-end")
+                                    )}>
+                                        <div className={classNames(
+                                            "flex items-baseline space-x-2 mb-1 px-1",
+                                            !isProposer && !isSynthesizer && "flex-row-reverse space-x-reverse"
+                                        )}>
+                                            <span className="text-xs font-bold font-sans uppercase tracking-wider" style={{ color }}>
                                                 {msg.role}
                                             </span>
-                                            <span className="text-[10px] text-[#a0a0a0] font-mono opacity-60" suppressHydrationWarning>
+                                            <span className="text-[10px] text-[#a0a0a0] font-mono opacity-60 ml-2" suppressHydrationWarning>
                                                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                             </span>
                                         </div>
 
                                         <div
-                                            className="p-4 rounded-xl text-sm font-sans leading-relaxed text-[#ffffff] backdrop-blur-md border relative group"
+                                            className="p-4 rounded-xl text-sm font-sans text-gray-200 leading-relaxed shadow-lg backdrop-blur-sm relative"
                                             style={{
-                                                backgroundColor: `${color}10`,
-                                                borderColor: `${color}30`,
-                                                borderTopLeftRadius: msg.role === 'proposer' && !isSynthesizer ? 0 : '0.75rem',
-                                                borderTopRightRadius: msg.role !== 'proposer' && !isSynthesizer ? 0 : '0.75rem',
+                                                backgroundColor: 'rgba(26, 31, 58, 0.4)',
+                                                border: `1px solid ${color}40`,
+                                                borderTopLeftRadius: isProposer && !isSynthesizer ? '0' : '0.75rem',
+                                                borderTopRightRadius: !isProposer && !isSynthesizer ? '0' : '0.75rem'
                                             }}
                                         >
                                             {msg.content}
 
-                                            {/* Confidence indicator hover */}
-                                            <div className="absolute top-0 right-0 -mt-2 -mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <div className="px-2 py-0.5 rounded text-[10px] font-mono font-bold font-black bg-[#0a0e27] border" style={{ borderColor: color, color }}>
-                                                    conf: {(msg.confidence * 100).toFixed(0)}%
-                                                </div>
+                                            {/* Confidence Chip */}
+                                            <div
+                                                className="absolute -bottom-2 -right-2 px-2 py-0.5 rounded text-[10px] font-mono font-bold border shadow-sm backdrop-blur-md"
+                                                style={{ backgroundColor: `${color}20`, borderColor: color, color: color }}
+                                            >
+                                                {(msg.confidence * 100).toFixed(1)}%
                                             </div>
                                         </div>
                                     </div>
@@ -146,21 +139,51 @@ export const DebateViewer: React.FC<DebateViewerProps> = ({ debate, isActive }) 
                 </AnimatePresence>
 
                 {/* Typing Indicator */}
-                {isActive && !hasConclusion && (
+                {isTyping && (
                     <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="flex items-center space-x-2 text-[#a0a0a0] text-sm font-mono mt-4 ml-2"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex justify-start w-full mt-4"
                     >
-                        <div className="flex space-x-1">
-                            <motion.div className="w-2 h-2 rounded-full bg-[#00d4ff]" animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0 }} />
-                            <motion.div className="w-2 h-2 rounded-full bg-[#ff006e]" animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }} />
-                            <motion.div className="w-2 h-2 rounded-full bg-[#00ff88]" animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }} />
+                        <div className="flex space-x-2 p-3 rounded-xl bg-[rgba(26,31,58,0.5)] border border-[#00ff88]/20 items-center justify-center shadow-lg">
+                            <motion.div
+                                animate={{ y: [0, -5, 0] }}
+                                transition={{ repeat: Infinity, duration: 0.6, delay: 0 }}
+                                className="w-2 h-2 rounded-full bg-[#00ff88]"
+                            />
+                            <motion.div
+                                animate={{ y: [0, -5, 0] }}
+                                transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }}
+                                className="w-2 h-2 rounded-full bg-[#00ff88]"
+                            />
+                            <motion.div
+                                animate={{ y: [0, -5, 0] }}
+                                transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }}
+                                className="w-2 h-2 rounded-full bg-[#00ff88]"
+                            />
                         </div>
-                        <span>Agents thinking...</span>
                     </motion.div>
                 )}
+
+                <div ref={endRef} />
             </div>
+
+            {/* Consensus Badge Overlay */}
+            <AnimatePresence>
+                {isFinished && finalMessage && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        className="absolute bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full bg-[rgba(26,31,58,0.95)] border border-[#00ff88] flex items-center space-x-3 shadow-[0_0_30px_rgba(0,255,136,0.3)] backdrop-blur-xl z-20"
+                    >
+                        <CheckCircle2 className="w-6 h-6 text-[#00ff88]" />
+                        <div className="flex flex-col">
+                            <span className="text-xs text-[#00ff88] font-bold tracking-widest uppercase font-sans">Consensus Reached</span>
+                            <span className="text-sm font-mono text-white">Confidence: {(finalMessage.confidence * 100).toFixed(1)}%</span>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

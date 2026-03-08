@@ -37,7 +37,7 @@ const getStrengthColor = (strength: number) => {
 };
 
 export const SignalFeed: React.FC<SignalFeedProps> = ({ signals, onFilter }) => {
-    const { latestEvent } = useWebSocket();
+    const { subscribe } = useWebSocket();
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
     // Local filters state just for UI
@@ -47,11 +47,12 @@ export const SignalFeed: React.FC<SignalFeedProps> = ({ signals, onFilter }) => 
     const [liveSignals, setLiveSignals] = useState<Signal[]>([]);
 
     React.useEffect(() => {
-        if (latestEvent?.type === 'signal_detected') {
-            const newSignal = latestEvent.data as Signal;
-            setLiveSignals(prev => [newSignal, ...prev].slice(0, 50)); // Keep last 50
-        }
-    }, [latestEvent]);
+        const handleNewSignal = (data: any) => {
+            setLiveSignals(prev => [data as Signal, ...prev].slice(0, 50)); // Keep last 50
+        };
+        const unsub = subscribe('signal_detected', handleNewSignal);
+        return () => unsub();
+    }, [subscribe]);
 
     // Combine and sort
     const allSignals = useMemo(() => {

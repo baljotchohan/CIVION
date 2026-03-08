@@ -1,132 +1,103 @@
-import uuid
 import random
 from datetime import datetime, timedelta
-from typing import List, Dict, Any
+from typing import List, Dict
 
-class MockDataGenerator:
-    """Generates mock data for frontend testing and UI demonstration."""
+def generate_mock_signal() -> Dict:
+    sources = ['github', 'arxiv', 'market', 'security', 'news', 'network']
+    signal_types = ['repo_update', 'paper_published', 'price_movement', 'vulnerability', 'news_alert']
     
-    @staticmethod
-    def now_str() -> str:
-        return datetime.now().isoformat()
-        
-    @staticmethod
-    def past_time(minutes: int) -> str:
-        return (datetime.now() - timedelta(minutes=minutes)).isoformat()
+    return {
+        "id": f"sig_{random.randint(1000, 9999)}",
+        "source": random.choice(sources),
+        "title": f"New {random.choice(signal_types)} detected",
+        "description": "Automated simulated signal analysis suggests moderate impact.",
+        "confidence": round(random.uniform(0.5, 0.99), 2),
+        "strength": round(random.uniform(0.1, 1.0), 2),
+        "signal_type": random.choice(signal_types),
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "evidence": [f"Data point {random.randint(1,10)}", f"Reference link {random.randint(1,5)}"],
+        "tags": [random.choice(["ai", "crypto", "security", "market"])],
+        "url": f"https://civion.network/sig/{random.randint(100,999)}"
+    }
 
-    @classmethod
-    def generate_debate(cls) -> List[Dict[str, Any]]:
-        agents = [
-            {"name": "Research Monitor", "role": "proposer"},
-            {"name": "Market Signal", "role": "challenger"},
-            {"name": "GitHub Trend", "role": "verifier"},
-            {"name": "Sentiment Engine", "role": "synthesizer"}
-        ]
-        
-        script = [
-            (0, "I propose an emerging trend: AI coding agents are shifting from auto-complete to autonomous systems faster than anticipated.", 0.85, False),
-            (1, "The investment data doesn't fully support a complete shift yet; enterprise adoption is still focused on copilot models due to security concerns.", 0.65, False),
-            (2, "Actually, looking at GitHub repo activity, fully autonomous agent frameworks (like LangChain, AutoGPT forks) have 3x the fork velocity of standard LLM wrappers this month.", 0.90, False),
-            (3, "Synthesizing the signals: The developer enthusiasm (GitHub) outpaces enterprise adoption (Market). The trend is real but currently constrained to early adopters and SMBs.", 0.88, True)
-        ]
-        
-        debate = []
-        for i, (agent_idx, content, conf, final) in enumerate(script):
-            agent = agents[agent_idx]
-            debate.append({
-                "id": str(uuid.uuid4()),
-                "agent_name": agent["name"],
-                "role": agent["role"],
-                "content": content,
-                "confidence": conf,
-                "timestamp": cls.past_time(10 - i*2),
-                "is_final": final
-            })
-            
-        return debate
+def generate_mock_agent(agent_id: str = None) -> Dict:
+    roles = ['Research', 'Analysis', 'Security', 'Trading']
+    statuses = ['running', 'stopped', 'error', 'paused']
+    
+    return {
+        "id": agent_id or f"agt_{random.randint(100, 999)}",
+        "name": f"{random.choice(roles)} Agent Alpha",
+        "type": random.choice(["Collector", "Analyzer", "Synthesizer"]),
+        "status": random.choice(statuses),
+        "last_active": datetime.utcnow().isoformat() + "Z",
+        "signals_found": random.randint(10, 500),
+        "current_task": "Monitoring data streams...",
+        "uptime_seconds": random.randint(300, 86400),
+        "error_message": None if random.random() > 0.1 else "Connection timeout in secondary thread"
+    }
 
-    @classmethod
-    def generate_confidence_history(cls) -> List[Dict[str, Any]]:
-        """Fake confidence steps for the ConfidenceCascade."""
-        steps = [
-            ("Research Monitor", "verified", "Found strong academic evidence (+150% papers)", 0.20, 0.45),
-            ("GitHub Trend", "verified", "Spike in related open source projects", 0.45, 0.65),
-            ("Market Signal", "challenged", "Q1 funding is actually down 10%", 0.65, 0.55),
-            ("Sentiment Engine", "confirmed", "Developer sentiment overwhelmingly positive", 0.55, 0.82)
-        ]
-        
-        history = []
-        for i, (agent, action, reason, before, after) in enumerate(steps):
-            history.append({
-                "agent": agent,
-                "action": action,
-                "confidence_before": before,
-                "confidence_after": after,
-                "timestamp": cls.past_time(15 - i*3),
-                "reason": reason
-            })
-            
-        return history
+def generate_mock_prediction() -> Dict:
+    return {
+        "id": f"pred_{random.randint(1000, 9999)}",
+        "title": "Quantum compute breakthrough expected",
+        "description": "Signals indicate major leap in quantum error correction.",
+        "probability": round(random.uniform(0.6, 0.95), 2),
+        "timeframe": "Next 6 months",
+        "evidence": ["Arxiv paper volume doubling", "Github repo activity surge"],
+        "created_at": datetime.utcnow().isoformat() + "Z",
+        "resolved": False,
+        "outcome": None,
+        "accuracy": None,
+        "shared_count": random.randint(0, 100),
+        "tags": ["quantum", "tech", "forecast"]
+    }
 
-    @classmethod
-    def generate_predictions(cls) -> List[Dict[str, Any]]:
-        return [
-            {
-                "id": str(uuid.uuid4()),
-                "title": "Autonomous AI Engineering Reality",
-                "description": "True autonomous agentic coding frameworks will replace 40% of standard copilot usage by end of year.",
-                "probability": 0.82,
-                "timeframe": "8 months",
-                "evidence": ["GitHub activity", "Developer sentiment", "Research papers"],
-                "created_at": cls.past_time(120),
-                "resolved": False,
-                "outcome": None,
-                "accuracy": None,
-                "shared_count": 134
-            },
-            {
-                "id": str(uuid.uuid4()),
-                "title": "Quantum Error Correction Break",
-                "description": "Major breakthrough in logical qubits stabilizing beyond previous limits.",
-                "probability": 0.45,
-                "timeframe": "12 months",
-                "evidence": ["ArXiv papers", "University press"],
-                "created_at": cls.past_time(300),
-                "resolved": True,
-                "outcome": False,
-                "accuracy": 0.3,
-                "shared_count": 89
-            }
-        ]
+def generate_mock_persona() -> Dict:
+    return {
+        "id": f"per_{random.randint(100, 999)}",
+        "name": "Sec-Ops Guardian",
+        "description": "Strict security-focused analytical profile.",
+        "analysis_style": "critical",
+        "topics": ["security", "vulnerabilities", "infrastructure"],
+        "sample_analysis": "This repo contains 3 critical CVEs.",
+        "usage_count": random.randint(5, 50),
+        "created_at": datetime.utcnow().isoformat() + "Z",
+        "color": "#ff006e",
+        "emoji": "🛡️",
+        "is_shared": True
+    }
 
-    @classmethod
-    def generate_signals(cls) -> List[Dict[str, Any]]:
-        return [
-            {
-                "id": str(uuid.uuid4()),
-                "source": "GitHub",
-                "title": "Spike in rust-based AI frameworks",
-                "confidence": 0.95,
-                "timestamp": cls.past_time(2),
-                "strength": 0.88,
-                "signal_type": "code_trend"
-            },
-            {
-                "id": str(uuid.uuid4()),
-                "source": "ArXiv",
-                "title": "New alignment technique proposed",
-                "confidence": 0.70,
-                "timestamp": cls.past_time(14),
-                "strength": 0.65,
-                "signal_type": "research"
-            }
-        ]
+def generate_mock_peer() -> Dict:
+    return {
+        "id": f"peer_{random.randint(1000, 9999)}",
+        "name": f"Node-{random.randint(10, 99)}",
+        "location": random.choice(["US-East", "EU-West", "AP-South"]),
+        "lat": round(random.uniform(-90, 90), 2),
+        "lng": round(random.uniform(-180, 180), 2),
+        "findings_count": random.randint(10, 1000),
+        "reputation": random.randint(60, 100),
+        "last_seen": datetime.utcnow().isoformat() + "Z",
+        "shared_signals": random.randint(0, 50)
+    }
 
-    @classmethod
-    def generate_peers(cls) -> List[Dict[str, Any]]:
-        return [
-            {"id": str(uuid.uuid4()), "location": "US-East", "findings_count": 145, "status": "active", "latency": 45},
-            {"id": str(uuid.uuid4()), "location": "EU-Central", "findings_count": 89, "status": "active", "latency": 110},
-            {"id": str(uuid.uuid4()), "location": "AP-South", "findings_count": 234, "status": "active", "latency": 180},
-            {"id": str(uuid.uuid4()), "location": "US-West", "findings_count": 56, "status": "syncing", "latency": 60}
-        ]
+def generate_mock_debate_message(role: str) -> Dict:
+    return {
+        "id": f"msg_{random.randint(1000, 9999)}",
+        "agent_name": f"{role.capitalize()} Alpha",
+        "role": role,
+        "content": f"Analyzing from {role} perspective. Evidence suggests high validity.",
+        "confidence": round(random.uniform(0.4, 0.95), 2),
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "is_final": False
+    }
+
+def generate_mock_confidence_step() -> Dict:
+    actions = ['verified', 'challenged', 'confirmed', 'verifying', 'rejected']
+    return {
+        "agent": f"Agent {random.randint(1,5)}",
+        "action": random.choice(actions),
+        "confidence_before": round(random.uniform(0.4, 0.8), 2),
+        "confidence_after": round(random.uniform(0.5, 0.95), 2),
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "reason": "Corroborated via secondary signal stream"
+    }

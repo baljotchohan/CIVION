@@ -9,9 +9,12 @@ export type WebSocketEventType =
     | 'agent_started'
     | 'agent_stopped'
     | 'agent_error'
+    | 'agent_task_updated'
     | 'signal_detected'
     | 'insight_generated'
     | 'network_signal_received'
+    | 'peer_joined'
+    | 'peer_left'
     | 'ping'
     | 'pong';
 

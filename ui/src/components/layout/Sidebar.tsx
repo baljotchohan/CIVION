@@ -93,8 +93,8 @@ export const Sidebar = () => {
                         <Link key={item.path} href={item.path}>
                             <div
                                 className={`relative flex items-center h-12 rounded-xl transition-all duration-300 group ${isActive
-                                        ? 'bg-[#00ff88]/10'
-                                        : 'hover:bg-white/5'
+                                    ? 'bg-[#00ff88]/10'
+                                    : 'hover:bg-white/5'
                                     }`}
                             >
                                 {/* Active Indicator Line */}
@@ -114,9 +114,9 @@ export const Sidebar = () => {
                                     <AnimatePresence>
                                         {!isCollapsed && (
                                             <motion.span
-                                                initial={{ opacity: 0, w: 0 }}
-                                                animate={{ opacity: 1, w: 'auto' }}
-                                                exit={{ opacity: 0, w: 0 }}
+                                                initial={{ opacity: 0, width: 0 }}
+                                                animate={{ opacity: 1, width: 'auto' }}
+                                                exit={{ opacity: 0, width: 0 }}
                                                 className={`ml-3 font-sans font-medium whitespace-nowrap overflow-hidden ${isActive ? 'text-white' : 'text-[#a0a0a0] group-hover:text-gray-200'
                                                     }`}
                                             >

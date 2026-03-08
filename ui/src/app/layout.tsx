@@ -1,27 +1,45 @@
 import type { Metadata } from 'next';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
-import { Sidebar } from '@/components/layout/Sidebar';
+import { Sidebar } from '../components/layout/Sidebar';
+
+const inter = Inter({
+    subsets: ['latin'],
+    variable: '--font-sans',
+});
+
+const jetbrains = JetBrains_Mono({
+    subsets: ['latin'],
+    variable: '--font-mono',
+});
 
 export const metadata: Metadata = {
-    title: 'CIVION - AI Intelligence Command Center',
-    description: 'Production-grade multi-agent intelligence platform',
+    title: 'CIVION | Intelligence Command Center',
+    description: 'Multi-agent AI platform with transparent reasoning and P2P global networking.',
 };
 
 export default function RootLayout({
     children,
 }: {
-    children: React.ReactNode
+    children: React.ReactNode;
 }) {
     return (
-        <html lang="en">
-            <body className="bg-bg-primary text-text-primary h-screen flex overflow-hidden">
+        <html lang="en" className="dark scroll-smooth">
+            <body className={`${inter.variable} ${jetbrains.variable} font-sans bg-[#0a0e27] text-white min-h-screen flex selection:bg-[#00ff88]/30 overflow-x-hidden`}>
+                {/* Fixed background effects */}
+                <div className="fixed inset-0 pointer-events-none z-[-1]">
+                    <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#00ff88] opacity-[0.03] blur-[150px] rounded-full"></div>
+                    <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-[#9b59b6] opacity-[0.03] blur-[150px] rounded-full"></div>
+                </div>
+
+                {/* Global Sidebar layout wrapper */}
                 <Sidebar />
 
-                {/* Main Content */}
-                <main className="flex-1 overflow-y-auto">
+                {/* Main Application Area */}
+                <main className="flex-1 min-w-0 max-h-screen overflow-y-auto overflow-x-hidden relative custom-scrollbar">
                     {children}
                 </main>
             </body>
         </html>
-    )
+    );
 }
