@@ -52,7 +52,7 @@ You help users with:
 AVAILABLE ACTIONS (include as JSON at end of response when relevant):
 When you want to execute an action, end your response with:
 <actions>
-[{"type": "start_agent", "agent_id": "github"}]
+[{{"type": "start_agent", "agent_id": "github"}}]
 </actions>
 
 Available action types:

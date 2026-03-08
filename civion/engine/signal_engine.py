@@ -41,6 +41,10 @@ class SignalEngine:
         # Broadcast via WebSocket precisely as specified in the instructions
         await manager.broadcast("signal_detected", signal)
         
+        # PERSIST to DataService so /signals endpoint works
+        from civion.services.data_service import data_service
+        await data_service.save_signal(signal)
+        
         return signal
         
     async def get_recent_signals(self, limit: int = 50) -> List[dict]:
