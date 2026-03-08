@@ -91,7 +91,7 @@ export const DebateViewer: React.FC<DebateViewerProps> = ({ debate, isActive }) 
                                 }}
                                 className={`flex w-full ${isSynthesizer ? 'justify-center' : (msg.role === 'proposer' ? 'justify-start' : 'justify-end')}`}
                             >
-                                <div className={`flex max-w-[80%] ${isSynthesizer ? 'flex-col items-center text-center' : (msg.role === 'proposer' ? 'flex-row' : 'flex-row-reverse')} gap-4`}>
+                                <div className={`flex max-w-[85%] min-w-0 ${isSynthesizer ? 'flex-col items-center text-center' : (msg.role === 'proposer' ? 'flex-row' : 'flex-row-reverse')} gap-4`}>
 
                                     {/* Avatar */}
                                     <div
@@ -107,7 +107,7 @@ export const DebateViewer: React.FC<DebateViewerProps> = ({ debate, isActive }) 
                                     </div>
 
                                     {/* Message Bubble */}
-                                    <div className={`flex flex-col ${isSynthesizer ? 'items-center mt-3' : (msg.role === 'proposer' ? 'items-start' : 'items-end')}`}>
+                                    <div className={`flex flex-col min-w-0 ${isSynthesizer ? 'items-center mt-3' : (msg.role === 'proposer' ? 'items-start' : 'items-end')}`}>
                                         <div className="flex items-baseline space-x-2 mb-1 px-1">
                                             <span className="text-xs font-bold font-sans" style={{ color }}>
                                                 {msg.agent_name}
@@ -115,7 +115,7 @@ export const DebateViewer: React.FC<DebateViewerProps> = ({ debate, isActive }) 
                                             <span className="text-[10px] text-[#a0a0a0] font-mono uppercase tracking-wider">
                                                 {msg.role}
                                             </span>
-                                            <span className="text-[10px] text-[#a0a0a0] font-mono opacity-60">
+                                            <span className="text-[10px] text-[#a0a0a0] font-mono opacity-60" suppressHydrationWarning>
                                                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                             </span>
                                         </div>

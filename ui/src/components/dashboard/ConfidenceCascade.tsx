@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, XCircle, Activity } from 'lucide-react';
 
-export type ConfidenceAction = "verified" | "challenged" | "confirmed" | "verifying";
+export type ConfidenceAction = "verified" | "challenged" | "confirmed" | "verifying" | "rejected";
 
 export interface ConfidenceStep {
     agent: string;
@@ -118,10 +118,10 @@ export const ConfidenceCascade: React.FC<ConfidenceCascadeProps> = ({ confidence
                     {confidenceHistory.map((step, idx) => (
                         <motion.div
                             key={idx + step.timestamp}
-                            initial={{ opacity: 0, x: -20, height: 0 }}
-                            animate={{ opacity: 1, x: 0, height: 'auto' }}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: idx * 0.1, type: "spring" }}
-                            className="rounded-xl border border-[#00ff88]/20 bg-[rgba(26,31,58,0.5)] backdrop-blur-[10px] p-4 flex items-center justify-between group hover:shadow-[0_0_15px_rgba(0,255,136,0.15)] transition-shadow"
+                            className="rounded-xl border border-[#00ff88]/20 bg-[rgba(26,31,58,0.5)] backdrop-blur-[10px] p-4 flex items-center justify-between group hover:shadow-[0_0_15px_rgba(0,255,136,0.15)] transition-shadow overflow-hidden"
                         >
                             <div className="flex items-center space-x-4">
                                 <div className="p-2 rounded-full bg-[#1a1f3a] border border-[#00ff88]/10">
@@ -142,7 +142,7 @@ export const ConfidenceCascade: React.FC<ConfidenceCascadeProps> = ({ confidence
                                 <div className="font-mono text-sm mb-1">
                                     <span className="text-white">{(step.confidence_after * 100).toFixed(0)}%</span>
                                 </div>
-                                <div className="text-xs text-[#a0a0a0] font-mono opacity-60">
+                                <div className="text-xs text-[#a0a0a0] font-mono opacity-60" suppressHydrationWarning>
                                     {new Date(step.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                 </div>
                             </div>

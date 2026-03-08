@@ -65,7 +65,7 @@ const formatUptime = (seconds: number) => {
 };
 
 export const AgentStatusGrid: React.FC<AgentStatusGridProps> = ({ agents, onStart, onStop, onRestart }) => {
-    const { latestEvent } = useWebSocket();
+    const { subscribe } = useWebSocket();
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
     return (
@@ -83,7 +83,7 @@ export const AgentStatusGrid: React.FC<AgentStatusGridProps> = ({ agents, onStar
                             transition={{ delay: index * 0.1, duration: 0.5 }}
                             onHoverStart={() => setExpandedId(agent.id)}
                             onHoverEnd={() => setExpandedId(null)}
-                            className="relative rounded-xl border bg-[rgba(26,31,58,0.8)] backdrop-blur-[20px] p-6 shadow-lg group transition-all duration-300"
+                            className="relative rounded-xl border bg-[rgba(26,31,58,0.8)] backdrop-blur-[20px] p-6 shadow-lg group transition-all duration-300 flex flex-col h-full"
                             style={{
                                 borderColor: `${statusColor}40`,
                                 boxShadow: isExpanded ? `0 0 30px ${statusColor}30` : `0 0 10px ${statusColor}10`
@@ -95,7 +95,7 @@ export const AgentStatusGrid: React.FC<AgentStatusGridProps> = ({ agents, onStar
                                 style={{ background: `radial-gradient(circle at center, ${statusColor} 0%, transparent 70%)` }}
                             />
 
-                            <div className="relative z-10">
+                            <div className="relative z-10 flex flex-col flex-grow">
                                 {/* Header */}
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="flex items-center space-x-3">
@@ -116,12 +116,12 @@ export const AgentStatusGrid: React.FC<AgentStatusGridProps> = ({ agents, onStar
 
                                 {/* Main Stats */}
                                 <div className="grid grid-cols-2 gap-4 mb-5">
-                                    <div className="bg-[#1a1f3a]/50 rounded-lg p-3 border border-white/5">
-                                        <div className="text-[10px] text-[#a0a0a0] font-mono uppercase tracking-wider mb-1">Signals</div>
+                                    <div className="bg-[#1a1f3a]/50 rounded-lg p-4 border border-white/5">
+                                        <div className="text-[10px] text-[#a0a0a0] font-mono uppercase tracking-wider mb-2">Signals</div>
                                         <div className="text-xl font-bold font-mono text-[#00d4ff]">{agent.signals_found}</div>
                                     </div>
-                                    <div className="bg-[#1a1f3a]/50 rounded-lg p-3 border border-white/5">
-                                        <div className="text-[10px] text-[#a0a0a0] font-mono uppercase tracking-wider mb-1">Uptime</div>
+                                    <div className="bg-[#1a1f3a]/50 rounded-lg p-4 border border-white/5">
+                                        <div className="text-[10px] text-[#a0a0a0] font-mono uppercase tracking-wider mb-2">Uptime</div>
                                         <div className="text-md font-bold font-mono text-white flex items-center">
                                             <Clock className="w-3 h-3 mr-1 text-[#a0a0a0]" />
                                             {formatUptime(agent.uptime_seconds)}
@@ -130,8 +130,8 @@ export const AgentStatusGrid: React.FC<AgentStatusGridProps> = ({ agents, onStar
                                 </div>
 
                                 {/* Current Task */}
-                                <div className="mb-5 min-h-[40px]">
-                                    <div className="text-[10px] text-[#a0a0a0] font-mono uppercase tracking-wider mb-1">Current Task</div>
+                                <div className="mb-5 flex-grow">
+                                    <div className="text-[10px] text-[#a0a0a0] font-mono uppercase tracking-wider mb-2">Current Task</div>
                                     <div className="text-sm font-sans text-gray-300 line-clamp-2">
                                         {agent.current_task || "Idle / Awaiting instructions"}
                                     </div>
@@ -166,7 +166,7 @@ export const AgentStatusGrid: React.FC<AgentStatusGridProps> = ({ agents, onStar
 
                                 {/* Action Controls */}
                                 <div className="flex justify-between items-center pt-4 border-t border-white/10 mt-auto">
-                                    <div className="text-xs font-mono text-[#a0a0a0]">
+                                    <div className="text-xs font-mono text-[#a0a0a0]" suppressHydrationWarning>
                                         Active: {agent.last_active ? new Date(agent.last_active).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Never'}
                                     </div>
                                     <div className="flex space-x-2">

@@ -131,7 +131,7 @@ export default function AgentsPage() {
             </div>
 
             {/* Main Grid */}
-            <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar pb-4 pr-2">
+            <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar pb-52 pr-2">
                 <AgentStatusGrid
                     agents={agents}
                     onStart={handleStart}
