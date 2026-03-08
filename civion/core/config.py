@@ -123,3 +123,24 @@ class CivionConfig:
 
 # Global config instance
 config = CivionConfig()
+
+# Backward compatibility alias
+settings = config
+
+# Add dynamic attribute lookup to handle legacy LLM_PROVIDER etc if needed
+# But better to just alias the common ones
+config.app_name = "CIVION"
+config.app_version = "2.0.0"
+
+# Add properties for legacy keys that were in the pydantic model
+def get_legacy_secret(self, key):
+    return self.get_secret(key)
+
+CivionConfig.openai_api_key = property(lambda self: self.get_secret("OPENAI_API_KEY"))
+CivionConfig.anthropic_api_key = property(lambda self: self.get_secret("ANTHROPIC_API_KEY"))
+CivionConfig.google_api_key = property(lambda self: self.get_secret("GOOGLE_API_KEY"))
+CivionConfig.github_token = property(lambda self: self.get_secret("GITHUB_TOKEN"))
+CivionConfig.news_api_key = property(lambda self: self.get_secret("NEWS_API_KEY"))
+CivionConfig.coingecko_api_key = property(lambda self: self.get_secret("COINGECKO_API_KEY"))
+CivionConfig.frontend_url = property(lambda self: f"http://localhost:{self.port}")
+CivionConfig.database_url = property(lambda self: f"sqlite+aiosqlite:///{self.db_path}")

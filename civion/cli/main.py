@@ -113,12 +113,18 @@ def doctor():
     with Live(console=console, refresh_per_second=4) as live:
         # Check config
         time.sleep(0.5)
-        live.console.print("  ✓ Config file exists")
+        if config.config_exists():
+            live.console.print("  ✓ Config file exists")
+        else:
+            live.console.print("  ✗ Config file missing (run 'civion setup')")
         
         # Check Python
         time.sleep(0.5)
-        live.console.print(f"  ✓ Python version {sys.version.split()[0]} (required: 3.10+)")
-        
+        if sys.version_info >= (3, 10):
+            live.console.print(f"  ✓ Python version {sys.version.split()[0]} (required: 3.10+)")
+        else:
+            live.console.print(f"  ✗ Python version {sys.version.split()[0]} too old")
+            
         # Check Port
         import socket
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -129,8 +135,15 @@ def doctor():
             live.console.print(f"  ✗ Port {config.port} in use")
         finally:
             s.close()
+
+        # Check Frontend Bundle
+        static_path = Path(__file__).parent.parent / "static" / "ui"
+        if (static_path / "index.html").exists():
+            live.console.print("  ✓ Frontend bundle is present")
+        else:
+            live.console.print("  ✗ Frontend bundle missing (run './scripts/build_frontend.sh')")
             
-    console.print("\n[green]Diagnostics complete. No critical issues found.[/green]")
+    console.print("\n[green]Diagnostics complete.[/green]")
 
 @app.command()
 def logs(follow: bool = typer.Option(False, "--follow", "-f")):
