@@ -84,24 +84,40 @@ graph TD
 
 ## 🚦 Quick Start
 
-### 1. Backend Setup
-Ensure you have Python 3.10+ installed.
+### 1. Installation
+
+Ensure you have Python 3.10+ installed. It is recommended to use a virtual environment.
 
 ```bash
+# Clone and install
+git clone https://github.com/baljotchohan/CIVION.git
 cd CIVION
 pip install -e .
-civion setup  # Configure LLM and API keys
+
+# Initial setup
+civion setup
+```
+
+### 2. Launching the Command Center
+
+CIVION manages both the backend and frontend. Simply run:
+
+```bash
 civion start
 ```
 
-### 2. Frontend Setup
-```bash
-cd ui
-npm install
-npm run dev
-```
+This will automatically:
+1. Start the **FastAPI Intelligence Server**.
+2. Start the **Next.js Command Dashboard**.
+3. **Launch your browser** to the dashboard interface.
 
-The Command Center will be available at `http://localhost:3000`.
+### 3. Maintenance
+
+Keep your installation up to date with a single command:
+
+```bash
+civion update
+```
 
 ---
 

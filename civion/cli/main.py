@@ -28,9 +28,23 @@ def _run(coro):
 
 
 def _banner():
-    console.print(Panel.fit(
-        "[bold green]   CIVION v2.0[/]\n[dim]   AI Intelligence Command Center[/dim]",
-        border_style="green",
+    """Print a professional ASCII banner."""
+    from rich.text import Text
+    
+    banner_text = """
+   ██████╗██╗██╗   ██╗██╗ ██████╗ ███╗   ██╗
+  ██╔════╝██║██║   ██║██║██╔═══██╗████╗  ██║
+  ██║     ██║██║   ██║██║██║   ██║██╔██╗ ██║
+  ██║     ██║╚██╗ ██╔╝██║██║   ██║██║╚██╗██║
+  ╚██████╗██║ ╚████╔╝ ██║╚██████╔╝██║ ╚████║
+   ╚═════╝╚═╝  ╚═══╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
+    """
+    console.print(Text(banner_text, style="bold cyan"))
+    console.print(Panel(
+        "[bold cyan]CIVION v2.0[/] | [italic]AI Intelligence Command Center[/italic]\n"
+        "[dim]Professional Multi-Agent Intelligence Platform[/dim]",
+        border_style="cyan",
+        expand=False,
     ))
 
 
@@ -42,11 +56,30 @@ def _banner():
 def start(
     port: int = typer.Option(8000, help="API server port"),
     host: str = typer.Option("0.0.0.0", help="Host to bind"),
+    ui_port: int = typer.Option(3000, help="Frontend port"),
     no_browser: bool = typer.Option(False, help="Don't open browser"),
 ):
-    """🚀 Start the CIVION system."""
+    """🚀 Start the CIVION system and launch the UI."""
     _banner()
-    console.print(f"[green]✓[/] Starting CIVION on {host}:{port}...")
+    
+    ui_url = f"http://localhost:{ui_port}"
+    api_url = f"http://{host}:{port}"
+    
+    console.print(f"[bold cyan]●[/] Starting [bold]CIVION Backend[/] on [green]{api_url}[/]")
+    console.print(f"[bold cyan]●[/] Starting [bold]CIVION Frontend[/] on [green]{ui_url}[/]")
+    
+    if not no_browser:
+        import webbrowser
+        import threading
+        import time
+
+        def open_browser():
+            time.sleep(2)  # Wait for server to start
+            console.print(f"[bold green]✓[/] Launching Intelligence Intelligence Command Center UI...")
+            webbrowser.open(ui_url)
+
+        threading.Thread(target=open_browser, daemon=True).start()
+
     import uvicorn
     uvicorn.run("civion.api.server:app", host=host, port=port, reload=True)
 
@@ -439,6 +472,40 @@ def setup():
 
     console.print("\n[bold green]✓ Setup complete![/bold green]")
     console.print("  Run [cyan]civion start[/cyan] to launch the system")
+
+
+@app.command()
+def update():
+    """✨ Update CIVION to the latest version."""
+    _banner()
+    console.print("[bold cyan]🔄 Updating CIVION...[/]")
+    
+    import subprocess
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        # Git Pull
+        task = progress.add_task(description="Fetching latest changes from GitHub...", total=None)
+        try:
+            subprocess.run(["git", "pull"], check=True, capture_output=True)
+            progress.update(task, description="[green]✓[/] Repository updated.")
+        except Exception as e:
+            progress.update(task, description=f"[red]✗[/] Git update failed: {e}")
+            return
+
+        # Dependencies
+        task2 = progress.add_task(description="Updating dependencies...", total=None)
+        try:
+            subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check=True, capture_output=True)
+            progress.update(task2, description="[green]✓[/] Dependencies updated.")
+        except Exception as e:
+            progress.update(task2, description=f"[red]✗[/] Dependency update failed: {e}")
+
+    console.print("\n[bold green]✨ CIVION is up to date![/bold green]")
+    console.print("Run [cyan]civion start[/cyan] to launch the system.")
 
 
 if __name__ == "__main__":
