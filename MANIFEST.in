@@ -1,0 +1,4 @@
+recursive-include civion/static/ui *
+recursive-include civion/static *
+include README.md
+include LICENSE

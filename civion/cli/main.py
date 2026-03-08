@@ -77,6 +77,15 @@ def start(
 
     threading.Thread(target=open_browser, daemon=True).start()
 
+    static_path = Path(__file__).parent.parent / "static" / "ui"
+    if not (static_path / "index.html").exists():
+        console.print(Panel(
+            "[yellow]Warning: Frontend UI bundle is missing.[/yellow]\n"
+            "If you cloned this repository, please build the frontend to see the UI.\n"
+            "Open your browser to see more instructions.",
+            title="UI Notice", border_style="yellow"
+        ))
+
     try:
         uvicorn.run(
             "civion.api.server:app",

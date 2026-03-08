@@ -135,14 +135,31 @@ if static_path.exists():
 else:
     @app.get("/")
     async def root():
-        return {
-            "name": "CIVION",
-            "version": "2.0.0",
-            "status": "online",
-            "message": "Frontend bundle not found. Run 'civion setup' or build frontend.",
-            "docs": "/api/docs",
-            "api": "/api/v1",
-        }
+        from fastapi.responses import HTMLResponse
+        html_content = """
+        <html>
+            <head>
+                <title>CIVION - UI Not Found</title>
+                <style>
+                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f3f4f6; color: #1f2937; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+                    .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 500px; text-align: center; }
+                    h1 { color: #dc2626; margin-top: 0; }
+                    p { line-height: 1.5; color: #4b5563; }
+                    code { background: #f3f4f6; padding: 0.2rem 0.4rem; border-radius: 4px; font-family: monospace; color: #ef4444; }
+                </style>
+            </head>
+            <body>
+                <div class="card">
+                    <h1>UI Bundle Not Found</h1>
+                    <p>The CIVION backend is running, but the frontend static files were not found.</p>
+                    <p>If you cloned this repository from source, you must build the frontend before it can be served. Open a new terminal and run:</p>
+                    <p><code>./scripts/build_frontend.sh</code></p>
+                    <p>Or, if you are on Windows, ensure you have Node.js installed, navigate to the <code>ui</code> folder, and run <code>npm install</code> followed by <code>npm run build</code>.</p>
+                </div>
+            </body>
+        </html>
+        """
+        return HTMLResponse(content=html_content)
 
 # ── Error Handlers ───────────────────────────────────
 # (Keep existing handlers but adjust for SPA if needed)
