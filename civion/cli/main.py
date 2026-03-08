@@ -8,6 +8,7 @@ import sys
 from typing import Optional
 
 import typer
+from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -20,6 +21,10 @@ app = typer.Typer(
     help="🌐 CIVION - AI Intelligence Command Center",
     no_args_is_help=True,
 )
+
+# Determine the project root directory (repository root)
+# This allows the CLI to work regardless of the current working directory.
+PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
 
 
 def _run(coro):
@@ -57,7 +62,7 @@ def start(
     port: int = typer.Option(8000, help="API server port"),
     host: str = typer.Option("0.0.0.0", help="Host to bind"),
     ui_port: int = typer.Option(3000, help="Frontend port"),
-    no_browser: bool = typer.Option(False, help="Don't open browser"),
+    open_browser: bool = typer.Option(False, "--open-browser", help="Open browser automatically"),
 ):
     """🚀 Start the CIVION system and launch the UI."""
     _banner()
@@ -68,9 +73,8 @@ def start(
     import subprocess
     import os
     import signal
-    from pathlib import Path
 
-    ui_dir = Path("ui")
+    ui_dir = PROJECT_ROOT / "ui"
     frontend_proc = None
 
     # 1. Launch Next.js Frontend
@@ -97,7 +101,7 @@ def start(
         console.print(f"[yellow]⚠️[/] Frontend directory 'ui' not found. Skipping UI launch.")
 
     # 2. Browser Launch
-    if not no_browser:
+    if open_browser:
         import webbrowser
         import threading
         import time
@@ -534,7 +538,7 @@ def update():
         # Git Pull
         task = progress.add_task(description="Fetching latest changes from GitHub...", total=None)
         try:
-            subprocess.run(["git", "pull"], check=True, capture_output=True)
+            subprocess.run(["git", "pull"], check=True, capture_output=True, cwd=str(PROJECT_ROOT))
             progress.update(task, description="[green]✓[/] Repository updated.")
         except Exception as e:
             progress.update(task, description=f"[red]✗[/] Git update failed: {e}")
@@ -543,7 +547,7 @@ def update():
         # Dependencies
         task2 = progress.add_task(description="Updating dependencies...", total=None)
         try:
-            subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check=True, capture_output=True)
+            subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check=True, capture_output=True, cwd=str(PROJECT_ROOT))
             progress.update(task2, description="[green]✓[/] Dependencies updated.")
         except Exception as e:
             progress.update(task2, description=f"[red]✗[/] Dependency update failed: {e}")
