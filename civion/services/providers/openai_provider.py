@@ -21,7 +21,15 @@ class OpenAIProvider(BaseProvider):
         except Exception as e:
             return f"OpenAI Error: {str(e)}"
 
-    async def stream(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.7) -> AsyncGenerator[str, None]:
+    async def stream(
+        self,
+        prompt: str,
+        system: str = None,
+        messages: list = None,
+        max_tokens: int = 1024,
+        temperature: float = 0.7,
+        **kwargs
+    ) -> AsyncGenerator[str, None]:
         try:
             import openai
             client = openai.AsyncOpenAI(api_key=self.api_key)

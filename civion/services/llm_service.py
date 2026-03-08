@@ -66,7 +66,15 @@ class LLMService:
         
         return f"All LLM providers failed. Last error: {last_error}"
 
-    async def stream(self, prompt: str, **kwargs) -> AsyncGenerator[str, None]:
+    async def stream(
+        self,
+        prompt: str,
+        system: str = None,
+        messages: list = None,
+        max_tokens: int = 1024,
+        temperature: float = 0.7,
+        **kwargs
+    ) -> AsyncGenerator[str, None]:
         """Streaming completion from active provider"""
         try:
             provider = self._get_provider(self.primary_provider_name, self.primary_model)

@@ -22,7 +22,15 @@ class MistralProvider(BaseProvider):
         except Exception as e:
             return f"Mistral Error: {str(e)}"
 
-    async def stream(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.7) -> AsyncGenerator[str, None]:
+    async def stream(
+        self,
+        prompt: str,
+        system: str = None,
+        messages: list = None,
+        max_tokens: int = 1024,
+        temperature: float = 0.7,
+        **kwargs
+    ) -> AsyncGenerator[str, None]:
         try:
             from mistralai.async_client import MistralAsyncClient
             from mistralai.models.chat_completion import ChatMessage

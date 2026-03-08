@@ -19,7 +19,15 @@ class BaseProvider(abc.ABC):
         pass
 
     @abc.abstractmethod
-    async def stream(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.7) -> AsyncGenerator[str, None]:
+    async def stream(
+        self,
+        prompt: str,
+        system: str = None,
+        messages: list = None,
+        max_tokens: int = 1024,
+        temperature: float = 0.7,
+        **kwargs
+    ) -> AsyncGenerator[str, None]:
         """Stream response from provider"""
         pass
 

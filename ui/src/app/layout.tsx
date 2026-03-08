@@ -8,6 +8,7 @@ import { AssistantProvider } from '../contexts/AssistantContext';
 import { ToastNotifications } from '../components/ui/ToastNotifications';
 import { AssistantButton } from '../components/assistant/AssistantButton';
 import { AssistantPanel } from '../components/assistant/AssistantPanel';
+import { SystemWakeAnimation } from '../components/ui/SystemWakeAnimation';
 
 const inter = Inter({
     subsets: ['latin'],
@@ -51,6 +52,7 @@ export default function RootLayout({
                             <ToastNotifications />
                             <AssistantButton />
                             <AssistantPanel />
+                            <SystemWakeAnimation />
                         </AssistantProvider>
                     </SystemStateProvider>
                 </ToastProvider>

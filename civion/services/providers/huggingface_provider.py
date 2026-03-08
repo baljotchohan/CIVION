@@ -25,7 +25,15 @@ class HuggingFaceProvider(BaseProvider):
         except Exception as e:
             return f"HuggingFace Error: {str(e)}"
 
-    async def stream(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.7) -> AsyncGenerator[str, None]:
+    async def stream(
+        self,
+        prompt: str,
+        system: str = None,
+        messages: list = None,
+        max_tokens: int = 1024,
+        temperature: float = 0.7,
+        **kwargs
+    ) -> AsyncGenerator[str, None]:
         # Basic streaming not supported easily for all HF Inference Endpoints via simple post
         # Returning complete response as single chunk for now
         res = await self.complete(prompt, max_tokens, temperature)

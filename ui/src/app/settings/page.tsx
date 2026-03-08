@@ -67,8 +67,9 @@ export default function SettingsPage() {
             toast(`${provider} key saved securely`, 'success');
 
             if (wasDead) {
-                toast("SYSTEM WAKING UP...", 'success');
-                // Could trigger a visual wake up animation here globally
+                toast("🚀 CIVION is now online!", 'success');
+                // SystemStateContext handles the animation automatically
+                // via health state transition detection
             }
         } catch (error: any) {
             toast(`Failed to save ${provider} key: ${error.message || 'Unknown error'}`, 'error');
