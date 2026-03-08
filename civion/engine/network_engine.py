@@ -46,8 +46,8 @@ class NetworkEngine:
 
     async def get_network_stats(self) -> Dict[str, Any]:
         return {
-            "network": self._network_name or "not_connected",
-            "peers": len(self.peers),
+            "network_name": self._network_name or "not_connected",
+            "peer_count": len(self.peers),
             "connected": sum(1 for p in self.peers if p.status == "connected"),
             "signals_shared": self._signals_shared,
             "health": "excellent" if self.peers else "no_peers",

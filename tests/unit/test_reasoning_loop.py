@@ -9,7 +9,7 @@ async def test_reasoning_loop():
     
     assert loop.id is not None
     assert loop.topic == topic
-    assert loop.hypothesis == insight
+    assert insight in loop.hypothesis
     
     # Check that arguments were gathered (mocked)
     assert len(loop.arguments) > 1

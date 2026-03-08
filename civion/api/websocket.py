@@ -118,9 +118,9 @@ class ConnectionManager:
                     self.subscribe(client_id, event)
                 await websocket.send_json({"type": "subscribed", "events": list(self.active_connections[client_id]["subscriptions"])})
             elif msg_type == "unsubscribe" and "events" in data:
-                for event in data["events"]:
-                    self.unsubscribe(client_id, event)
-                await websocket.send_json({"type": "unsubscribed", "events": list(self.active_connections[client_id]["subscriptions"])})
+                # We consume events one by one or as a list
+                events = data["events"]
+                await self.unsubscribe(client_id, events)
             elif msg_type == "ping":
                 await websocket.send_json({"type": "pong", "timestamp": data.get("timestamp")})
                 
