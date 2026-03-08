@@ -2,7 +2,7 @@ import asyncio
 import logging
 from typing import List, Optional, Dict
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 
 from civion.api.websocket import manager
 
@@ -36,7 +36,7 @@ class PredictionEngine:
             "probability": round(base_prob, 2),
             "timeframe": "Next 30 days",
             "evidence": evidence,
-            "created_at": datetime.utcnow().isoformat() + "Z",
+            "created_at": datetime.now(timezone.utc).isoformat() + "Z",
             "resolved": False,
             "outcome": None,
             "accuracy": None,

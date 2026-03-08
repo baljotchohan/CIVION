@@ -5,7 +5,7 @@ Common utility functions used across the application.
 from __future__ import annotations
 import uuid
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 
@@ -17,14 +17,14 @@ def generate_id(prefix: str = "") -> str:
 
 def now_iso() -> str:
     """Get current UTC time as ISO string."""
-    return datetime.utcnow().isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 def time_ago(iso_str: str) -> str:
     """Convert ISO timestamp to human-readable 'time ago' string."""
     try:
         dt = datetime.fromisoformat(iso_str)
-        diff = datetime.utcnow() - dt
+        diff = datetime.now(timezone.utc) - dt
         if diff.days > 365:
             return f"{diff.days // 365}y ago"
         if diff.days > 30:

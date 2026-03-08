@@ -4,7 +4,7 @@ APScheduler-based task scheduling for autonomous operations.
 """
 from __future__ import annotations
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
 from civion.core.logger import engine_logger
 
@@ -29,7 +29,7 @@ class ScheduledJob:
                     await self.func()
                 else:
                     self.func()
-                self.last_run = datetime.utcnow().isoformat()
+                self.last_run = datetime.now(timezone.utc).isoformat()
                 self.run_count += 1
             except Exception as e:
                 log.error(f"Job '{self.name}' error: {e}")

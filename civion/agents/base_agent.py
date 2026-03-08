@@ -6,7 +6,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field
 
@@ -24,7 +24,7 @@ class AgentResult:
     signals: List[Dict[str, Any]] = field(default_factory=list)
     errors: List[str] = field(default_factory=list)
     duration_seconds: float = 0.0
-    timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
 class BaseAgent(ABC):
@@ -90,7 +90,7 @@ class BaseAgent(ABC):
 
             # Update stats
             self._scan_count += 1
-            self._last_run = datetime.utcnow().isoformat()
+            self._last_run = datetime.now(timezone.utc).isoformat()
             self._total_insights += len(result.insights)
             self._total_signals += len(result.signals)
             self.state = AgentState.IDLE
