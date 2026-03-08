@@ -5,7 +5,7 @@ Real-time event broadcasting for WebSocket and SSE.
 from __future__ import annotations
 import asyncio
 import json
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any, Callable, Dict, List, Set
 from civion.core.logger import engine_logger
 
@@ -38,7 +38,7 @@ class EventStream:
         event = {
             "type": event_type,
             "data": data,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
         self._event_history.append(event)
         if len(self._event_history) > 500:

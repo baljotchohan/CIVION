@@ -1,98 +1,101 @@
 import pytest
 import asyncio
-from unittest.mock import AsyncMock, MagicMock
-from civion.engine.network_engine import NetworkEngine
-from civion.core.events import EventBus
+from unittest.mock import AsyncMock, patch
+from civion.engine.network_engine import NetworkEngine, Peer
 
 @pytest.fixture
 def network():
-    engine = NetworkEngine()
-    engine.session = AsyncMock()
-    return engine
+    return NetworkEngine()
 
 @pytest.mark.asyncio
-async def test_join_network_success(network):
-    """Test successful network join sets up peers"""
-    network.session.post.return_value.__aenter__.return_value.status = 200
-    network.session.post.return_value.__aenter__.return_value.json = AsyncMock(return_value={"status": "ok", "peers": ["node1", "node2"]})
-    result = await network.join_network()
-    assert result is True
-    assert network.is_connected is True
-    assert "node1" in network.peers
-
-@pytest.mark.asyncio
-async def test_join_network_already_joined(network):
-    """Test redundant joins return early"""
-    network.is_connected = True
-    result = await network.join_network()
-    assert result is True
-    network.session.post.assert_not_called()
-
-@pytest.mark.asyncio
-async def test_leave_network(network):
-    """Test disconnect and peer list clear"""
-    network.is_connected = True
-    network.peers = ["node1"]
-    await network.leave_network()
-    assert network.is_connected is False
+async def test_network_engine_initialization(network):
+    """Test initial attributes of the network engine."""
     assert len(network.peers) == 0
+    assert network._network_name == ""
+    assert network._signals_shared == 0
 
 @pytest.mark.asyncio
-async def test_broadcast_signal_to_empty_network(network):
-    """Test broadcast with no peers returns silently"""
-    network.peers = set()
-    result = await network.broadcast_signal({"id": "sig1"})
-    assert result == 0
+async def test_join_network_adds_peers(network):
+    """Test join_network adds peers to the list."""
+    await network.join_network("test-net", ["http://peer1", "http://peer2"])
+    assert len(network.peers) == 2
+    assert network._network_name == "test-net"
 
 @pytest.mark.asyncio
-async def test_broadcast_signal_with_peers(network):
-    """Test broadcast loops through peers"""
-    network.peers = {"http://node1", "http://node2"}
-    network.session.post.return_value.__aenter__.return_value.status = 200
-    res = await network.broadcast_signal({"id": "sig2"})
-    assert res == 2
-    assert network.session.post.call_count == 2
+async def test_peer_id_generation(network):
+    """Test that peers get unique generated IDs."""
+    await network.join_network("net", ["http://p1", "http://p2"])
+    assert network.peers[0].id != network.peers[1].id
+    assert network.peers[0].id.startswith("peer_")
 
 @pytest.mark.asyncio
-async def test_receive_signal_from_peer(network):
-    """Test handling valid incoming signal"""
-    EventBus.publish = AsyncMock()
-    await network.receive_signal({"id": "sig3", "title": "Test", "source": "peer"})
-    assert "sig3" in network.seen_signals
-    EventBus.publish.assert_called_once()
+async def test_get_peers_returns_list(network):
+    """Test getting peer objects."""
+    await network.join_network("net", ["http://p1"])
+    peers = await network.get_peers()
+    assert isinstance(peers, list)
+    assert peers[0].url == "http://p1"
 
 @pytest.mark.asyncio
-async def test_consensus_calculation_majority(network):
-    """Test distributed consensus resolution"""
-    network.peers = {"http://node1", "http://node2", "http://node3"}
-    # 2 agree, 1 disagree
-    network.session.post.return_value.__aenter__.return_value.json = AsyncMock(side_effect=[
-        {"vote": True}, {"vote": True}, {"vote": False}
-    ])
-    result = await network.calculate_consensus("claim_123")
-    assert result is True
+async def test_get_network_stats_basic(network):
+    """Test initial stats without peers."""
+    stats = await network.get_network_stats()
+    assert stats["network_name"] == "not_connected"
+    assert stats["peer_count"] == 0
+    assert stats["health"] == "no_peers"
 
 @pytest.mark.asyncio
-async def test_peer_list_not_empty_after_join(network):
-    """Test peer persistence"""
-    network.session.post.return_value.__aenter__.return_value.status = 200
-    network.session.post.return_value.__aenter__.return_value.json = AsyncMock(return_value={"status": "ok", "peers": ["p1"]})
-    await network.join_network()
-    assert len(network.peers) > 0
+async def test_get_network_stats_populated(network):
+    """Test stats after joining a network."""
+    await network.join_network("alpha", ["http://1"])
+    stats = await network.get_network_stats()
+    assert stats["network_name"] == "alpha"
+    assert stats["peer_count"] == 1
+    assert stats["connected"] == 1
+    assert stats["health"] == "excellent"
 
 @pytest.mark.asyncio
-async def test_network_status_returns_health(network):
-    """Test status aggregation"""
-    network.is_connected = True
-    network.peers = {"http://p1"}
-    status = network.get_network_status()
-    assert status["connected"] is True
-    assert status["peer_count"] == 1
+async def test_broadcast_signal_returns_count(network):
+    """Test broadcasting returns number of connected peers."""
+    await network.join_network("net", ["http://p1", "http://p2"])
+    count = await network.broadcast_signal({"data": 123})
+    assert count == 2
 
 @pytest.mark.asyncio
-async def test_duplicate_signal_rejected(network):
-    """Test signal deduplication prevents loops"""
-    network.seen_signals.add("sig4")
-    EventBus.publish = AsyncMock()
-    await network.receive_signal({"id": "sig4"})
-    EventBus.publish.assert_not_called()
+async def test_broadcast_signal_increments_metric(network):
+    """Test shared signal counter increments."""
+    await network.join_network("net", ["http://p"])
+    await network.broadcast_signal({})
+    await network.broadcast_signal({})
+    stats = await network.get_network_stats()
+    assert stats["signals_shared"] == 2
+
+@pytest.mark.asyncio
+async def test_peer_last_seen_tracking(network):
+    """Test that peers have a last_seen timestamp."""
+    await network.join_network("net", ["http://p"])
+    assert network.peers[0].last_seen != ""
+
+@pytest.mark.asyncio
+async def test_peer_serialization_structure(network):
+    """Test Peer.dict() structure."""
+    await network.join_network("net", ["http://p"])
+    p_dict = network.peers[0].dict()
+    assert "id" in p_dict
+    assert "url" in p_dict
+    assert "status" in p_dict
+    assert p_dict["url"] == "http://p"
+
+@pytest.mark.asyncio
+async def test_broadcast_signal_no_peers(network):
+    """Test broadcasting when no peers are present."""
+    count = await network.broadcast_signal({"msg": "hi"})
+    assert count == 0
+
+@pytest.mark.asyncio
+async def test_multiple_joins_append_peers(network):
+    """Test that consecutive joins append to the peer list."""
+    await network.join_network("net1", ["http://1"])
+    await network.join_network("net2", ["http://2"])
+    assert len(network.peers) == 2
+    assert network._network_name == "net2"

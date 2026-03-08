@@ -36,7 +36,7 @@ class ConfidenceTracker:
     async def _broadcast(self, update: ConfidenceUpdate):
         """Broadcast over WebSocket"""
         from civion.engine.event_stream import event_stream
-        await event_stream.publish("confidence_update", {
+        await event_stream.emit("confidence_update", {
             "insight_id": update.insight_id,
             "agent": update.cascade_events[-1].agent,
             "confidence": update.confidence,
