@@ -53,7 +53,7 @@ export default function VaultPage() {
                     <p className="text-sm text-text-secondary mt-1">Saved files, important signals, and generated reports.</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" href="/api/v1/vault/export" as="a" target="_blank">
+                    <Button variant="outline" onClick={() => window.open('/api/v1/vault/export', '_blank')}>
                         Export JSON
                     </Button>
                     <Button variant="primary">

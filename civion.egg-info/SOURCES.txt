@@ -90,138 +90,53 @@ civion/static/ui/404.html
 civion/static/ui/index.html
 civion/static/ui/index.txt
 civion/static/ui/404/index.html
-civion/static/ui/_next 3/static/QTflGKqFYWM64Nqxlr4hN/_buildManifest.js
-civion/static/ui/_next 3/static/QTflGKqFYWM64Nqxlr4hN/_ssgManifest.js
-civion/static/ui/_next 3/static/Vi690Mm4og71l4-aJbMSC/_buildManifest.js
-civion/static/ui/_next 3/static/Vi690Mm4og71l4-aJbMSC/_ssgManifest.js
-civion/static/ui/_next 3/static/chunks/114-604fcf9985ff9b90.js
-civion/static/ui/_next 3/static/chunks/116-a3e6a579571634fb.js
-civion/static/ui/_next 3/static/chunks/17-3898eeb00a4834e6.js
-civion/static/ui/_next 3/static/chunks/17-87e98bf2188a8cf2.js
-civion/static/ui/_next 3/static/chunks/214-b5017bd30758a9e7.js
-civion/static/ui/_next 3/static/chunks/220-586b750eb8a2e1c3.js
-civion/static/ui/_next 3/static/chunks/293-4a600450b333e0a1.js
-civion/static/ui/_next 3/static/chunks/293-c0b357fd14e3ee5f.js
-civion/static/ui/_next 3/static/chunks/337-cfe96044bdef0476.js
-civion/static/ui/_next 3/static/chunks/45-b8bc2b69d075cdfe.js
-civion/static/ui/_next 3/static/chunks/472-8787b81f337a4124.js
-civion/static/ui/_next 3/static/chunks/514-aa4e60972a984bbd.js
-civion/static/ui/_next 3/static/chunks/544-6e1a8ac12f5ef8a9.js
-civion/static/ui/_next 3/static/chunks/620-e7a2896e0c93f2de.js
-civion/static/ui/_next 3/static/chunks/664-1a654dc3c491a5c5.js
-civion/static/ui/_next 3/static/chunks/77-321c2ae4dff53e8c.js
-civion/static/ui/_next 3/static/chunks/784-ba31a726c9e1818d.js
-civion/static/ui/_next 3/static/chunks/828-e21f852ad7d337fa.js
-civion/static/ui/_next 3/static/chunks/91-d1efe7cbc6e246da.js
-civion/static/ui/_next 3/static/chunks/916-a407d09fb8d860bd.js
-civion/static/ui/_next 3/static/chunks/937-3eeab7295f66062e.js
-civion/static/ui/_next 3/static/chunks/fd9d1056-9ab9fe59717045df.js
-civion/static/ui/_next 3/static/chunks/framework-0d01cdd3f4d700bf.js
-civion/static/ui/_next 3/static/chunks/main-a8d7888fa6757667.js
-civion/static/ui/_next 3/static/chunks/main-app-09c711802926cac1.js
-civion/static/ui/_next 3/static/chunks/polyfills-c67a75d1b6f99dc8.js
-civion/static/ui/_next 3/static/chunks/webpack-6f52f09fe830acd5.js
-civion/static/ui/_next 3/static/chunks/webpack-de0eb80abd4dd1c7.js
-civion/static/ui/_next 3/static/chunks/app/_not-found-27ef8752268df22e.js
-civion/static/ui/_next 3/static/chunks/app/layout-ff898f2a5b1049d3.js
-civion/static/ui/_next 3/static/chunks/app/page-715a37aa19d48436.js
-civion/static/ui/_next 3/static/chunks/app/agents/page-062cc6abab76015a.js
-civion/static/ui/_next 3/static/chunks/app/goals/page-9887458b5c6423b4.js
-civion/static/ui/_next 3/static/chunks/app/guide/page-b2cadbd8119954a0.js
-civion/static/ui/_next 3/static/chunks/app/insights/page-9dbbc1dc9702acee.js
-civion/static/ui/_next 3/static/chunks/app/logs/page-0ebd055d98d138d0.js
-civion/static/ui/_next 3/static/chunks/app/marketplace/page-857fb180a73e2c52.js
-civion/static/ui/_next 3/static/chunks/app/network/page-1eef5232d23bd584.js
-civion/static/ui/_next 3/static/chunks/app/personas/page-0e31eb54388173b1.js
-civion/static/ui/_next 3/static/chunks/app/predictions/page-3d452178df7cf0ea.js
-civion/static/ui/_next 3/static/chunks/app/reasoning/page-9657e3c2c86c6221.js
-civion/static/ui/_next 3/static/chunks/app/settings/page-ca7b02d4db64be1c.js
-civion/static/ui/_next 3/static/chunks/app/signals/page-ac608d3889486a26.js
-civion/static/ui/_next 3/static/chunks/pages/_app-451d704a741dc8a8.js
-civion/static/ui/_next 3/static/chunks/pages/_error-d6885ef27f2c5e3d.js
-civion/static/ui/_next 3/static/css/35e860c561373f98.css
-civion/static/ui/_next 3/static/css/a7953a0bf5f49e1e.css
-civion/static/ui/_next 3/static/media/0aa834ed78bf6d07-s.woff2
-civion/static/ui/_next 3/static/media/19cfc7226ec3afaa-s.woff2
-civion/static/ui/_next 3/static/media/21350d82a1f187e9-s.woff2
-civion/static/ui/_next 3/static/media/67957d42bae0796d-s.woff2
-civion/static/ui/_next 3/static/media/886030b0b59bc5a7-s.woff2
-civion/static/ui/_next 3/static/media/8e9860b6e62d6359-s.woff2
-civion/static/ui/_next 3/static/media/939c4f875ee75fbb-s.woff2
-civion/static/ui/_next 3/static/media/ba9851c3c22cd980-s.woff2
-civion/static/ui/_next 3/static/media/bb3ef058b751a6ad-s.p.woff2
-civion/static/ui/_next 3/static/media/c5fe6dc8356a8c31-s.woff2
-civion/static/ui/_next 3/static/media/df0a9ae256c0569c-s.woff2
-civion/static/ui/_next 3/static/media/e4af272ccee01ff0-s.p.woff2
-civion/static/ui/_next 3/static/media/f911b923c6adde36-s.woff2
-civion/static/ui/_next/static/chunks/114-604fcf9985ff9b90.js
-civion/static/ui/_next/static/chunks/17-87e98bf2188a8cf2.js
-civion/static/ui/_next/static/chunks/214-b5017bd30758a9e7.js
-civion/static/ui/_next/static/chunks/220-586b750eb8a2e1c3.js
-civion/static/ui/_next/static/chunks/293-c0b357fd14e3ee5f.js
-civion/static/ui/_next/static/chunks/45-b8bc2b69d075cdfe.js
-civion/static/ui/_next/static/chunks/472-8787b81f337a4124.js
-civion/static/ui/_next/static/chunks/544-6e1a8ac12f5ef8a9.js
-civion/static/ui/_next/static/chunks/620-e7a2896e0c93f2de.js
-civion/static/ui/_next/static/chunks/664-1a654dc3c491a5c5.js
-civion/static/ui/_next/static/chunks/77-321c2ae4dff53e8c.js
-civion/static/ui/_next/static/chunks/784-ba31a726c9e1818d.js
-civion/static/ui/_next/static/chunks/91-d1efe7cbc6e246da.js
-civion/static/ui/_next/static/chunks/916-a407d09fb8d860bd.js
-civion/static/ui/_next/static/chunks/937-3eeab7295f66062e.js
-civion/static/ui/_next/static/chunks/fd9d1056-9ab9fe59717045df.js
-civion/static/ui/_next/static/chunks/framework-0d01cdd3f4d700bf.js
-civion/static/ui/_next/static/chunks/main-a8d7888fa6757667.js
-civion/static/ui/_next/static/chunks/main-app-09c711802926cac1.js
+civion/static/ui/_next/static/chunks/286-379bb3690c546a4e.js
+civion/static/ui/_next/static/chunks/472-49c20e0e4a4d055c.js
+civion/static/ui/_next/static/chunks/527-b200386a78271f22.js
+civion/static/ui/_next/static/chunks/982-894a375251f3306b.js
+civion/static/ui/_next/static/chunks/985-41e46c5338496c22.js
+civion/static/ui/_next/static/chunks/fd9d1056-5d6d29a9024f5329.js
+civion/static/ui/_next/static/chunks/framework-c5181c9431ddc45b.js
+civion/static/ui/_next/static/chunks/main-a936e09a71ae69fd.js
+civion/static/ui/_next/static/chunks/main-app-2a7d2d994fd76398.js
 civion/static/ui/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js
-civion/static/ui/_next/static/chunks/webpack-fe29aa8323f26989.js
-civion/static/ui/_next/static/chunks/app/_not-found-27ef8752268df22e.js
-civion/static/ui/_next/static/chunks/app/layout-2e05b93cee9c4518.js
-civion/static/ui/_next/static/chunks/app/page-715a37aa19d48436.js
-civion/static/ui/_next/static/chunks/app/agents/page-062cc6abab76015a.js
-civion/static/ui/_next/static/chunks/app/goals/page-9887458b5c6423b4.js
-civion/static/ui/_next/static/chunks/app/guide/page-b2cadbd8119954a0.js
-civion/static/ui/_next/static/chunks/app/insights/page-9dbbc1dc9702acee.js
-civion/static/ui/_next/static/chunks/app/logs/page-0ebd055d98d138d0.js
-civion/static/ui/_next/static/chunks/app/marketplace/page-857fb180a73e2c52.js
-civion/static/ui/_next/static/chunks/app/network/page-1eef5232d23bd584.js
-civion/static/ui/_next/static/chunks/app/personas/page-0e31eb54388173b1.js
-civion/static/ui/_next/static/chunks/app/predictions/page-3d452178df7cf0ea.js
-civion/static/ui/_next/static/chunks/app/reasoning/page-6480b6bade61bb57.js
-civion/static/ui/_next/static/chunks/app/settings/page-ccf902e3701ef186.js
-civion/static/ui/_next/static/chunks/app/signals/page-ac608d3889486a26.js
-civion/static/ui/_next/static/chunks/pages/_app-451d704a741dc8a8.js
-civion/static/ui/_next/static/chunks/pages/_error-d6885ef27f2c5e3d.js
-civion/static/ui/_next/static/css/81579c58b7a7455f.css
-civion/static/ui/_next/static/lgMOGghEbUwlYmgFwpOa_/_buildManifest.js
-civion/static/ui/_next/static/lgMOGghEbUwlYmgFwpOa_/_ssgManifest.js
-civion/static/ui/_next/static/media/0aa834ed78bf6d07-s.woff2
+civion/static/ui/_next/static/chunks/webpack-e7ff6c7af1cc1d61.js
+civion/static/ui/_next/static/chunks/app/_not-found-119809cb29d98471.js
+civion/static/ui/_next/static/chunks/app/layout-f8964db73b6c8f8e.js
+civion/static/ui/_next/static/chunks/app/page-83aaffecb11a9245.js
+civion/static/ui/_next/static/chunks/app/agents/page-154495c5605a4cd8.js
+civion/static/ui/_next/static/chunks/app/guide/page-c03be46d904b0574.js
+civion/static/ui/_next/static/chunks/app/network/page-f5d83fca8636f38f.js
+civion/static/ui/_next/static/chunks/app/onboarding/page-4f354cd95789a298.js
+civion/static/ui/_next/static/chunks/app/personas/page-d2c21721278dd1fd.js
+civion/static/ui/_next/static/chunks/app/predictions/page-ad105a6daf4c6fb5.js
+civion/static/ui/_next/static/chunks/app/reasoning/page-8f73e496211065dd.js
+civion/static/ui/_next/static/chunks/app/settings/page-5d6c5983299eb23d.js
+civion/static/ui/_next/static/chunks/app/signals/page-4276f907530f8035.js
+civion/static/ui/_next/static/chunks/app/vault/page-7099bb6335f040f0.js
+civion/static/ui/_next/static/chunks/pages/_app-1534f180665c857f.js
+civion/static/ui/_next/static/chunks/pages/_error-b646007f40c4f0a8.js
+civion/static/ui/_next/static/css/2f60b6e86ca09646.css
+civion/static/ui/_next/static/k1nZHwiI6EZbjNEBhiTj7/_buildManifest.js
+civion/static/ui/_next/static/k1nZHwiI6EZbjNEBhiTj7/_ssgManifest.js
 civion/static/ui/_next/static/media/19cfc7226ec3afaa-s.woff2
 civion/static/ui/_next/static/media/21350d82a1f187e9-s.woff2
-civion/static/ui/_next/static/media/67957d42bae0796d-s.woff2
-civion/static/ui/_next/static/media/886030b0b59bc5a7-s.woff2
+civion/static/ui/_next/static/media/36966cca54120369-s.p.woff2
 civion/static/ui/_next/static/media/8e9860b6e62d6359-s.woff2
-civion/static/ui/_next/static/media/939c4f875ee75fbb-s.woff2
+civion/static/ui/_next/static/media/b7387a63dd068245-s.woff2
 civion/static/ui/_next/static/media/ba9851c3c22cd980-s.woff2
-civion/static/ui/_next/static/media/bb3ef058b751a6ad-s.p.woff2
 civion/static/ui/_next/static/media/c5fe6dc8356a8c31-s.woff2
 civion/static/ui/_next/static/media/df0a9ae256c0569c-s.woff2
+civion/static/ui/_next/static/media/e1aab0933260df4d-s.woff2
 civion/static/ui/_next/static/media/e4af272ccee01ff0-s.p.woff2
-civion/static/ui/_next/static/media/f911b923c6adde36-s.woff2
 civion/static/ui/agents/index.html
 civion/static/ui/agents/index.txt
-civion/static/ui/goals/index.html
-civion/static/ui/goals/index.txt
 civion/static/ui/guide/index.html
 civion/static/ui/guide/index.txt
-civion/static/ui/insights/index.html
-civion/static/ui/insights/index.txt
-civion/static/ui/logs/index.html
-civion/static/ui/logs/index.txt
-civion/static/ui/marketplace/index.html
-civion/static/ui/marketplace/index.txt
 civion/static/ui/network/index.html
 civion/static/ui/network/index.txt
+civion/static/ui/onboarding/index.html
+civion/static/ui/onboarding/index.txt
 civion/static/ui/personas/index.html
 civion/static/ui/personas/index.txt
 civion/static/ui/predictions/index.html
@@ -232,6 +147,8 @@ civion/static/ui/settings/index.html
 civion/static/ui/settings/index.txt
 civion/static/ui/signals/index.html
 civion/static/ui/signals/index.txt
+civion/static/ui/vault/index.html
+civion/static/ui/vault/index.txt
 civion/storage/__init__.py
 civion/storage/database.py
 civion/tools/__init__.py

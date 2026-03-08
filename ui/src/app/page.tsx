@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { useSystemState, SystemState } from '../contexts/SystemStateContext';
+import { useSystemState } from '../contexts/SystemStateContext';
 import { Card, CardContent } from '../components/ui/Card';
 import { ConfidenceCascade } from '../components/dashboard/ConfidenceCascade';
 import { AgentStatusGrid } from '../components/agents/AgentStatusGrid';

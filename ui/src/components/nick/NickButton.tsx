@@ -5,7 +5,7 @@ import { InfoTooltip } from '../ui/InfoTooltip';
 import { NickCharacter } from './NickCharacter';
 
 export interface NickButtonProps {
-    systemState: 'dead' | 'idle' | 'alive';
+    systemState: 'dead' | 'idle' | 'alive' | 'degraded' | 'error';
     hasNotification?: boolean;
     onClick: () => void;
     isOpen: boolean;
