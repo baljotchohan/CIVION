@@ -40,7 +40,6 @@ class SignalEngine:
         
         # Broadcast via WebSocket precisely as specified in the instructions
         await manager.broadcast("signal_detected", signal)
-        await manager.broadcast("signal_new", signal)
         
         # PERSIST to DataService so /signals endpoint works
         from civion.services.data_service import data_service

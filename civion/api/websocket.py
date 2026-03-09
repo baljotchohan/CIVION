@@ -41,10 +41,10 @@ class ConnectionManager:
             
             # Send initial confirmation
             import uuid
-            from datetime import datetime
+            from datetime import datetime, timezone
             await websocket.send_json({
-                "type": "connected", 
-                "timestamp": datetime.utcnow().isoformat(),
+                "type": "system_event", 
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "event_id": str(uuid.uuid4()),
                 "data": {"message": "Connected to CIVION", "client_id": client_id}
             })

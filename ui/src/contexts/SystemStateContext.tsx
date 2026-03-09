@@ -159,7 +159,7 @@ export function SystemStateProvider({ children }: { children: ReactNode }) {
             setActiveAgents(prev => prev.map(a => a.id === data.id ? { ...a, ...data } : a));
         });
 
-        const unsubSignal = subscribe('signal_new', (data: Signal) => {
+        const unsubSignal = subscribe('signal_detected', (data: Signal) => {
             setSignals(prev => [data, ...prev.slice(0, 19)]); // Keep max 20 signals
         });
 
