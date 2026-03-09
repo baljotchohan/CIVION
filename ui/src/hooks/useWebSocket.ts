@@ -1,229 +1,122 @@
-import { useEffect, useState, useCallback } from 'react';
-
-import { ConnectionState, WebSocketEventType } from '../types';
-
-export interface WebSocketMessage<T = any> {
-    type: WebSocketEventType;
-    data: T;
-    timestamp?: string;
-    event_id?: string;
-}
-
-type MessageHandler = (data: any, type?: string) => void;
-
-// Global singleton state to share connection across components
-let wsInstance: WebSocket | null = null;
-let currentState: ConnectionState = 'disconnected';
-const stateListeners = new Set<(state: ConnectionState) => void>();
-const messageListeners = new Map<string, Set<MessageHandler>>();
-let messageQueue: string[] = [];
-let retryCount = 0;
-let reconnectTimer: NodeJS.Timeout | null = null;
-let pingTimer: NodeJS.Timeout | null = null;
-let connectionRefs = 0;
-
-const notifyStateChange = (state: ConnectionState) => {
-    currentState = state;
-    stateListeners.forEach((listener) => listener(state));
-};
-
-const emitMessage = (type: string, data: any) => {
-    const listeners = messageListeners.get(type);
-    if (listeners) {
-        listeners.forEach((listener) => listener(data));
-    }
-    // Notify wildcard listeners
-    const wildcards = messageListeners.get('*');
-    if (wildcards) {
-        wildcards.forEach((listener) => (listener as any)(data, type));
-    }
-};
-
-const getWebSocketUrl = () => {
-    if (typeof window === 'undefined') return '';
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.hostname === 'localhost' ? 'localhost:8000' : window.location.host;
-    return `${protocol}//${host}/ws`;
-};
-
-const connectWebSocket = () => {
-    if (typeof window === 'undefined') return;
-    if (wsInstance?.readyState === WebSocket.OPEN || wsInstance?.readyState === WebSocket.CONNECTING) return;
-
-    notifyStateChange('connecting');
-
-    try {
-        const wsUrl = getWebSocketUrl();
-        wsInstance = new WebSocket(wsUrl);
-
-        wsInstance.onopen = () => {
-            notifyStateChange('connected');
-            retryCount = 0; // Reset backoff
-
-            // Start heartbeat ping every 30s
-            if (pingTimer) clearInterval(pingTimer);
-            pingTimer = setInterval(() => {
-                if (wsInstance?.readyState === WebSocket.OPEN) {
-                    wsInstance.send(JSON.stringify({ type: 'ping', timestamp: new Date().toISOString() }));
-                }
-            }, 30000);
-
-            // Replay queued messages
-            while (messageQueue.length > 0) {
-                const msg = messageQueue.shift();
-                if (msg && wsInstance.readyState === WebSocket.OPEN) {
-                    wsInstance.send(msg);
-                }
-            }
-        };
-
-        wsInstance.onmessage = (event) => {
-            try {
-                const messageVal = typeof event.data === 'string' ? JSON.parse(event.data) : null;
-                if (!messageVal || !messageVal.type) return;
-
-                if (messageVal.type === 'pong') return; // Ignore pong responses
-                emitMessage(messageVal.type, messageVal.data);
-            } catch (err) {
-                // Silent catch for parsing errors
-            }
-        };
-
-        wsInstance.onclose = () => {
-            notifyStateChange('disconnected');
-            if (pingTimer) {
-                clearInterval(pingTimer);
-                pingTimer = null;
-            }
-            wsInstance = null;
-            scheduleReconnect();
-        };
-
-        wsInstance.onerror = () => {
-            notifyStateChange('error');
-            // onclose will follow, handling reconnect
-        };
-    } catch (error) {
-        notifyStateChange('error');
-        scheduleReconnect();
-    }
-};
-
-const scheduleReconnect = () => {
-    if (reconnectTimer) clearTimeout(reconnectTimer);
-    if (connectionRefs <= 0) return; // Don't reconnect if no components are using it
-
-    // Exponential backoff: 1s, 2s, 4s, 8s, max 30s
-    const delay = Math.min(1000 * Math.pow(2, retryCount), 30000);
-    retryCount++;
-
-    reconnectTimer = setTimeout(() => {
-        connectWebSocket();
-    }, delay);
-};
-
-const disconnectWebSocket = () => {
-    if (reconnectTimer) clearTimeout(reconnectTimer);
-    if (pingTimer) clearInterval(pingTimer);
-    if (wsInstance) {
-        // Remove onclose to prevent auto-reconnect
-        wsInstance.onclose = null;
-        wsInstance.close();
-        wsInstance = null;
-    }
-    notifyStateChange('disconnected');
-};
+import { useEffect, useState, useRef } from 'react';
 
 export const useWebSocket = () => {
-    const [connectionState, setConnectionState] = useState<ConnectionState>(currentState);
-    const [events, setEvents] = useState<WebSocketMessage[]>([]);
-    const [latestEvent, setLatestEvent] = useState<WebSocketMessage | null>(null);
+    const [connected, setConnected] = useState(false);
+    const [events, setEvents] = useState<any[]>([]);
+    const [latestEvent, setLatestEvent] = useState<any>(null);
+    const wsRef = useRef<WebSocket | null>(null);
+    const listenersRef = useRef<Map<string, Set<(data: any) => void>>>(new Map());
 
     useEffect(() => {
-        // Global connection ref counting
-        connectionRefs++;
-        if (connectionRefs === 1 && currentState === 'disconnected') {
-            connectWebSocket();
-        }
+        const connect = () => {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const host = process.env.NEXT_PUBLIC_API_HOST || (window.location.hostname === 'localhost' ? 'localhost:8000' : window.location.host);
+            const url = `${protocol}//${host}/ws`;
 
-        const onStateChange = (state: ConnectionState) => setConnectionState(state);
-        stateListeners.add(onStateChange);
+            console.log(`[WS] Connecting to ${url}...`);
+            const ws = new WebSocket(url);
 
-        // Subscribe to all messages to maintain local history for the component
-        const allMessagesHandler = (data: any, type: string) => {
-            const msg: WebSocketMessage = { type: type as any, data, timestamp: new Date().toISOString() };
-            setLatestEvent(msg);
-            setEvents(prev => [...prev.slice(-99), msg]);
+            ws.onopen = () => {
+                console.log('[WS] Connected');
+                setConnected(true);
+
+                // Re-subscribe to all active event types on reconnect
+                const activeEvents = Array.from(listenersRef.current.keys());
+                if (activeEvents.length > 0) {
+                    ws.send(JSON.stringify({ type: 'subscribe', events: activeEvents }));
+                }
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    setLatestEvent(message);
+                    setEvents(prev => [...prev.slice(-99), message]);
+
+                    // Call listeners for this event type
+                    const handlers = listenersRef.current.get(message.type);
+                    if (handlers) {
+                        handlers.forEach(handler => handler(message.data || message));
+                    }
+                } catch (e) {
+                    console.error('[WS] Parse error', e);
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('[WS] Disconnected');
+                setConnected(false);
+                setTimeout(() => {
+                    if (typeof window !== 'undefined') {
+                        connect();
+                    }
+                }, 3000);
+            };
+
+            wsRef.current = ws;
         };
 
-        // We need a way to listen to ALL messages. Let's add a special listener type '*'
-        if (!messageListeners.has('*')) messageListeners.set('*', new Set());
-        messageListeners.get('*')!.add(allMessagesHandler);
+        connect();
 
         return () => {
-            stateListeners.delete(onStateChange);
-            messageListeners.get('*')?.delete(allMessagesHandler);
-            connectionRefs--;
-            if (connectionRefs === 0) {
-                disconnectWebSocket();
+            if (wsRef.current) {
+                wsRef.current.onclose = null;
+                wsRef.current.close();
             }
         };
     }, []);
 
-    const sendMessage = useCallback((type: WebSocketEventType, data: any) => {
-        const rawMsg = JSON.stringify({
-            type,
-            data,
-            timestamp: new Date().toISOString()
-        });
-
-        if (wsInstance?.readyState === WebSocket.OPEN) {
-            wsInstance.send(rawMsg);
-        } else {
-            messageQueue.push(rawMsg);
+    const sendMessage = (type: string, data: any) => {
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type, data, timestamp: new Date().toISOString() }));
         }
-    }, []);
+    };
 
-    const subscribe = useCallback((type: WebSocketEventType, handler: MessageHandler) => {
-        if (!messageListeners.has(type)) {
-            messageListeners.set(type, new Set());
+    const subscribe = (eventType: string, callback: (data: any) => void) => {
+        if (!listenersRef.current.has(eventType)) {
+            listenersRef.current.set(eventType, new Set());
+            // Send subscribe message to server
+            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                wsRef.current.send(JSON.stringify({ type: 'subscribe', events: [eventType] }));
+            }
         }
-        const handlers = messageListeners.get(type)!;
-        handlers.add(handler);
+
+        listenersRef.current.get(eventType)!.add(callback);
 
         return () => {
-            handlers.delete(handler);
-            if (handlers.size === 0) {
-                messageListeners.delete(type);
+            const handlers = listenersRef.current.get(eventType);
+            if (handlers) {
+                handlers.delete(callback);
+                if (handlers.size === 0) {
+                    listenersRef.current.delete(eventType);
+                    // Send unsubscribe message to server
+                    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                        wsRef.current.send(JSON.stringify({ type: 'unsubscribe', events: [eventType] }));
+                    }
+                }
             }
         };
-    }, []);
-
-    const getEventsByType = useCallback((type: string) => {
-        return events.filter(e => e.type === type);
-    }, [events]);
+    };
 
     return {
-        connectionState,
-        sendMessage,
-        subscribe,
-        isConnected: connectionState === 'connected',
+        connected,
         events,
         latestEvent,
-        getEventsByType
+        sendMessage,
+        subscribe,
+        isConnected: connected
     };
 };
 
-export const useWebSocketEvent = <T = any>(eventType: WebSocketEventType): T | null => {
-    const [data, setData] = useState<T | null>(null);
+export const useWebSocketEvent = <T = any>(eventType: string): T | null => {
     const { subscribe } = useWebSocket();
+    const [data, setData] = useState<T | null>(null);
 
     useEffect(() => {
-        const unsubscribe = subscribe(eventType, (newData: T) => {
-            setData(newData);
+        return subscribe(eventType, (eventData) => {
+            setData(eventData);
         });
-        return () => unsubscribe();
-    }, [eventType, subscribe]);
+    }, [subscribe, eventType]);
 
     return data;
 };

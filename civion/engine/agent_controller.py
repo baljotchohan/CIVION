@@ -41,58 +41,47 @@ class AgentController:
         self._instances: Dict[str, AgentInstance] = {}
         self._running_agents: Dict[str, asyncio.Task] = {}
     
-    async def start_agent(self, agent_name: str) -> dict:
+    async def start_agent(self, agent_name: str):
         """Start an agent"""
         if agent_name not in self._instances:
             self._instances[agent_name] = AgentInstance(agent_name)
         
-        instance = self._instances[agent_name]
-        
-        if instance.status in [AgentStatus.RUNNING, AgentStatus.PAUSED]:
-            return {
-                "success": False,
-                "error": f"Agent {agent_name} is already {instance.status.value}"
-            }
-        
-        instance.status = AgentStatus.RUNNING
-        instance.started_at = datetime.now()
+        agent = self._instances[agent_name]
+        agent.status = AgentStatus.RUNNING
+        agent.started_at = datetime.now()
         
         # Broadcast event
         from civion.api.websocket import manager
         await manager.broadcast("agent_started", {
             "agent": agent_name,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.utcnow().isoformat()
         })
         
         return {
             "success": True,
             "agent": agent_name,
-            "status": instance.status.value
+            "status": agent.status.value
         }
     
-    async def stop_agent(self, agent_name: str) -> dict:
+    async def stop_agent(self, agent_name: str):
         """Stop an agent"""
         if agent_name not in self._instances:
-            return {
-                "success": False,
-                "error": f"Agent {agent_name} not found"
-            }
+            return {"success": False, "error": f"Agent {agent_name} not found"}
         
-        instance = self._instances[agent_name]
-        instance.status = AgentStatus.STOPPED
-        instance.started_at = None
+        agent = self._instances[agent_name]
+        agent.status = AgentStatus.STOPPED
         
         # Broadcast event
         from civion.api.websocket import manager
         await manager.broadcast("agent_stopped", {
             "agent": agent_name,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.utcnow().isoformat()
         })
         
         return {
             "success": True,
             "agent": agent_name,
-            "status": instance.status.value
+            "status": agent.status.value
         }
     
     async def pause_agent(self, agent_name: str) -> dict:

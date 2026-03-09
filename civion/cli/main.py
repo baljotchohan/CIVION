@@ -23,6 +23,7 @@ from typing import Optional, List
 
 import typer
 import uvicorn
+import httpx
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -145,8 +146,10 @@ def gateway_start(
     except KeyboardInterrupt:
         console.print("\n[yellow]CIVION stopped.[/yellow]")
     except Exception as e:
-        console.print(f"\n[red]Failed to start: {e}[/red]")
-        console.print("[dim]Run 'civion gateway doctor' to diagnose issues.[/dim]")
+        console.print(f"\n[red]✗ Error: {e}[/red]")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
     finally:
         if PID_FILE.exists():
             PID_FILE.unlink()
@@ -249,32 +252,49 @@ def agent_list():
         table.add_column("Signals Found")
         
         for agent in agents:
-            status_color = "green" if agent["status"] == "running" else ("red" if agent["status"] == "error" else "yellow")
+            status_color = "green" if agent["running"] else "yellow"
             table.add_row(
                 agent["name"],
-                f"[{status_color}]{agent['status']}[/{status_color}]",
-                agent["current_task"],
-                str(agent["signals_found"])
+                f"[{status_color}]{agent['state']}[/{status_color}]",
+                f"{agent['total_insights']} insights",
+                str(agent["total_signals"])
             )
         console.print(table)
     except requests.exceptions.RequestException:
         console.print(f"[red]CIVION doesn't appear to be running. Start it with: civion start[/red]")
 
 @agent_app.command("start")
-def agent_start(
-    agents: Optional[str] = typer.Argument(None, help="Agent name(s), comma-separated"),
-    all: bool = typer.Option(False, help="Start all agents"),
+async def agent_start(
+    agent_name: str = typer.Argument(..., help="Agent name to start"),
 ):
-    """Start agent(s)"""
-    target = "all" if all or agents is None else agents
+    """Start an agent"""
+    console.print(f"[cyan]Starting agent: {agent_name}[/cyan]")
     try:
-        url = f"http://localhost:{config.port}/api/v1/agents"
-        url += "/run-all" if target == "all" else f"/{target}/start"
-        res = requests.post(url, timeout=5)
-        res.raise_for_status()
-        console.print(f"[green]✓ Successfully started {target}[/green]")
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"http://localhost:{config.port}/api/v1/agents/{agent_name}/start"
+            )
+            response.raise_for_status()
+            result = response.json()
+            console.print(f"[green]✓ Agent started[/green]")
     except Exception as e:
-        console.print(f"[red]Failed to start: {e}[/red]")
+        console.print(f"[red]✗ Error[/red] {str(e)}")
+
+@agent_app.command("stop")
+async def agent_stop(
+    agent_name: str = typer.Argument(..., help="Agent name to stop"),
+):
+    """Stop an agent"""
+    console.print(f"[cyan]Stopping agent: {agent_name}[/cyan]")
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"http://localhost:{config.port}/api/v1/agents/{agent_name}/stop"
+            )
+            response.raise_for_status()
+            console.print(f"[green]✓ Agent stopped[/green]")
+    except Exception as e:
+        console.print(f"[red]✗ Error[/red] {str(e)}")
 
 @agent_app.command("logs")
 def agent_logs(
@@ -295,42 +315,46 @@ def agent_logs(
 # ============ GOAL COMMANDS ============
 
 @goal_app.command("create")
-def goal_create(query: str = typer.Argument(..., help="Intelligence goal statement")):
+async def goal_create(query: str = typer.Argument(..., help="Intelligence goal statement")):
     """Create a new intelligence goal"""
-    console.print(f"[cyan]Creating goal: {query}[/cyan]")
     try:
-        res = requests.post(f"http://localhost:{config.port}/api/v1/goals", params={"title": query, "description": ""}, timeout=5)
-        res.raise_for_status()
-        goal = res.json()
-        console.print(f"[green]✓ Goal created with ID: {goal['id']}[/green]")
-        console.print(Panel(f"Targeting: {query}\nStatus: {goal['status']}", title="Goal Registered"))
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"http://localhost:{config.port}/api/v1/goals",
+                json={"title": query, "description": ""}
+            )
+            response.raise_for_status()
+            goal = response.json()
+            console.print(f"[green]✓ Goal created[/green] {goal['id']}")
     except Exception as e:
-        console.print(f"[red]Failed to create goal: {e}[/red]")
+        console.print(f"[red]✗ Error[/red] {str(e)}")
 
 @goal_app.command("list")
-def goal_list():
+def goal_list_cmd():
+    """List current intelligence goals."""
+    from asyncio import run
+    run(goal_list())
+
+async def goal_list():
     """List all intelligence goals"""
     try:
-        res = requests.get(f"http://localhost:{config.port}/api/v1/goals", timeout=3)
-        res.raise_for_status()
-        goals = res.json()
-        
-        table = Table(title="Intelligence Goals", box=None)
-        table.add_column("ID", style="dim")
-        table.add_column("Goal", style="bold cyan")
-        table.add_column("Status")
-        table.add_column("Progress")
-        
-        for goal in goals:
-            table.add_row(
-                str(goal["id"][:8]),
-                goal["title"],
-                goal["status"],
-                f"{int(goal.get('progress', 0))}%"
-            )
-        console.print(table)
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"http://localhost:{config.port}/api/v1/goals")
+            response.raise_for_status()
+            goals = response.json()
+            
+            # Display as table
+            table = Table(title="Intelligence Goals", box=None)
+            table.add_column("ID", style="cyan")
+            table.add_column("Title", style="green")
+            table.add_column("Status", style="yellow")
+            
+            for goal in goals:
+                table.add_row(goal['id'][:8], goal['title'], goal['status'])
+            
+            console.print(table)
     except Exception as e:
-        console.print(f"[red]Error fetching goals: {e}[/red]")
+        console.print(f"[red]✗ Error[/red] {str(e)}")
 
 # ============ PERSONA COMMANDS ============
 

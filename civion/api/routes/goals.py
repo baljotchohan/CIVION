@@ -1,6 +1,6 @@
 """Goal API routes."""
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from civion.engine.goal_planner import goal_planner
 
@@ -8,15 +8,15 @@ router = APIRouter(prefix="/goals", tags=["Goals"])
 
 
 class GoalCreate(BaseModel):
-    title: str
-    description: str = ""
+    title: str = Field(..., min_length=1, max_length=500)
+    description: str = Field("", max_length=2000)
     priority: int = 5
 
 
 @router.post("")
-async def create_goal(req: GoalCreate):
-    """Create a new intelligence goal."""
-    return await goal_planner.create_goal(req.title, req.description, req.priority)
+async def create_goal(goal: GoalCreate):
+    """Create a new intelligence goal with validation."""
+    return await goal_planner.create_goal(goal.title, goal.description, goal.priority)
 
 
 @router.get("")

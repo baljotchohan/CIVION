@@ -94,6 +94,8 @@ class ReasoningEngine:
 
     async def start_reasoning_loop(self, insight: str, topic: str) -> ReasoningLoop:
         """Start a new multi-agent debate."""
+        from civion.api.websocket import manager
+        
         loop = ReasoningLoop(
             id=generate_id("rl"),
             topic=topic,
@@ -101,6 +103,13 @@ class ReasoningEngine:
             state="debating",
             created_at=now_iso(),
         )
+
+        # Broadcast start
+        await manager.broadcast("reasoning_started", {
+            "loop_id": loop.id,
+            "topic": topic,
+            "hypothesis": loop.hypothesis
+        })
 
         # Simulate multi-agent debate
         agents = ["Research Monitor", "GitHub Trend", "Market Signal", "Sentiment"]
@@ -116,8 +125,21 @@ class ReasoningEngine:
             loop.arguments.append(arg)
             
             # Broadcast update
-            await self.broadcast_reasoning_update(loop.id, "argument_added", arg.dict())
-            await self.broadcast_confidence_change(loop.id, confidence, agent)
+            await manager.broadcast("reasoning_updated", {
+                "loop_id": loop.id,
+                "agent": agent,
+                "proposal": arg.dict(),
+                "confidence": confidence
+            })
+            
+            # Broadcast confidence change
+            await manager.broadcast("confidence_changed", {
+                "loop_id": loop.id,
+                "confidence": confidence,
+                "agent": agent,
+                "timestamp": now_iso()
+            })
+            
             await asyncio.sleep(0.5) # Add a small delay for visualization
 
         # Calculate consensus
@@ -129,7 +151,20 @@ class ReasoningEngine:
         self.loops.append(loop)
         
         # Broadcast completion
-        await self.broadcast_reasoning_update(loop.id, "completed", loop.dict())
+        await self.broadcast_reasoning_update(loop.id, "completed", {
+            "topic": loop.topic,
+            "confidence": loop.final_confidence,
+            "consensus": loop.consensus,
+            "arguments": [a.dict() for a in loop.arguments]
+        })
+        
+        # Also keep reasoning_completed for backward compatibility if needed, 
+        # but the test specifically looks for reasoning_updated with stage=completed
+        await manager.broadcast("reasoning_completed", {
+            "loop_id": loop.id,
+            "confidence": loop.final_confidence,
+            "consensus": loop.consensus
+        })
         
         log.info(f"Reasoning loop completed: {topic}")
         return loop

@@ -34,7 +34,9 @@ class EventStream:
             ]
 
     async def emit(self, event_type: str, data: Dict[str, Any]) -> None:
-        """Emit an event to all subscribers."""
+        """Emit an event - immediately broadcasts to WebSocket"""
+        from civion.api.websocket import manager
+        await manager.broadcast(event_type, data)
         event = {
             "type": event_type,
             "data": data,
