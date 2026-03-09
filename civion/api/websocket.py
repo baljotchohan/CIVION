@@ -3,7 +3,7 @@ import logging
 import asyncio
 from typing import List, Dict, Set, Any, Optional
 from fastapi import WebSocket
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ class ConnectionManager:
         # Send connection confirmation
         await websocket.send_json({
             "type": "system_event",
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "data": {"message": "Connected to CIVION", "client_id": client_id}
         })
         
@@ -90,7 +90,7 @@ class ConnectionManager:
                 await websocket.send_json({
                     "type": "subscribed",
                     "events": list(self.active_connections[client_id]["subscriptions"]),
-                    "timestamp": datetime.now(UTC).isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 })
             elif msg_type == "unsubscribe":
                 events = data.get("events", [])
@@ -99,12 +99,12 @@ class ConnectionManager:
                 await websocket.send_json({
                     "type": "unsubscribed",
                     "events": events,
-                    "timestamp": datetime.now(UTC).isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 })
             elif msg_type == "ping":
                 await websocket.send_json({
                     "type": "pong",
-                    "timestamp": datetime.now(UTC).isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 })
         except Exception as e:
             logger.error(f"Error handling websocket message: {e}")
@@ -113,7 +113,7 @@ class ConnectionManager:
         event = {
             "type": event_type,
             "data": data,
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         self.event_history.append(event)
         
