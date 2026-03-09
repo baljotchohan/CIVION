@@ -40,11 +40,10 @@ class AgentEngine:
             
         await agent.start()
         
-        # Broadcast event
-        await manager.broadcast("agent_started", {
-            "agent": name,
-            "timestamp": datetime.now().isoformat()
-        })
+        # Broadcast events
+        data = agent.to_dict()
+        await manager.broadcast("agent_started", {"agent": name, "timestamp": datetime.now().isoformat()})
+        await manager.broadcast("agent_update", data)
         
         return {"status": "started", "agent": name}
 
@@ -59,11 +58,10 @@ class AgentEngine:
             self._running_tasks[name].cancel()
             del self._running_tasks[name]
             
-        # Broadcast event
-        await manager.broadcast("agent_stopped", {
-            "agent": name,
-            "timestamp": datetime.now().isoformat()
-        })
+        # Broadcast events
+        data = agent.to_dict()
+        await manager.broadcast("agent_stopped", {"agent": name, "timestamp": datetime.now().isoformat()})
+        await manager.broadcast("agent_update", data)
         
         return {"status": "stopped", "agent": name}
 

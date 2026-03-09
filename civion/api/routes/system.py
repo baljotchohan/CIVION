@@ -30,10 +30,9 @@ def get_system_status(request: Request) -> Any:
 @router.get("/health")
 def get_system_health() -> Dict[str, Any]:
     """Detailed health check for all subsystems, driving Alive vs Dead UI."""
-    from civion.engine.agent_controller import AgentController
+    from civion.engine.agent_engine import agent_engine
     from civion.api.websocket import manager
     
-    agent_controller = AgentController()
     
     api_keys = {
         "openai": bool(settings.openai_api_key),
@@ -43,7 +42,7 @@ def get_system_health() -> Dict[str, Any]:
     }
     
     keys_set = any(api_keys.values())
-    agents_running = agent_controller.get_running_count()
+    agents_running = agent_engine.active_count
     
     if not keys_set and settings.llm_provider != "mock":
         health = "dead"
@@ -58,7 +57,7 @@ def get_system_health() -> Dict[str, Any]:
         "websocket": "active",
         "api_keys": api_keys,
         "agents_running": agents_running,
-        "agents_total": len(agent_controller.list_agents()),
+        "agents_total": agent_engine.total_count,
         "ws_clients": len(manager.active_connections),
         "uptime_seconds": int(time.time() - SYSTEM_START_TIME),
         "version": "2.0.0"
@@ -66,17 +65,16 @@ def get_system_health() -> Dict[str, Any]:
 
 @router.get("/stats")
 async def get_system_stats() -> Dict[str, Any]:
-    from civion.engine.agent_controller import AgentController
+    from civion.engine.agent_engine import agent_engine
     from civion.engine.signal_engine import signal_engine
     from civion.engine.prediction_engine import prediction_engine
     from civion.engine.network_engine import network_engine
     from civion.engine.reasoning_loop import reasoning_engine
     
     current_uptime = int(time.time() - SYSTEM_START_TIME)
-    agent_controller = AgentController()
     
     return {
-        "active_agents": agent_controller.get_running_count(),
+        "active_agents": agent_engine.active_count,
         "signals_today": signal_engine.get_today_count() if hasattr(signal_engine, 'get_today_count') else len(await signal_engine.get_recent_signals() if hasattr(signal_engine, 'get_recent_signals') else []),
         "predictions_made": prediction_engine.get_total() if hasattr(prediction_engine, 'get_total') else len(await prediction_engine.get_all_predictions() if hasattr(prediction_engine, 'get_all_predictions') else []),
         "network_peers": network_engine.get_peer_count() if hasattr(network_engine, 'get_peer_count') else len(network_engine.peers),
@@ -114,6 +112,59 @@ def save_system_config(payload: ConfigPayload) -> Dict[str, Any]:
         
     return {"status": "success", "message": f"{payload.key_name} saved"}
 
+@router.get("/resources")
+async def get_system_resources() -> Dict[str, Any]:
+    """Get system resource usage (CPU, RAM, Disk)."""
+    import psutil
+    import os
+    
+    process = psutil.Process(os.getpid())
+    return {
+        "cpu_percent": psutil.cpu_percent(),
+        "memory_usage_mb": process.memory_info().rss / (1024 * 1024),
+        "total_memory_mb": psutil.virtual_memory().total / (1024 * 1024),
+        "disk_usage_percent": psutil.disk_usage('/').percent,
+        "threads": process.num_threads()
+    }
+
+
+@router.get("/tasks")
+async def get_system_tasks() -> Dict[str, Any]:
+    """Get statistics about scheduled and running tasks."""
+    from civion.engine.task_engine import task_engine
+    
+    stats = await task_engine.get_stats() if hasattr(task_engine, 'get_stats') else {"total": 0, "active": 0}
+    return {
+        "task_stats": stats,
+        "scheduler_running": True
+    }
+
+
+@router.post("/reset")
+async def reset_system_state(confirm: bool = False):
+    """Reset volatile system state (not persistent DB)."""
+    if not confirm:
+        return {"status": "error", "message": "Confirmation required"}
+    
+    from civion.engine.agent_engine import agent_engine
+    await agent_engine.stop_all()
+    await agent_engine.start_all()
+    
+    return {"status": "success", "message": "System state reset successful"}
+
+
+@router.get("/logs/recent")
+async def get_recent_logs(lines: int = 100):
+    """Fetch the most recent log entries."""
+    log_file = settings.logs_dir / "civion.log"
+    if not log_file.exists():
+        return {"logs": []}
+    
+    with open(log_file, 'r') as f:
+        content = f.readlines()
+        return {"logs": content[-lines:]}
+
+
 @router.post("/test-key")
 async def test_system_key(payload: TestKeyPayload) -> Dict[str, Any]:
     start = time.time()
@@ -129,6 +180,8 @@ async def test_system_key(payload: TestKeyPayload) -> Dict[str, Any]:
             # Temporarily set the key mapping in settings for the test
             old_provider = settings.llm_provider
             settings.llm_provider = payload.provider.lower()
+            
+            # Match the env_key from setup_wizard if possible, but settings.set_secret is better
             old_key = getattr(settings, f"{payload.provider.lower()}_api_key", None)
             setattr(settings, f"{payload.provider.lower()}_api_key", payload.key)
             
@@ -142,6 +195,9 @@ async def test_system_key(payload: TestKeyPayload) -> Dict[str, Any]:
             latency = int((time.time() - start) * 1000)
             
             if "successful" in result.lower() or len(result) > 5:
+                # If valid, also broadcast to UI
+                from civion.api.websocket import manager
+                await manager.broadcast("system_event", {"type": "key_verified", "provider": payload.provider})
                 return {"valid": True, "message": "Connection successful", "latency_ms": latency}
             else:
                 return {"valid": False, "message": f"Unexpected response: {result}", "latency_ms": latency}

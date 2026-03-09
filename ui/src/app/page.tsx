@@ -64,7 +64,7 @@ export default function DashboardPage() {
                     trend={`${activeAgents.filter(a => a.status === 'running').length} running`}
                 />
                 <MetricCard
-                    title="Signals Prosessed"
+                    title="Signals Processed"
                     value={signalCount.toLocaleString()}
                     icon={<svg className="w-5 h-5 text-accent-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>}
                     trend="+12% today"

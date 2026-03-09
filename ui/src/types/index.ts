@@ -17,6 +17,13 @@ export type WebSocketEventType =
     | 'network_signal_received'
     | 'peer_joined'
     | 'peer_left'
+    | 'agent_update'
+    | 'signal_new'
+    | 'health_update'
+    | 'connected'
+    | 'history'
+    | 'unsubscribed'
+    | 'subscribed'
     | 'ping'
     | 'pong'
     | 'config_updated';

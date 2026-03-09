@@ -9,7 +9,7 @@ export interface WebSocketMessage<T = any> {
     event_id?: string;
 }
 
-type MessageHandler = (data: any) => void;
+type MessageHandler = (data: any, type?: string) => void;
 
 // Global singleton state to share connection across components
 let wsInstance: WebSocket | null = null;
@@ -31,6 +31,11 @@ const emitMessage = (type: string, data: any) => {
     const listeners = messageListeners.get(type);
     if (listeners) {
         listeners.forEach((listener) => listener(data));
+    }
+    // Notify wildcard listeners
+    const wildcards = messageListeners.get('*');
+    if (wildcards) {
+        wildcards.forEach((listener) => (listener as any)(data, type));
     }
 };
 
@@ -131,6 +136,8 @@ const disconnectWebSocket = () => {
 
 export const useWebSocket = () => {
     const [connectionState, setConnectionState] = useState<ConnectionState>(currentState);
+    const [events, setEvents] = useState<WebSocketMessage[]>([]);
+    const [latestEvent, setLatestEvent] = useState<WebSocketMessage | null>(null);
 
     useEffect(() => {
         // Global connection ref counting
@@ -142,8 +149,20 @@ export const useWebSocket = () => {
         const onStateChange = (state: ConnectionState) => setConnectionState(state);
         stateListeners.add(onStateChange);
 
+        // Subscribe to all messages to maintain local history for the component
+        const allMessagesHandler = (data: any, type: string) => {
+            const msg: WebSocketMessage = { type: type as any, data, timestamp: new Date().toISOString() };
+            setLatestEvent(msg);
+            setEvents(prev => [...prev.slice(-99), msg]);
+        };
+
+        // We need a way to listen to ALL messages. Let's add a special listener type '*'
+        if (!messageListeners.has('*')) messageListeners.set('*', new Set());
+        messageListeners.get('*')!.add(allMessagesHandler);
+
         return () => {
             stateListeners.delete(onStateChange);
+            messageListeners.get('*')?.delete(allMessagesHandler);
             connectionRefs--;
             if (connectionRefs === 0) {
                 disconnectWebSocket();
@@ -180,11 +199,18 @@ export const useWebSocket = () => {
         };
     }, []);
 
+    const getEventsByType = useCallback((type: string) => {
+        return events.filter(e => e.type === type);
+    }, [events]);
+
     return {
         connectionState,
         sendMessage,
         subscribe,
-        isConnected: connectionState === 'connected'
+        isConnected: connectionState === 'connected',
+        events,
+        latestEvent,
+        getEventsByType
     };
 };
 

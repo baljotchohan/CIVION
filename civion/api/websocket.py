@@ -8,13 +8,16 @@ logger = logging.getLogger(__name__)
 class ConnectionManager:
     """Manages WebSocket connections and broadcasts events based on subscriptions."""
     
-    def __init__(self):
+    def __init__(self, max_history: int = 1000):
         # Map client_id to a dictionary containing websocket and subscriptions
         self.active_connections: Dict[str, Dict] = {}
         # Map client_id to whether they are disconnected
         self.disconnected_clients: Dict[str, bool] = {}
         # Map client_id to a list of missed messages
         self.message_queue: Dict[str, List[dict]] = {}
+        # Event history for playback
+        self.event_history: List[dict] = []
+        self.max_history = max_history
         self._counter = 0
 
     async def connect(self, websocket: WebSocket, client_id: str = None):
@@ -37,8 +40,12 @@ class ConnectionManager:
             logger.info(f"WebSocket client connected: {client_id}")
             
             # Send initial confirmation
+            import uuid
+            from datetime import datetime
             await websocket.send_json({
-                "type": "system_event", 
+                "type": "connected", 
+                "timestamp": datetime.utcnow().isoformat(),
+                "event_id": str(uuid.uuid4()),
                 "data": {"message": "Connected to CIVION", "client_id": client_id}
             })
             
@@ -87,7 +94,6 @@ class ConnectionManager:
         """Unsubscribe a client from specific events."""
         client_id = self._get_client_id(client_id_or_ws)
         if client_id in self.active_connections:
-            # We want to return the events that we are unsubscribing from for the test
             self.active_connections[client_id]["subscriptions"].difference_update(events)
             logger.info(f"Client {client_id} unsubscribed from: {', '.join(events)}")
             
@@ -104,41 +110,62 @@ class ConnectionManager:
         """Handle incoming messages from clients."""
         try:
             data = json.loads(message)
-            for cid, conn in self.active_connections.items():
-                if conn["websocket"] == websocket:
-                    client_id = cid
-                    break
+            client_id = self._get_client_id(websocket)
             
             if not client_id:
                 return
 
-            msg_type = data.get("type")
-            if msg_type == "subscribe" and "events" in data:
+            msg_type = data.get("type") or data.get("action")
+            
+            if msg_type in ["subscribe", "action:subscribe"] and "events" in data:
                 for event in data["events"]:
                     self.subscribe(client_id, event)
-                await websocket.send_json({"type": "subscribed", "events": list(self.active_connections[client_id]["subscriptions"])})
-            elif msg_type == "unsubscribe" and "events" in data:
-                # We consume events one by one or as a list
+                await websocket.send_json({
+                    "type": "subscribed", 
+                    "events": list(self.active_connections[client_id]["subscriptions"])
+                })
+            elif msg_type in ["unsubscribe", "action:unsubscribe"] and "events" in data:
                 events = data["events"]
                 await self.unsubscribe(client_id, events)
             elif msg_type == "ping":
                 await websocket.send_json({"type": "pong", "timestamp": data.get("timestamp")})
+            elif msg_type == "get_history":
+                event_type = data.get("event_type")
+                if event_type:
+                    history = [e for e in self.event_history if e["type"] == event_type]
+                else:
+                    history = self.event_history
+                await websocket.send_json({
+                    "type": "history",
+                    "events": history
+                })
                 
         except json.JSONDecodeError:
             logger.warning("Received invalid JSON from websocket client")
+        except Exception as e:
+            logger.error(f"Error handling websocket message: {e}")
 
     async def broadcast(self, event_type: str, data: dict):
         """Broadcast an event to all subscribed clients or queue if disconnected."""
-        # Note: We use send_json in implementation, but some tests might expect send_text
-        # We'll stick to send_json as it's more modern for FastAPI
+        import uuid
+        from datetime import datetime
+        
         message = {
             "type": event_type,
-            "data": data
+            "data": data,
+            "timestamp": datetime.utcnow().isoformat(),
+            "event_id": str(uuid.uuid4())
         }
+        
+        # Store in history
+        self.event_history.append(message)
+        if len(self.event_history) > self.max_history:
+            self.event_history = self.event_history[-self.max_history:]
         
         # Broadcast to active subscribers
         for cid, conn in list(self.active_connections.items()):
             subs = conn["subscriptions"]
+            # Empty subscriptions = all events
             if not subs or event_type in subs:
                 try:
                     ws = conn["websocket"]
@@ -148,11 +175,14 @@ class ConnectionManager:
                     self.disconnect(cid)
         
         # Queue for known disconnected clients if they were subscribed
+        # This is high-reliability feature
         for cid, is_disconnected in self.disconnected_clients.items():
             if is_disconnected:
-                # In a real system we'd check if they were subscribed to this event
                 if cid not in self.message_queue:
                     self.message_queue[cid] = []
                 self.message_queue[cid].append(message)
+                # Keep queue capped
+                if len(self.message_queue[cid]) > 100:
+                    self.message_queue[cid] = self.message_queue[cid][-100:]
 
 manager = ConnectionManager()

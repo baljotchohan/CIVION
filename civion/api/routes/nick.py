@@ -72,3 +72,33 @@ async def read_user_profile():
 async def update_user_profile(profile: dict):
     save_user_profile(profile)
     return {"status": "success"}
+
+
+@router.post("/forget")
+async def nick_forget(req: NickLearnRequest):
+    memory = get_nick_memory()
+    if req.fact in memory["facts"]:
+        memory["facts"].remove(req.fact)
+        save_nick_memory(memory)
+    return {"status": "success", "forgotten": req.fact}
+
+
+@router.delete("/memory")
+async def clear_nick_memory():
+    if NICK_MEMORY_FILE.exists():
+        NICK_MEMORY_FILE.unlink()
+    return {"status": "success", "message": "Memory cleared"}
+
+
+@router.get("/summary")
+async def get_user_summary():
+    """Get a summary of what NICK knows about the user."""
+    memory = get_nick_memory()
+    profile = get_user_profile() or {}
+    
+    return {
+        "name": profile.get("name", "User"),
+        "fact_count": len(memory.get("facts", [])),
+        "interests": profile.get("interests", []),
+        "vibe": "Collaborative" if len(memory.get("facts", [])) > 5 else "New Friend"
+    }

@@ -1,6 +1,6 @@
 """Agent API routes."""
 from fastapi import APIRouter, HTTPException
-from civion.engine.agent_controller import AgentController
+from civion.engine.agent_engine import agent_engine
 from civion.services.data_service import data_service
 from pathlib import Path
 from typing import Dict, Any, List
@@ -8,8 +8,7 @@ import time
 
 router = APIRouter(prefix="/agents", tags=["Agents"])
 
-# Use AgentController instance for accurate running count etc.
-agent_controller = AgentController()
+# Use the global agent_engine singleton
 
 def map_agent_to_frontend_type(agent: Any) -> Dict[str, Any]:
     """Map the backend agent object to the frontend Agent type."""
@@ -59,32 +58,32 @@ def map_agent_to_frontend_type(agent: Any) -> Dict[str, Any]:
 
 @router.get("")
 async def list_agents():
-    """List all registered agents with real status via AgentController."""
-    agents = agent_controller.list_agents()
-    return [map_agent_to_frontend_type(a) for a in agents]
+    """List all registered agents with real status via AgentEngine."""
+    agents = agent_engine.list_agents()
+    return agents
 
 @router.get("/{id}")
 async def get_agent(id: str):
     """Get agent details."""
-    agent = agent_controller.get_agent(id)
+    agent = agent_engine.get_agent(id)
     if not agent:
         raise HTTPException(404, f"Agent '{id}' not found")
-    return map_agent_to_frontend_type(agent)
+    return agent.to_dict()
 
 @router.post("/{id}/start")
 async def start_agent(id: str):
-    """Start an agent via controller."""
+    """Start an agent via engine."""
     try:
-        await agent_controller.start_agent(id)
+        await agent_engine.start_agent(id)
         return {"status": "success", "message": f"Agent {id} started"}
     except Exception as e:
         raise HTTPException(500, str(e))
 
 @router.post("/{id}/stop")
 async def stop_agent(id: str):
-    """Stop an agent via controller."""
+    """Stop an agent via engine."""
     try:
-        await agent_controller.stop_agent(id)
+        await agent_engine.stop_agent(id)
         return {"status": "success", "message": f"Agent {id} stopped"}
     except Exception as e:
         raise HTTPException(500, str(e))
@@ -93,8 +92,8 @@ async def stop_agent(id: str):
 async def restart_agent(id: str):
     """Restart an agent."""
     try:
-        await agent_controller.stop_agent(id)
-        await agent_controller.start_agent(id)
+        await agent_engine.stop_agent(id)
+        await agent_engine.start_agent(id)
         return {"status": "success", "message": f"Agent {id} restarted"}
     except Exception as e:
         raise HTTPException(500, str(e))
@@ -119,7 +118,7 @@ async def agent_logs(id: str):
 async def run_all_agents():
     """Run all agents concurrently."""
     try:
-        await agent_controller.start_all()
+        await agent_engine.start_all()
         return {"status": "success", "message": "All agents started"}
     except Exception as e:
         raise HTTPException(500, str(e))

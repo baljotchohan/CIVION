@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { useWebSocket } from '../hooks/useWebSocket';
 
 // The new system state types based on my pages
 export type SystemHealth = 'alive' | 'idle' | 'dead' | 'degraded' | 'error';
@@ -81,6 +82,8 @@ export function SystemStateProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
     const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
+    const { subscribe } = useWebSocket();
+
     const signalCount = signals.length;
     // Compute average confidence from latest history
     const confidenceAvg = confidenceHistory.length > 0
@@ -92,14 +95,17 @@ export function SystemStateProvider({ children }: { children: ReactNode }) {
             setIsLoading(true);
             setError(null);
 
-            const [healthRes, agentsRes] = await Promise.all([
+            const [healthRes, agentsRes, signalsRes, confRes, debatesRes] = await Promise.all([
                 fetch('/api/v1/system/health').catch(() => null),
-                fetch('/api/v1/agents').catch(() => null)
+                fetch('/api/v1/agents').catch(() => null),
+                fetch('/api/v1/signals?limit=20').catch(() => null),
+                fetch('/api/v1/reasoning/confidence-history').catch(() => null),
+                fetch('/api/v1/reasoning/active').catch(() => null)
             ]);
 
             if (healthRes && healthRes.ok) {
                 const data = await healthRes.json();
-                setHealth(data.status);
+                setHealth(data.health || data.status); // Use data.health if available, fallback to data.status
 
                 if (data.status === 'dead' && typeof window !== 'undefined' && !window.localStorage.getItem('civion_onboarded')) {
                     const profileRes = await fetch('/api/v1/nick/profile').catch(() => null);
@@ -121,25 +127,19 @@ export function SystemStateProvider({ children }: { children: ReactNode }) {
 
             if (agentsRes && agentsRes.ok) {
                 const data = await agentsRes.json();
-                setActiveAgents(data.agents || []);
+                setActiveAgents(Array.isArray(data) ? data : (data.agents || []));
             }
 
-            // Fetch signals
-            const signalsRes = await fetch('/api/v1/signals?limit=20').catch(() => null);
             if (signalsRes && signalsRes.ok) {
                 const data = await signalsRes.json();
                 setSignals(data.signals || []);
             }
 
-            // Fetch confidence history
-            const confRes = await fetch('/api/v1/reasoning/confidence-history').catch(() => null);
             if (confRes && confRes.ok) {
                 const data = await confRes.json();
                 setConfidenceHistory(data.history || []);
             }
 
-            // Fetch active debates
-            const debatesRes = await fetch('/api/v1/reasoning/active').catch(() => null);
             if (debatesRes && debatesRes.ok) {
                 const data = await debatesRes.json();
                 setActiveDebates(data.debates || []);
@@ -153,10 +153,31 @@ export function SystemStateProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
-    // Poll for updates every 5 seconds
+    // WebSocket Integration
+    useEffect(() => {
+        const unsubAgent = subscribe('agent_update', (data: Agent) => {
+            setActiveAgents(prev => prev.map(a => a.id === data.id ? { ...a, ...data } : a));
+        });
+
+        const unsubSignal = subscribe('signal_new', (data: Signal) => {
+            setSignals(prev => [data, ...prev.slice(0, 19)]); // Keep max 20 signals
+        });
+
+        const unsubHealth = subscribe('health_update', (data: { health: SystemHealth }) => {
+            setHealth(data.health);
+        });
+
+        return () => {
+            unsubAgent();
+            unsubSignal();
+            unsubHealth();
+        };
+    }, [subscribe]);
+
+    // Poll for updates every 30 seconds as fallback (reduced from 5s)
     useEffect(() => {
         refreshState();
-        const interval = setInterval(refreshState, 5000);
+        const interval = setInterval(refreshState, 30000);
         return () => clearInterval(interval);
     }, [refreshState]);
 

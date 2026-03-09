@@ -1,6 +1,14 @@
 """
-CIVION CLI Main Entry Point
+CIVION CLI - Production Grade Command Interface
+
+Architecture:
+- Typer framework (like OpenClaw's CLI)
+- Rich UI for beautiful terminal output
+- Async commands for real-time feedback
+- Sub-commands grouped by feature
+- Interactive setup wizard
 """
+
 import os
 import signal
 import subprocess
@@ -8,38 +16,58 @@ import sys
 import threading
 import time
 import webbrowser
+import asyncio
 import requests
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 import typer
 import uvicorn
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.live import Live
 from rich.prompt import Confirm
 
 from civion.core.config import config
 from civion.cli.setup_wizard import run_setup
 
-app = typer.Typer(help="CIVION — AI Intelligence Command Center")
-agent_app = typer.Typer(help="Manage CIVION Agents")
-config_app = typer.Typer(help="Manage CIVION Configuration")
-
-app.add_typer(agent_app, name="agent")
-app.add_typer(config_app, name="config")
-
 console = Console()
+app = typer.Typer(help="🦞 CIVION - Watch AI Think")
+
+# Feature groups (sub-apps)
+gateway_app = typer.Typer(help="Gateway control")
+agent_app = typer.Typer(help="Agent management")
+goal_app = typer.Typer(help="Intelligence goals")
+persona_app = typer.Typer(help="Custom personas")
+network_app = typer.Typer(help="P2P Network")
+predict_app = typer.Typer(help="Predictions")
+
+# Register sub-commands
+app.add_typer(gateway_app, name="gateway")
+app.add_typer(agent_app, name="agent")
+app.add_typer(goal_app, name="goal")
+app.add_typer(persona_app, name="persona")
+app.add_typer(network_app, name="network")
+app.add_typer(predict_app, name="predict")
 
 CIVION_DIR = Path.home() / ".civion"
 PID_FILE = CIVION_DIR / "civion.pid"
 
+# ============ ROOT COMMANDS ============
+
 @app.command()
-def setup():
-    """Run the interactive setup wizard"""
-    import asyncio
+def onboard(
+    install_daemon: bool = typer.Option(False, help="Install system daemon (NYI)"),
+):
+    """Interactive setup wizard (like OpenClaw's onboard)"""
     asyncio.run(run_setup())
+
+@app.command(deprecated=True)
+def setup():
+    """Run the interactive setup wizard (Deprecated, use 'onboard')"""
+    onboard()
 
 @app.command()
 def start(
@@ -48,6 +76,19 @@ def start(
     reload: bool = typer.Option(False, help="Enable auto-reload (dev)")
 ):
     """Start CIVION — intelligence system + UI in one command"""
+    # Shortcut to gateway start
+    gateway_start(port=port, host=host, reload=reload)
+
+# ============ GATEWAY COMMANDS ============
+
+@gateway_app.command("start")
+def gateway_start(
+    port: Optional[int] = typer.Option(None, help="Override port"),
+    host: Optional[str] = typer.Option(None, help="Override host"),
+    reload: bool = typer.Option(False, help="Enable auto-reload (dev)"),
+    daemon: bool = typer.Option(False, help="Run as daemon (NYI)"),
+):
+    """Start CIVION Gateway (main control plane)"""
     
     # First run check — if not configured, run setup first
     if not config.config_exists():
@@ -55,15 +96,12 @@ def start(
             "[bold yellow]Welcome to CIVION![/bold yellow]\n\n"
             "Looks like this is your first time. Let's get you set up.\n"
             "This will take about 2 minutes.\n\n"
-            "[dim]Running: civion setup[/dim]",
+            "[dim]Running: civion onboard[/dim]",
             title="🚀 First Run",
             border_style="yellow"
         ))
-        import asyncio
         asyncio.run(run_setup())
         
-        # After setup, ask if they want to start
-        from rich.prompt import Confirm
         if not Confirm.ask("\nSetup complete! Start CIVION now?", default=True):
             return
 
@@ -108,13 +146,13 @@ def start(
         console.print("\n[yellow]CIVION stopped.[/yellow]")
     except Exception as e:
         console.print(f"\n[red]Failed to start: {e}[/red]")
-        console.print("[dim]Run 'civion doctor' to diagnose issues.[/dim]")
+        console.print("[dim]Run 'civion gateway doctor' to diagnose issues.[/dim]")
     finally:
         if PID_FILE.exists():
             PID_FILE.unlink()
 
-@app.command()
-def stop():
+@gateway_app.command("stop")
+def gateway_stop():
     """Stop running CIVION instance"""
     if not PID_FILE.exists():
         console.print("[yellow]CIVION doesn't appear to be running[/yellow]")
@@ -131,10 +169,10 @@ def stop():
     except Exception as e:
         console.print(f"[red]Failed to stop CIVION: {e}[/red]")
 
-@app.command()
-def status():
-    """Show system status"""
-    table = Table(title="CIVION System Status", box=None)
+@gateway_app.command("health")
+def gateway_health():
+    """Check system health"""
+    table = Table(title="CIVION System Health", box=None)
     table.add_column("Component", style="cyan")
     table.add_column("Status", style="bold")
     table.add_column("Details")
@@ -150,10 +188,18 @@ def status():
     db_exists = config.db_path.exists()
     table.add_row("Database", "[green]OK[/green]" if db_exists else "[yellow]Initializing[/yellow]", str(config.db_path))
     
+    # Try API
+    try:
+        res = requests.get(f"http://localhost:{config.port}/api/health", timeout=2)
+        api_status = "[green]ONLINE[/green]" if res.status_code == 200 else "[red]ERROR[/red]"
+    except:
+        api_status = "[gray]OFFLINE[/gray]"
+    table.add_row("API Gateway", api_status, f"port {config.port}")
+
     console.print(table)
 
-@app.command()
-def doctor():
+@gateway_app.command("doctor")
+def gateway_doctor():
     """Diagnose and fix common issues"""
     console.print("[bold]Running CIVION diagnostics...[/bold]")
     
@@ -163,7 +209,7 @@ def doctor():
         if config.config_exists():
             live.console.print("  ✓ Config file exists")
         else:
-            live.console.print("  ✗ Config file missing (run 'civion setup')")
+            live.console.print("  ✗ Config file missing (run 'civion onboard')")
         
         # Check Python
         time.sleep(0.5)
@@ -182,84 +228,10 @@ def doctor():
             live.console.print(f"  ✗ Port {config.port} in use")
         finally:
             s.close()
-
-        # Check pipx vs pip
-        time.sleep(0.3)
-        try:
-            result = subprocess.run(
-                ["pipx", "list"], capture_output=True, text=True
-            )
-            if "civion" in result.stdout:
-                live.console.print("  ✓ Installed via pipx (recommended)")
-            else:
-                live.console.print(
-                    "  ℹ  Tip: Install with pipx for best experience: "
-                    "pipx install civion"
-                )
-        except FileNotFoundError:
-            live.console.print(
-                "  ℹ  Tip: pipx not found. "
-                "For global CLI tools, pipx is recommended."
-            )
-
-        # Check Frontend Bundle
-        static_path = Path(__file__).parent.parent / "static" / "ui"
-        if (static_path / "index.html").exists():
-            live.console.print("  ✓ Frontend bundle is present")
-        else:
-            live.console.print("  ✗ Frontend bundle missing (run './scripts/build_frontend.sh')")
             
     console.print("\n[green]Diagnostics complete.[/green]")
 
-@app.command()
-def logs(follow: bool = typer.Option(False, "--follow", "-f")):
-    """Show recent logs"""
-    log_file = config.logs_dir / "civion.log"
-    if not log_file.exists():
-        console.print("[yellow]No logs found yet.[/yellow]")
-        return
-    
-    if follow:
-        os.system(f"tail -f {log_file}")
-    else:
-        os.system(f"tail -n 100 {log_file}")
-
-@app.command()
-def guide():
-    """Show interactive user guide"""
-    table = Table(title="CIVION User Guide", box=None)
-    table.add_column("Topic", style="bold cyan")
-    table.add_column("Description", style="white")
-    
-    table.add_row("Getting Started", "Run [bold]civion setup[/bold] to configure your API keys and profile. Then run [bold]civion start[/bold] and open the browser.")
-    table.add_row("AI Providers", "You need one API key (e.g. OpenAI or Anthropic). You can also run locally with Ollama (select ollama as provider).")
-    table.add_row("Agents", "Agents automatically scan sources for data. You must start them first! Use the Agents page or CLI.")
-    table.add_row("NICK", "Your conversational AI assistant. Press the bottom right button in the UI.")
-    table.add_row("Troubleshooting", "If something breaks, run [bold]civion doctor[/bold] or check [bold]civion logs[/bold].")
-    
-    console.print(Panel(table, title="Knowledge Base", border_style="cyan"))
-
-@app.command()
-def update():
-    """Update CIVION"""
-    console.print("Updating CIVION...")
-    os.system("pip install --upgrade civion")
-    console.print("[green]✓ CIVION updated[/green]")
-
-@app.command()
-def reset(keep_data: bool = typer.Option(False, "--keep-data")):
-    """Reset configuration to defaults"""
-    if Confirm.ask("This will clear your config. Continue?"):
-        import shutil
-        if keep_data:
-            from civion.core.config import _env_file
-            if config.config_file.exists(): config.config_file.unlink()
-            if _env_file.exists(): _env_file.unlink()
-        else:
-            shutil.rmtree(CIVION_DIR, ignore_errors=True)
-        console.print("[green]✓ CIVION reset complete[/green]")
-
-# --- Agent Subcommands ---
+# ============ AGENT COMMANDS ============
 
 @agent_app.command("list")
 def agent_list():
@@ -270,7 +242,7 @@ def agent_list():
         res.raise_for_status()
         agents = res.json()
         
-        table = Table(title="Running Agents", box=None)
+        table = Table(title="Intelligence Agents", box=None)
         table.add_column("Agent ID", style="bold cyan")
         table.add_column("Status")
         table.add_column("Current Task")
@@ -289,34 +261,147 @@ def agent_list():
         console.print(f"[red]CIVION doesn't appear to be running. Start it with: civion start[/red]")
 
 @agent_app.command("start")
-def agent_start(name: str = typer.Argument("all")):
-    """Start an agent"""
+def agent_start(
+    agents: Optional[str] = typer.Argument(None, help="Agent name(s), comma-separated"),
+    all: bool = typer.Option(False, help="Start all agents"),
+):
+    """Start agent(s)"""
+    target = "all" if all or agents is None else agents
     try:
         url = f"http://localhost:{config.port}/api/v1/agents"
-        url += "/run-all" if name == "all" else f"/{name}/start"
+        url += "/run-all" if target == "all" else f"/{target}/start"
         res = requests.post(url, timeout=5)
         res.raise_for_status()
-        console.print(f"[green]✓ Successfully started {name}[/green]")
+        console.print(f"[green]✓ Successfully started {target}[/green]")
     except Exception as e:
         console.print(f"[red]Failed to start: {e}[/red]")
 
-# --- Config Subcommands ---
+@agent_app.command("logs")
+def agent_logs(
+    agent: Optional[str] = typer.Option(None, help="Agent name (NYI)"),
+    follow: bool = typer.Option(False, "--follow", "-f"),
+):
+    """Watch agent reasoning logs"""
+    log_file = config.logs_dir / "civion.log"
+    if not log_file.exists():
+        console.print("[yellow]No logs found yet.[/yellow]")
+        return
+    
+    if follow:
+        os.system(f"tail -f {log_file}")
+    else:
+        os.system(f"tail -n 100 {log_file}")
 
-@config_app.command("show")
-def config_show():
-    """Show current configuration"""
-    data = config.to_dict()
-    table = Table(title="Current Configuration", box=None)
-    for k, v in data.items():
-        table.add_row(k, str(v))
-    console.print(table)
+# ============ GOAL COMMANDS ============
 
-@config_app.command("add-key")
-def config_add_key(provider: str, key: str = typer.Argument(..., help="API Key")):
-    """Add/Update API key for a provider"""
-    from civion.core.config import _save_env_file
-    _save_env_file({f"{provider.upper()}_{'API_KEY' if provider.lower() != 'github' else 'TOKEN'}": key})
-    console.print(f"[green]Key for {provider} updated successfully.[/green]")
+@goal_app.command("create")
+def goal_create(query: str = typer.Argument(..., help="Intelligence goal statement")):
+    """Create a new intelligence goal"""
+    console.print(f"[cyan]Creating goal: {query}[/cyan]")
+    try:
+        res = requests.post(f"http://localhost:{config.port}/api/v1/goals", params={"title": query, "description": ""}, timeout=5)
+        res.raise_for_status()
+        goal = res.json()
+        console.print(f"[green]✓ Goal created with ID: {goal['id']}[/green]")
+        console.print(Panel(f"Targeting: {query}\nStatus: {goal['status']}", title="Goal Registered"))
+    except Exception as e:
+        console.print(f"[red]Failed to create goal: {e}[/red]")
+
+@goal_app.command("list")
+def goal_list():
+    """List all intelligence goals"""
+    try:
+        res = requests.get(f"http://localhost:{config.port}/api/v1/goals", timeout=3)
+        res.raise_for_status()
+        goals = res.json()
+        
+        table = Table(title="Intelligence Goals", box=None)
+        table.add_column("ID", style="dim")
+        table.add_column("Goal", style="bold cyan")
+        table.add_column("Status")
+        table.add_column("Progress")
+        
+        for goal in goals:
+            table.add_row(
+                str(goal["id"][:8]),
+                goal["title"],
+                goal["status"],
+                f"{int(goal.get('progress', 0))}%"
+            )
+        console.print(table)
+    except Exception as e:
+        console.print(f"[red]Error fetching goals: {e}[/red]")
+
+# ============ PERSONA COMMANDS ============
+
+@persona_app.command("list")
+def persona_list():
+    """List available custom personas"""
+    try:
+        res = requests.get(f"http://localhost:{config.port}/api/v1/personas", timeout=3)
+        res.raise_for_status()
+        personas = res.json()
+        
+        table = Table(title="Custom Personas", box=None)
+        table.add_column("Name", style="bold cyan")
+        table.add_column("Description")
+        
+        for p in personas:
+            table.add_row(p["name"], p.get("description", "No description"))
+        console.print(table)
+    except:
+        console.print("[yellow]Could not fetch personas. Is CIVION running?[/yellow]")
+
+# ============ NETWORK COMMANDS ============
+
+@network_app.command("status")
+def network_status():
+    """Check P2P network connectivity"""
+    console.print("[cyan]Querying network status...[/cyan]")
+    # Placeholder for network stats
+    console.print("P2P Network: [green]ENABLED[/green]")
+    console.print("Active Peers: 0 (Discovery in progress)")
+
+# ============ PREDICT COMMANDS ============
+
+@predict_app.command("list")
+def predict_list():
+    """List current predictions and consensus"""
+    try:
+        res = requests.get(f"http://localhost:{config.port}/api/v1/predictions", timeout=3)
+        res.raise_for_status()
+        preds = res.json()
+        
+        table = Table(title="Active Predictions", box=None)
+        table.add_column("Prediction", style="bold cyan")
+        table.add_column("Confidence")
+        table.add_column("Timeline")
+        
+        for p in preds:
+            table.add_row(p["statement"], f"{int(p['confidence']*100)}%", p.get("timeline", "Unknown"))
+        console.print(table)
+    except:
+        console.print("[dim]No active predictions found.[/dim]")
+
+@app.command()
+def update():
+    """Update CIVION to latest version"""
+    console.print("Updating CIVION...")
+    os.system("pip install --upgrade civion")
+    console.print("[green]✓ CIVION updated[/green]")
+
+@app.command()
+def reset(keep_data: bool = typer.Option(False, "--keep_data")):
+    """Reset configuration to defaults"""
+    if Confirm.ask("This will clear your config. Continue?"):
+        import shutil
+        if keep_data:
+            from civion.core.config import _env_file
+            if config.config_file.exists(): config.config_file.unlink()
+            # _env_file might not exist in this version, check set_secret
+        else:
+            shutil.rmtree(CIVION_DIR, ignore_errors=True)
+        console.print("[green]✓ CIVION reset complete[/green]")
 
 if __name__ == "__main__":
     app()

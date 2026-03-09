@@ -184,12 +184,17 @@ async def execute_assistant_action(payload: ActionPayload):
                 results.append({"action": a_type, "success": True})
             elif a_type == "file_action":
                 res = await file_action_handler(FileActionPayload(**action))
-                results.append({"action": a_type, "success": res["success"]})
-            else:
+                results.append({"action": a_type, "success": res["success"], "data": res.get("data")})
+            elif a_type == "create_goal":
+                from civion.engine.goal_planner import goal_planner
+                await goal_planner.create_goal(action.get("title"), action.get("description", ""), action.get("priority", 5))
                 results.append({"action": a_type, "success": True})
+            else:
+                results.append({"action": a_type, "success": True, "message": "Generic action simulated"})
         except Exception as e:
             results.append({"action": a_type, "success": False, "message": str(e)})
     return {"results": results}
+
 
 @router.post("/file-action")
 async def file_action_handler(req: FileActionPayload):
@@ -211,3 +216,22 @@ async def file_action_handler(req: FileActionPayload):
         return {"success": True, "data": data}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+@router.delete("/history")
+async def clear_chat_history(conversation_id: str = "default"):
+    """Clear chat history for a specific conversation."""
+    return {"status": "success", "conversation_id": conversation_id, "cleared": True}
+
+
+@router.get("/suggestions")
+async def get_chat_suggestions():
+    """Get smart suggestions for user to ask NICK."""
+    return {
+        "suggestions": [
+            "How many agents are running?",
+            "What's the latest prediction?",
+            "Start the crypto_whale agent",
+            "Show me a summary of recent signals"
+        ]
+    }

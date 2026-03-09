@@ -13,9 +13,22 @@ from civion.core.logger import get_logger, print_banner
 from civion.engine.agent_engine import agent_engine, register_default_agents
 from civion.engine.event_stream import event_stream
 from civion.api.websocket import manager
+import asyncio
 
 
 log = get_logger("api")
+
+
+async def periodic_health_broadcast():
+    """Periodically broadcast system health via WebSocket."""
+    from civion.api.routes.system import get_system_health
+    while True:
+        try:
+            health_data = await get_system_health()
+            await manager.broadcast("health_update", {"health": health_data.get("status", "unknown")})
+        except Exception as e:
+            pass # Log the error if needed, but don't stop the loop
+        await asyncio.sleep(15)
 
 
 # ── Lifespan ─────────────────────────────────────────
@@ -32,10 +45,18 @@ async def lifespan(app: FastAPI):
     # Start all agents
     await agent_engine.start_all()
 
+    # Start periodic health broadcaster
+    health_task = asyncio.create_task(periodic_health_broadcast())
+
     yield
 
     # Shutdown
     log.info("[yellow]CIVION API shutting down...[/yellow]")
+    health_task.cancel()
+    try:
+        await health_task
+    except asyncio.CancelledError:
+        pass
     await agent_engine.stop_all()
 
 
@@ -48,6 +69,7 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json",
+    strict_slashes=False,
 )
 
 # ── CORS ─────────────────────────────────────────────

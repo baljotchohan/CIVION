@@ -1,5 +1,6 @@
 """Marketplace API routes."""
 from fastapi import APIRouter
+from typing import Optional
 
 router = APIRouter(prefix="/marketplace", tags=["Marketplace"])
 
@@ -17,6 +18,17 @@ _marketplace_personas = [
     {"name": "ElonMusk", "description": "Disruptive technology focus", "author": "community", "downloads": 2800, "rating": 4.3},
     {"name": "SatoshiNakamoto", "description": "Cryptography and decentralization perspective", "author": "community", "downloads": 1900, "rating": 4.7},
 ]
+
+
+@router.get("/search")
+async def search_marketplace(query: str = "", category: str = "all"):
+    """Global search for agents and personas."""
+    agents = [a for a in _marketplace_agents if query.lower() in a["name"].lower() or query.lower() in a["description"].lower()]
+    personas = [p for p in _marketplace_personas if query.lower() in p["name"].lower() or query.lower() in p["description"].lower()]
+    
+    if category == "agents": return {"agents": agents}
+    if category == "personas": return {"personas": personas}
+    return {"agents": agents, "personas": personas}
 
 
 @router.get("/agents")
@@ -39,11 +51,22 @@ async def marketplace_personas(query: str = ""):
 
 @router.post("/install/{agent_name}")
 async def install_agent(agent_name: str):
-    """Install an agent from the marketplace."""
-    return {"agent": agent_name, "status": "installed", "message": f"Agent '{agent_name}' installed"}
+    """Install an agent (mock implementation)."""
+    return {"agent": agent_name, "status": "installed", "version": "1.0.2"}
 
 
 @router.post("/publish")
-async def publish_agent(name: str, description: str = ""):
-    """Publish an agent to the marketplace."""
-    return {"name": name, "status": "published", "message": "Agent published to marketplace"}
+async def publish_item(name: str, type: str = "agent", description: str = ""):
+    """Publish an agent or persona to the marketplace."""
+    return {"name": name, "type": type, "status": "pending_review", "id": f"mkt_{name.lower()}"}
+
+
+@router.get("/stats")
+async def marketplace_stats():
+    """Get marketplace overall statistics."""
+    return {
+        "total_agents": len(_marketplace_agents),
+        "total_personas": len(_marketplace_personas),
+        "total_downloads": sum(a["downloads"] for a in _marketplace_agents) + sum(p["downloads"] for p in _marketplace_personas),
+        "active_developers": 12
+    }
