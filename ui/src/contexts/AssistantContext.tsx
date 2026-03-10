@@ -14,6 +14,7 @@ interface AssistantContextProps {
     executeAction: (actions: AssistantAction[]) => Promise<void>;
     isThinking: boolean;
     isStreaming: boolean;
+    isLoading: boolean;
 }
 
 const AssistantContext = createContext<AssistantContextProps | null>(null);
@@ -122,7 +123,8 @@ export const AssistantProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return (
         <AssistantContext.Provider value={{
             isOpen, toggleOpen, openAssistant, closeAssistant,
-            messages, sendMessage, executeAction, isThinking, isStreaming
+            messages, sendMessage, executeAction, isThinking, isStreaming,
+            isLoading: isThinking
         }}>
             {children}
         </AssistantContext.Provider>
@@ -134,3 +136,5 @@ export const useAssistantContext = () => {
     if (!ctx) throw new Error("useAssistantContext must be used within AssistantProvider");
     return ctx;
 };
+
+export const useAssistant = useAssistantContext;

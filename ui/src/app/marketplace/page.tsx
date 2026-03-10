@@ -35,10 +35,9 @@ export default function MarketplacePage() {
 
             {dataMode === 'empty' ? (
                 <EmptyState
-                    health={systemState.health}
                     icon={<ShoppingCart className="w-8 h-8" />}
                     title="Marketplace Offline"
-                    message="Connect your node to the Global Swarm to browse and share network capabilities."
+                    description="Connect your node to the Global Swarm to browse and share network capabilities."
                 />
             ) : (
                 <>

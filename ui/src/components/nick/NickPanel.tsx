@@ -14,7 +14,7 @@ export interface NickPanelProps {
 
 export function NickPanel({ isOpen, onClose }: NickPanelProps) {
     const { health, activeAgents, signalCount, confidenceAvg } = useSystemState();
-    const { messages, sendMessage, isLoading } = useAssistant();
+    const { messages, sendMessage, isThinking: isLoading } = useAssistant();
     const [inputValue, setInputValue] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
 

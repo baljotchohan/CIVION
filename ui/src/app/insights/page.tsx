@@ -25,10 +25,9 @@ export default function InsightsPage() {
 
             {dataMode === 'empty' ? (
                 <EmptyState
-                    health={systemState.health}
                     icon={<Lightbulb className="w-8 h-8" />}
                     title="Intelligence Engine Offline"
-                    message="Insights require active data streams and agents to generate meaningful discoveries."
+                    description="Insights require active data streams and agents to generate meaningful discoveries."
                 />
             ) : (
                 <>

@@ -68,6 +68,21 @@ export interface SystemStateContextType {
     error: string | null;
     isLoading: boolean;
     needsOnboarding: boolean;
+    showWakeAnimation: boolean;
+
+    // Object-wrapped version for compatibility
+    systemState: {
+        health: SystemHealth;
+        apiKeys: any;
+        backendOnline: boolean;
+        wsConnected: boolean;
+        agentsRunning: number;
+        agentsTotal: number;
+        signalsToday: number;
+        confidenceAvg: number;
+        lastChecked: string;
+    };
+    setSystemState: (state: any) => void;
 }
 
 const SystemStateContext = createContext<SystemStateContextType | undefined>(undefined);
@@ -81,6 +96,7 @@ export function SystemStateProvider({ children }: { children: ReactNode }) {
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [needsOnboarding, setNeedsOnboarding] = useState(false);
+    const [showWakeAnimation, setShowWakeAnimation] = useState(false);
 
     const { subscribe } = useWebSocket();
 
@@ -208,6 +224,33 @@ export function SystemStateProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    const [systemStateCompat, setSystemStateCompat] = useState({
+        health: 'dead' as SystemHealth,
+        apiKeys: {},
+        backendOnline: false,
+        wsConnected: false,
+        agentsRunning: 0,
+        agentsTotal: 0,
+        signalsToday: 0,
+        confidenceAvg: 0,
+        lastChecked: new Date().toISOString()
+    });
+
+    // Update compat state when flat state changes
+    useEffect(() => {
+        setSystemStateCompat({
+            health,
+            apiKeys: {}, // We'll need to fetch this or map it
+            backendOnline: health !== 'dead',
+            wsConnected: true, // simplified
+            agentsRunning: activeAgents.filter(a => a.status === 'running').length,
+            agentsTotal: activeAgents.length,
+            signalsToday: signalCount,
+            confidenceAvg,
+            lastChecked: new Date().toISOString()
+        });
+    }, [health, activeAgents, signalCount, confidenceAvg]);
+
     return (
         <SystemStateContext.Provider value={{
             health,
@@ -223,7 +266,10 @@ export function SystemStateProvider({ children }: { children: ReactNode }) {
             refreshState,
             error,
             isLoading,
-            needsOnboarding
+            needsOnboarding,
+            showWakeAnimation,
+            systemState: systemStateCompat,
+            setSystemState: setSystemStateCompat
         }}>
             {children}
         </SystemStateContext.Provider>
@@ -237,3 +283,4 @@ export function useSystemState() {
     }
     return context;
 }
+export const useSystemStateContext = useSystemState;

@@ -4,7 +4,7 @@ import './globals.css';
 
 import { ThemeProvider } from '../lib/theme';
 import { SystemStateProvider } from '../contexts/SystemStateContext';
-import { AssistantProvider } from '../hooks/useAssistant';
+import { AssistantProvider } from '../contexts/AssistantContext';
 import { ToastProvider, ToastContainer } from '../components/ui/Toast';
 
 import { Sidebar } from '../components/layout/Sidebar';

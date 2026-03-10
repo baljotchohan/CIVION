@@ -33,10 +33,9 @@ export default function LogsPage() {
 
             {dataMode === 'empty' ? (
                 <EmptyState
-                    health={systemState.health}
                     icon={<Terminal className="w-8 h-8" />}
                     title="System Logs Offline"
-                    message="The logging service requires an active connection to the core engine."
+                    description="The logging service requires an active connection to the core engine."
                 />
             ) : (
                 <>

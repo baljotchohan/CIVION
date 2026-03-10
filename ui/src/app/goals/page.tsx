@@ -37,10 +37,9 @@ export default function GoalsPage() {
 
             {dataMode === 'empty' ? (
                 <EmptyState
-                    health={systemState.health}
                     icon={<Target className="w-8 h-8" />}
                     title="Goal Management Offline"
-                    message="Intelligence objectives require active agents and API connections."
+                    description="Intelligence objectives require active agents and API connections."
                 />
             ) : (
                 <>
