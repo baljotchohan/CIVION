@@ -1,4 +1,6 @@
-"""CIVION Agents - Intelligence gathering agents."""
-from civion.agents.base_agent import BaseAgent
+"""Agent implementations"""
+from civion.agents.github_agent import GitHubAgent
+from civion.agents.research_agent import ResearchAgent
+from civion.agents.market_agent import MarketAgent
 
-__all__ = ["BaseAgent"]
+__all__ = ['GitHubAgent', 'ResearchAgent', 'MarketAgent']

@@ -81,56 +81,48 @@ Return a JSON array of tasks, each with:
         log.info(f"Goal decomposed into {len(tasks)} tasks")
         return goal
 
-    async def execute_goal(self, goal_id: str) -> Dict:
-        """Execute a decomposed goal by running agent tasks."""
-        goal = await data_service.get_goal(goal_id)
+    async def execute_goal(self, goal_id: str) -> dict:
+        """Execute goal by starting reasoning"""
+        from civion.api.websocket import manager
+        from civion.engine.reasoning_loop import reasoning_engine
+        
+        # Get goal
+        goal = await self.get_goal(goal_id)
         if not goal:
-            return {"error": "Goal not found"}
-
-        goal["state"] = GoalState.EXECUTING.value
-        goal["updated_at"] = now_iso()
+            from fastapi import HTTPException
+            raise HTTPException(404, "Goal not found")
+        
+        # Broadcast goal started
+        await manager.broadcast('goal_started', {
+            'goal_id': goal_id,
+            'title': goal.get('title'),
+            'timestamp': datetime.now().isoformat()
+        })
+        
+        # Start reasoning
+        reasoning = await reasoning_engine.start_reasoning_loop(
+            insight=goal.get('title', ''),
+            topic=goal.get('description', '')
+        )
+        
+        # Update goal with results
+        goal['reasoning_id'] = reasoning['id']
+        goal['state'] = GoalState.COMPLETED.value
+        goal['final_confidence'] = reasoning['final_confidence']
+        goal['consensus'] = reasoning['consensus']
+        goal['arguments'] = reasoning['arguments']
+        
+        # Save
         await data_service.save_goal(goal)
-
-        # Import agents dynamically
-        from civion.agents.github_trend_agent import github_trend_agent
-        from civion.agents.research_monitor_agent import research_monitor_agent
-        from civion.agents.market_signal_agent import market_signal_agent
-        from civion.agents.sentiment_agent import sentiment_agent
-
-        agent_map = {
-            "github_trend": github_trend_agent,
-            "research_monitor": research_monitor_agent,
-            "market_signal": market_signal_agent,
-            "sentiment": sentiment_agent,
-        }
-
-        results = []
-        tasks = goal.get("tasks", [])
-        for i, task in enumerate(tasks):
-            agent_name = task.get("agent", "github_trend")
-            agent = agent_map.get(agent_name)
-
-            if agent:
-                task["status"] = "running"
-                result = await agent.run_cycle()
-                task["status"] = "completed"
-                task["result"] = {
-                    "insights": len(result.insights),
-                    "signals": len(result.signals),
-                    "duration": result.duration_seconds,
-                }
-                results.append(result)
-            else:
-                task["status"] = "skipped"
-
-            goal["progress"] = (i + 1) / len(tasks)
-            await data_service.save_goal(goal)
-
-        goal["state"] = GoalState.COMPLETED.value
-        goal["updated_at"] = now_iso()
-        await data_service.save_goal(goal)
-
-        log.info(f"Goal execution complete: {goal['title']}")
+        
+        # Broadcast completion
+        await manager.broadcast('goal_completed', {
+            'goal_id': goal_id,
+            'reasoning_id': reasoning['id'],
+            'confidence': reasoning['final_confidence'],
+            'timestamp': datetime.now().isoformat()
+        })
+        
         return goal
 
     async def get_goal(self, goal_id: str) -> Optional[Dict]:

@@ -315,46 +315,96 @@ def agent_logs(
 # ============ GOAL COMMANDS ============
 
 @goal_app.command("create")
-async def goal_create(query: str = typer.Argument(..., help="Intelligence goal statement")):
+def goal_create_cmd(query: str = typer.Argument(..., help="Intelligence goal statement")):
     """Create a new intelligence goal"""
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"http://localhost:{config.port}/api/v1/goals",
-                json={"title": query, "description": ""}
-            )
-            response.raise_for_status()
-            goal = response.json()
-            console.print(f"[green]✓ Goal created[/green] {goal['id']}")
-    except Exception as e:
-        console.print(f"[red]✗ Error[/red] {str(e)}")
+    async def run():
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"http://localhost:{config.port}/api/v1/goals",
+                    json={"title": query, "description": query}
+                )
+                response.raise_for_status()
+                goal = response.json()
+                console.print(f"[green]✓ Goal created[/green] ID: {goal['id']}")
+                console.print(f"  Title: {goal['title']}")
+                return goal
+        except Exception as e:
+            console.print(f"[red]✗ Error[/red] {str(e)}")
+    
+    asyncio.run(run())
+
+@goal_app.command("execute")
+def goal_execute_cmd(goal_id: str = typer.Argument(..., help="Goal ID to execute")):
+    """Execute a goal and watch analysis"""
+    async def run():
+        try:
+            async with httpx.AsyncClient() as client:
+                console.print(f"[cyan]Starting analysis for goal {goal_id}...[/cyan]")
+                response = await client.post(
+                    f"http://localhost:{config.port}/api/v1/goals/{goal_id}/execute",
+                    timeout=60.0 # Long timeout for reasoning
+                )
+                response.raise_for_status()
+                result = response.json()
+                
+                console.print(f"\n[green]✓ Analysis Complete[/green]\n")
+                console.print(Panel.fit(
+                    result.get('consensus', 'No analysis available'),
+                    title="Consensus"
+                ))
+                console.print(f"Final Confidence: [yellow]{result.get('final_confidence', 0):.0%}[/yellow]")
+                
+                if result.get('arguments'):
+                    table = Table(title="Agent Arguments")
+                    table.add_column("Agent", style="cyan")
+                    table.add_column("Analysis", style="green")
+                    table.add_column("Confidence", style="yellow")
+                    for arg in result['arguments']:
+                        table.add_row(
+                            arg.get('agent', 'Unknown'),
+                            (arg.get('argument', '')[:50] + "...") if len(arg.get('argument', '')) > 50 else arg.get('argument', ''),
+                            f"{arg.get('confidence', 0):.0%}"
+                        )
+                    console.print(table)
+        except Exception as e:
+            console.print(f"[red]✗ Error[/red] {str(e)}")
+            
+    asyncio.run(run())
 
 @goal_app.command("list")
 def goal_list_cmd():
     """List current intelligence goals."""
-    from asyncio import run
-    run(goal_list())
+    async def run():
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(f"http://localhost:{config.port}/api/v1/goals")
+                response.raise_for_status()
+                goals = response.json()
+                
+                if not goals:
+                    console.print("[dim]No goals found[/dim]")
+                    return
+                
+                table = Table(title="Intelligence Goals", box=None)
+                table.add_column("ID", style="cyan")
+                table.add_column("Title", style="green")
+                table.add_column("Status", style="yellow")
+                table.add_column("Confidence", style="magenta")
+                
+                for goal in goals:
+                    table.add_row(
+                        goal['id'][:8], 
+                        goal['title'], 
+                        goal.get('state', goal.get('status', 'unknown')),
+                        f"{goal.get('final_confidence', 0):.0%}"
+                    )
+                
+                console.print(table)
+        except Exception as e:
+            console.print(f"[red]✗ Error[/red] {str(e)}")
 
-async def goal_list():
-    """List all intelligence goals"""
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"http://localhost:{config.port}/api/v1/goals")
-            response.raise_for_status()
-            goals = response.json()
-            
-            # Display as table
-            table = Table(title="Intelligence Goals", box=None)
-            table.add_column("ID", style="cyan")
-            table.add_column("Title", style="green")
-            table.add_column("Status", style="yellow")
-            
-            for goal in goals:
-                table.add_row(goal['id'][:8], goal['title'], goal['status'])
-            
-            console.print(table)
-    except Exception as e:
-        console.print(f"[red]✗ Error[/red] {str(e)}")
+    asyncio.run(run())
 
 # ============ PERSONA COMMANDS ============
 
