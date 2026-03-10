@@ -26,7 +26,26 @@ ui/out/
 # OS
 .DS_Store
 
+
 # Coverage
 .coverage
 coverage.xml
+
+# Assistant & AI
+.gemini/
+.agents/
+.agent/
+_agents/
+_agent/
+brain/
+
+# Database
+*.db
+*.sqlite
+
+# Local Build Artifacts
+*.egg-info/
+.eggs/
+build/
+dist/
 
