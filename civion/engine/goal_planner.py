@@ -106,11 +106,11 @@ Return a JSON array of tasks, each with:
         )
         
         # Update goal with results
-        goal['reasoning_id'] = reasoning['id']
+        goal['reasoning_id'] = reasoning.id
         goal['state'] = GoalState.COMPLETED.value
-        goal['final_confidence'] = reasoning['final_confidence']
-        goal['consensus'] = reasoning['consensus']
-        goal['arguments'] = reasoning['arguments']
+        goal['final_confidence'] = reasoning.final_confidence
+        goal['consensus'] = reasoning.consensus
+        goal['arguments'] = [a.dict() for a in reasoning.arguments]
         
         # Save
         await data_service.save_goal(goal)
@@ -118,8 +118,8 @@ Return a JSON array of tasks, each with:
         # Broadcast completion
         await manager.broadcast('goal_completed', {
             'goal_id': goal_id,
-            'reasoning_id': reasoning['id'],
-            'confidence': reasoning['final_confidence'],
+            'reasoning_id': reasoning.id,
+            'confidence': reasoning.final_confidence,
             'timestamp': datetime.now().isoformat()
         })
         
