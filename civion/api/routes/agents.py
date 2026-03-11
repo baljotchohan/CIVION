@@ -60,7 +60,7 @@ def map_agent_to_frontend_type(agent: Any) -> Dict[str, Any]:
 async def list_agents():
     """List all registered agents with real status via AgentEngine."""
     agents = agent_engine.list_agents()
-    return agents
+    return [map_agent_to_frontend_type(a) for a in agents]
 
 @router.get("/{id}")
 async def get_agent(id: str):

@@ -189,14 +189,36 @@ else:
 # (Keep existing handlers but adjust for SPA if needed)
 @app.exception_handler(404)
 async def not_found_handler(request: Request, exc):
+    """
+    Handle 404 errors by serving the SPA index or mapping clean URLs to directory index files.
+    """
     # If API request, return JSON
-    if request.url.path.startswith("/api"):
+    path = request.url.path
+    if path.startswith("/api"):
         return JSONResponse(
             status_code=404,
-            content={"error": "Not found", "path": str(request.url.path)},
+            content={"error": "Not found", "path": str(path)},
         )
     
-    # If frontend request and index.html exists, return it (client-side routing)
+    # Clean the path
+    clean_path = path.strip("/")
+    
+    # Try mapping clean URL to index.html in subdirectories (trailingSlash: true support)
+    # e.g. /reasoning -> /reasoning/index.html
+    if clean_path:
+        # Check if it's a directory with index.html
+        html_file = static_path / clean_path / "index.html"
+        if html_file.exists():
+            from fastapi.responses import FileResponse
+            return FileResponse(html_file)
+            
+        # Fallback to direct .html for compatibility
+        direct_html = static_path / f"{clean_path}.html"
+        if direct_html.exists():
+            from fastapi.responses import FileResponse
+            return FileResponse(direct_html)
+
+    # Fallback to main index.html for SPA client-side routing
     index_file = static_path / "index.html"
     if index_file.exists():
         from fastapi.responses import FileResponse
@@ -204,7 +226,7 @@ async def not_found_handler(request: Request, exc):
         
     return JSONResponse(
         status_code=404,
-        content={"error": "Not found", "path": str(request.url.path)},
+        content={"error": "Not found", "path": str(path)},
     )
 
 
