@@ -343,7 +343,7 @@ def goal_execute_cmd(goal_id: str = typer.Argument(..., help="Goal ID to execute
                 console.print(f"[cyan]Starting analysis for goal {goal_id}...[/cyan]")
                 response = await client.post(
                     f"http://localhost:{config.port}/api/v1/goals/{goal_id}/execute",
-                    timeout=60.0 # Long timeout for reasoning
+                    timeout=config.CLI_TIMEOUT # Long timeout for reasoning
                 )
                 response.raise_for_status()
                 result = response.json()

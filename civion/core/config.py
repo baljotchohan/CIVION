@@ -130,13 +130,8 @@ class CivionConfig:
 # Global config instance
 config = CivionConfig()
 
-# Backward compatibility alias
-settings = config
-
 # Add dynamic attribute lookup to handle legacy LLM_PROVIDER etc if needed
 # But better to just alias the common ones
-config.app_name = "CIVION"
-config.app_version = "2.0.0"
 
 # Add properties with setters for keys that were in the pydantic model
 def get_legacy_secret(self, key):
@@ -182,6 +177,14 @@ class CivionConfigWithSetters(CivionConfig):
 # Re-instantiate with setters
 config = CivionConfigWithSetters()
 settings = config
+
+# API Timeouts
+config.AGENT_TIMEOUT = 10  # seconds for individual agent APIs
+config.CLI_TIMEOUT = 60    # seconds for CLI operations
+
+# Metadata
+config.app_name = "CIVION"
+config.app_version = "2.0.0"
 
 def _save_env_file(data: dict):
     """Helper to save multiple secrets at once, used by CLI"""

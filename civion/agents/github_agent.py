@@ -3,18 +3,35 @@ import httpx
 import logging
 from datetime import datetime, timedelta
 from civion.agents.base_agent import BaseAgent
+from civion.core.config import config
 
 log = logging.getLogger(__name__)
 
 class GitHubAgent(BaseAgent):
-    """Analyzes GitHub repository trends"""
+    """
+    Analyzes GitHub repository trends for technology signals.
+    
+    This agent monitors GitHub trending repositories to identify:
+    - Emerging technologies and frameworks
+    - Language popularity trends
+    - Active development in specific domains
+    """
     
     def __init__(self):
+        """Initialize GitHub agent with API endpoint."""
         super().__init__("GitHubAgent")
         self.api_url = "https://api.github.com/search/repositories"
     
     async def analyze(self, topic: str) -> dict:
-        """Analyze GitHub trends for topic"""
+        """
+        Analyze GitHub trends for a given topic.
+        
+        Args:
+            topic: Search term for GitHub repositories
+            
+        Returns:
+            dict: Agent result with analysis and confidence score
+        """
         try:
             # Fetch GitHub data
             data = await self._fetch_github_data(topic)
@@ -56,7 +73,7 @@ class GitHubAgent(BaseAgent):
             }
         
         except Exception as e:
-            self.logger.error(f"GitHub agent error: {str(e)}")
+            log.error(f"GitHub agent error: {str(e)}")
             return self._fallback_response(f"GitHub analysis error: {str(e)}")
     
     async def _fetch_github_data(self, topic: str) -> dict:
@@ -71,12 +88,12 @@ class GitHubAgent(BaseAgent):
                         "order": "desc",
                         "per_page": 30
                     },
-                    timeout=10
+                    timeout=config.AGENT_TIMEOUT
                 )
                 response.raise_for_status()
                 return response.json()
         except Exception as e:
-            self.logger.error(f"GitHub API error: {str(e)}")
+            log.error(f"GitHub API error: {str(e)}")
             return None
     
     def _is_recent(self, date_str: str) -> bool:

@@ -4,18 +4,35 @@ import feedparser
 import logging
 from datetime import datetime, timedelta
 from civion.agents.base_agent import BaseAgent
+from civion.core.config import config
 
 log = logging.getLogger(__name__)
 
 class ResearchAgent(BaseAgent):
-    """Analyzes academic research papers on arXiv"""
+    """
+    Analyzes academic research papers on arXiv for technology signals.
+    
+    This agent monitors arXiv submissions to identify:
+    - New research papers in specific domains
+    - Emerging research trends and categories
+    - Key active research areas
+    """
     
     def __init__(self):
+        """Initialize research agent with arXiv API endpoint."""
         super().__init__("ResearchAgent")
         self.api_url = "http://export.arxiv.org/api/query"
     
     async def analyze(self, topic: str) -> dict:
-        """Analyze research trends"""
+        """
+        Analyze research trends for a given topic.
+        
+        Args:
+            topic: Search term for arXiv papers
+            
+        Returns:
+            dict: Agent result with analysis and confidence score
+        """
         try:
             # Fetch arXiv data
             data = await self._fetch_arxiv_data(topic)
@@ -61,7 +78,7 @@ class ResearchAgent(BaseAgent):
             }
         
         except Exception as e:
-            self.logger.error(f"Research agent error: {str(e)}")
+            log.error(f"Research agent error: {str(e)}")
             return self._fallback_response(f"Research analysis error: {str(e)}")
     
     async def _fetch_arxiv_data(self, topic: str) -> dict:
@@ -69,7 +86,7 @@ class ResearchAgent(BaseAgent):
         try:
             async with httpx.AsyncClient() as client:
                 url = f"{self.api_url}?search_query=all:{topic}&max_results=30&sortBy=submittedDate&sortOrder=descending"
-                response = await client.get(url, timeout=10)
+                response = await client.get(url, timeout=config.AGENT_TIMEOUT)
                 response.raise_for_status()
                 
                 # Parse RSS feed
@@ -77,7 +94,7 @@ class ResearchAgent(BaseAgent):
                 return {'entries': feed.entries}
         
         except Exception as e:
-            self.logger.error(f"arXiv API error: {str(e)}")
+            log.error(f"arXiv API error: {str(e)}")
             return None
     
     def _is_recent(self, date_str: str) -> bool:
