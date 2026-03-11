@@ -4,10 +4,12 @@ from typing import Dict, Any
 import time
 import requests
 import asyncio
+import logging
 from civion.core.config import settings
 from civion.services.llm_service import LLMService
 
 router = APIRouter(prefix="/system", tags=["System"])
+log = logging.getLogger(__name__)
 
 SYSTEM_START_TIME = time.time()
 
@@ -107,8 +109,10 @@ def save_system_config(payload: ConfigPayload) -> Dict[str, Any]:
     try:
         loop = asyncio.get_event_loop()
         loop.create_task(manager.broadcast("config_updated", {"message": f"Config updated: {payload.key_name}"}))
+    except RuntimeError as e:
+        log.warning(f"Could not get event loop for broadcast: {e}")
     except Exception as e:
-        print(f"Failed to broadcast: {e}")
+        log.error(f"Failed to broadcast: {e}")
         
     return {"status": "success", "message": f"{payload.key_name} saved"}
 
@@ -201,6 +205,10 @@ async def test_system_key(payload: TestKeyPayload) -> Dict[str, Any]:
                 return {"valid": True, "message": "Connection successful", "latency_ms": latency}
             else:
                 return {"valid": False, "message": f"Unexpected response: {result}", "latency_ms": latency}
+    except requests.exceptions.RequestException as e:
+        log.error(f"Ollama connection test failed: {e}")
+        latency = int((time.time() - start) * 1000)
+        return {"valid": False, "message": f"Connection failed: {e}", "latency_ms": latency}
     except Exception as e:
         latency = int((time.time() - start) * 1000)
         return {"valid": False, "message": str(e), "latency_ms": latency}

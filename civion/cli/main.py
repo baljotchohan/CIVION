@@ -18,6 +18,8 @@ import time
 import webbrowser
 import asyncio
 import requests
+import socket
+import logging
 from pathlib import Path
 from typing import Optional, List
 
@@ -36,6 +38,7 @@ from civion.cli.setup_wizard import run_setup
 
 console = Console()
 app = typer.Typer(help="🦞 CIVION - Watch AI Think")
+log = logging.getLogger(__name__)
 
 # Feature groups (sub-apps)
 gateway_app = typer.Typer(help="Gateway control")
@@ -147,8 +150,7 @@ def gateway_start(
         console.print("\n[yellow]CIVION stopped.[/yellow]")
     except Exception as e:
         console.print(f"\n[red]✗ Error: {e}[/red]")
-        import traceback
-        traceback.print_exc()
+        log.exception("Uvicorn failed to start")
         sys.exit(1)
     finally:
         if PID_FILE.exists():
@@ -195,7 +197,7 @@ def gateway_health():
     try:
         res = requests.get(f"http://localhost:{config.port}/api/health", timeout=2)
         api_status = "[green]ONLINE[/green]" if res.status_code == 200 else "[red]ERROR[/red]"
-    except:
+    except requests.exceptions.RequestException:
         api_status = "[gray]OFFLINE[/gray]"
     table.add_row("API Gateway", api_status, f"port {config.port}")
 
@@ -222,12 +224,11 @@ def gateway_doctor():
             live.console.print(f"  ✗ Python version {sys.version.split()[0]} too old")
             
         # Check Port
-        import socket
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             s.bind(("127.0.0.1", config.port))
             live.console.print(f"  ✓ Port {config.port} is available")
-        except:
+        except socket.error:
             live.console.print(f"  ✗ Port {config.port} in use")
         finally:
             s.close()
@@ -277,8 +278,10 @@ async def agent_start(
             response.raise_for_status()
             result = response.json()
             console.print(f"[green]✓ Agent started[/green]")
-    except Exception as e:
-        console.print(f"[red]✗ Error[/red] {str(e)}")
+    except httpx.HTTPStatusError as e:
+        console.print(f"[red]✗ Error[/red] Agent not found or already started.")
+    except httpx.RequestError as e:
+        console.print(f"[red]✗ Error[/red] Could not connect to CIVION: {e}")
 
 @agent_app.command("stop")
 async def agent_stop(
@@ -293,8 +296,10 @@ async def agent_stop(
             )
             response.raise_for_status()
             console.print(f"[green]✓ Agent stopped[/green]")
-    except Exception as e:
-        console.print(f"[red]✗ Error[/red] {str(e)}")
+    except httpx.HTTPStatusError as e:
+        console.print(f"[red]✗ Error[/red] Agent not found or already stopped.")
+    except httpx.RequestError as e:
+        console.print(f"[red]✗ Error[/red] Could not connect to CIVION: {e}")
 
 @agent_app.command("logs")
 def agent_logs(
@@ -329,6 +334,8 @@ def goal_create_cmd(query: str = typer.Argument(..., help="Intelligence goal sta
                 console.print(f"[green]✓ Goal created[/green] ID: {goal['id']}")
                 console.print(f"  Title: {goal['title']}")
                 return goal
+        except httpx.RequestError as e:
+            console.print(f"[red]✗ Error[/red] Could not connect to CIVION: {e}")
         except Exception as e:
             console.print(f"[red]✗ Error[/red] {str(e)}")
     
@@ -367,6 +374,10 @@ def goal_execute_cmd(goal_id: str = typer.Argument(..., help="Goal ID to execute
                             f"{arg.get('confidence', 0):.0%}"
                         )
                     console.print(table)
+        except httpx.Timeout as e:
+            console.print(f"[red]✗ Timeout[/red] Analysis is taking longer than expected. Run 'goal list' to check status.")
+        except httpx.RequestError as e:
+            console.print(f"[red]✗ Error[/red] Could not connect to CIVION: {e}")
         except Exception as e:
             console.print(f"[red]✗ Error[/red] {str(e)}")
             
@@ -401,6 +412,8 @@ def goal_list_cmd():
                     )
                 
                 console.print(table)
+        except httpx.RequestError as e:
+            console.print(f"[red]✗ Error[/red] Could not connect to CIVION: {e}")
         except Exception as e:
             console.print(f"[red]✗ Error[/red] {str(e)}")
 
@@ -423,7 +436,7 @@ def persona_list():
         for p in personas:
             table.add_row(p["name"], p.get("description", "No description"))
         console.print(table)
-    except:
+    except requests.exceptions.RequestException:
         console.print("[yellow]Could not fetch personas. Is CIVION running?[/yellow]")
 
 # ============ NETWORK COMMANDS ============
@@ -454,7 +467,7 @@ def predict_list():
         for p in preds:
             table.add_row(p["statement"], f"{int(p['confidence']*100)}%", p.get("timeline", "Unknown"))
         console.print(table)
-    except:
+    except requests.exceptions.RequestException:
         console.print("[dim]No active predictions found.[/dim]")
 
 @app.command()

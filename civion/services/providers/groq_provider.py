@@ -1,8 +1,11 @@
 """
 CIVION Groq Provider
 """
+import logging
 from typing import AsyncGenerator, List, Optional
 from .base_provider import BaseProvider
+
+log = logging.getLogger(__name__)
 
 class GroqProvider(BaseProvider):
     async def complete(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.7) -> str:
@@ -17,8 +20,10 @@ class GroqProvider(BaseProvider):
             )
             return response.choices[0].message.content
         except ImportError:
+            log.error("Groq package not installed. Run 'pip install groq'.")
             return "Groq package not installed. Run 'pip install groq'."
         except Exception as e:
+            log.error(f"Groq Error: {str(e)}")
             return f"Groq Error: {str(e)}"
 
     async def stream(
@@ -44,8 +49,10 @@ class GroqProvider(BaseProvider):
                 if chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
         except ImportError:
+            log.error("Groq package not installed.")
             yield "Groq package not installed."
         except Exception as e:
+            log.error(f"Groq stream error: {str(e)}")
             yield f"Error: {str(e)}"
 
     async def test_connection(self) -> bool:
@@ -58,7 +65,8 @@ class GroqProvider(BaseProvider):
                 messages=[{"role": "user", "content": "test"}]
             )
             return True
-        except:
+        except Exception as e:
+            log.error(f"Groq connection test failed: {e}")
             return False
 
     def get_available_models(self) -> List[str]:

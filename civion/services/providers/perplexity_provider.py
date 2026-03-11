@@ -2,8 +2,11 @@
 CIVION Perplexity Provider
 Uses OpenAI-compatible client.
 """
+import logging
 from typing import AsyncGenerator, List, Optional
 from .base_provider import BaseProvider
+
+log = logging.getLogger(__name__)
 
 class PerplexityProvider(BaseProvider):
     async def complete(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.7) -> str:
@@ -18,8 +21,10 @@ class PerplexityProvider(BaseProvider):
             )
             return response.choices[0].message.content
         except ImportError:
+            log.error("OpenAI package not installed (required for Perplexity). Run 'pip install openai'.")
             return "OpenAI package not installed (required for Perplexity). Run 'pip install openai'."
         except Exception as e:
+            log.error(f"Perplexity Error: {str(e)}")
             return f"Perplexity Error: {str(e)}"
 
     async def stream(
@@ -45,8 +50,10 @@ class PerplexityProvider(BaseProvider):
                 if chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
         except ImportError:
+            log.error("OpenAI package not installed.")
             yield "OpenAI package not installed."
         except Exception as e:
+            log.error(f"Perplexity stream error: {str(e)}")
             yield f"Error: {str(e)}"
 
     async def test_connection(self) -> bool:
@@ -59,7 +66,8 @@ class PerplexityProvider(BaseProvider):
                 messages=[{"role": "user", "content": "test"}]
             )
             return True
-        except:
+        except Exception as e:
+            log.error(f"Perplexity connection test failed: {e}")
             return False
 
     def get_available_models(self) -> List[str]:
