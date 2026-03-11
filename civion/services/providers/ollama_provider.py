@@ -2,8 +2,11 @@
 CIVION Ollama Provider
 100% Local AI.
 """
+import logging
 from typing import AsyncGenerator, List, Optional
 from .base_provider import BaseProvider
+
+log = logging.getLogger(__name__)
 
 class OllamaProvider(BaseProvider):
     async def complete(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.7) -> str:
@@ -16,8 +19,10 @@ class OllamaProvider(BaseProvider):
             )
             return response["message"]["content"]
         except ImportError:
+            log.error("Ollama package not installed. Run 'pip install ollama'.")
             return "Ollama package not installed. Run 'pip install ollama'."
         except Exception as e:
+            log.error(f"Ollama Error: {str(e)}")
             return f"Ollama Error: {str(e)}"
 
     async def stream(
@@ -39,8 +44,10 @@ class OllamaProvider(BaseProvider):
             ):
                 yield chunk["message"]["content"]
         except ImportError:
+            log.error("Ollama package not installed.")
             yield "Ollama package not installed."
         except Exception as e:
+            log.error(f"Ollama stream error: {str(e)}")
             yield f"Error: {str(e)}"
 
     async def test_connection(self) -> bool:
@@ -49,7 +56,8 @@ class OllamaProvider(BaseProvider):
             client = ollama.AsyncClient(host=self.config.get("host", "http://localhost:11434"))
             await client.ps()
             return True
-        except:
+        except Exception as e:
+            log.error(f"Ollama connection test failed: {e}")
             return False
 
     def get_available_models(self) -> List[str]:

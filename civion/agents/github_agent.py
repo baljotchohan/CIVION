@@ -92,8 +92,17 @@ class GitHubAgent(BaseAgent):
                 )
                 response.raise_for_status()
                 return response.json()
+        except httpx.TimeoutError:
+            log.error(f"GitHub API timeout while searching '{topic}'")
+            return None
+        except httpx.ConnectError:
+            log.error(f"GitHub connection failed")
+            return None
+        except httpx.HTTPStatusError as e:
+            log.error(f"GitHub returned HTTP {e.response.status_code}")
+            return None
         except Exception as e:
-            log.error(f"GitHub API error: {str(e)}")
+            log.error(f"Unexpected error fetching GitHub data: {str(e)}")
             return None
     
     def _is_recent(self, date_str: str) -> bool:
@@ -106,7 +115,8 @@ class GitHubAgent(BaseAgent):
             date = datetime.fromisoformat(ds)
             now = datetime.now(date.tzinfo)
             return (now - date) < timedelta(days=30)
-        except:
+        except Exception as e:
+            log.error(f"Date parsing error: {str(e)}")
             return False
     
     def _get_top_language(self, repos: list) -> str:

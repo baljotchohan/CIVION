@@ -92,9 +92,17 @@ class ResearchAgent(BaseAgent):
                 # Parse RSS feed
                 feed = feedparser.parse(response.text)
                 return {'entries': feed.entries}
-        
+        except httpx.TimeoutError:
+            log.error(f"arXiv API timeout while searching '{topic}'")
+            return None
+        except httpx.ConnectError:
+            log.error(f"arXiv connection failed")
+            return None
+        except httpx.HTTPStatusError as e:
+            log.error(f"arXiv returned HTTP {e.response.status_code}")
+            return None
         except Exception as e:
-            log.error(f"arXiv API error: {str(e)}")
+            log.error(f"Unexpected error fetching arXiv data: {str(e)}")
             return None
     
     def _is_recent(self, date_str: str) -> bool:
@@ -107,7 +115,8 @@ class ResearchAgent(BaseAgent):
             date = datetime.fromisoformat(ds)
             now = datetime.now(date.tzinfo)
             return (now - date) < timedelta(days=30)
-        except:
+        except Exception as e:
+            log.error(f"Date parsing error: {str(e)}")
             return False
     
     def _fallback_response(self, error_msg: str) -> dict:
