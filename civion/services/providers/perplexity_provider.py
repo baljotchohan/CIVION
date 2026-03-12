@@ -2,11 +2,11 @@
 CIVION Perplexity Provider
 Uses OpenAI-compatible client.
 """
-import logging
-from typing import AsyncGenerator, List, Optional
+from typing import AsyncGenerator, List, Optional, Dict, Any
 from .base_provider import BaseProvider
+from civion.core.logger import engine_logger
 
-log = logging.getLogger(__name__)
+log = engine_logger(__name__)
 
 class PerplexityProvider(BaseProvider):
     async def complete(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.7) -> str:
@@ -69,6 +69,14 @@ class PerplexityProvider(BaseProvider):
         except Exception as e:
             log.error(f"Perplexity connection test failed: {e}")
             return False
+
+    def _fallback_response(self, error_msg: str) -> Dict[str, Any]:
+        """Return standardized error structure."""
+        return {
+            "error": error_msg,
+            "fallback": True,
+            "content": "Perplexity service currently unavailable."
+        }
 
     def get_available_models(self) -> List[str]:
         return ["llama-3.1-sonar-large-128k-online", "llama-3.1-sonar-small-128k-online"]

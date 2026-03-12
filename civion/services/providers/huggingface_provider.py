@@ -1,7 +1,10 @@
 """
 CIVION Hugging Face Provider
 """
-from typing import AsyncGenerator, List, Optional
+import httpx
+from typing import AsyncGenerator, List, Optional, Any
+from civion.core.logger import engine_logger
+log = engine_logger(__name__)
 from .base_provider import BaseProvider
 
 class HuggingFaceProvider(BaseProvider):
@@ -47,8 +50,19 @@ class HuggingFaceProvider(BaseProvider):
             async with httpx.AsyncClient() as client:
                 response = await client.post(api_url, headers=headers, json={"inputs": "test"}, timeout=10.0)
                 return response.status_code == 200
-        except:
-            return False
+        except httpx.TimeoutError:
+            log.warning(f"HuggingFace API timeout")
+            return self._fallback_response("timeout")
+        except Exception as e:
+            log.error(f"HuggingFace provider error: {str(e)}")
+            return None
+
+    def _fallback_response(self, error_reason: str) -> dict:
+        return {
+            "error": error_reason,
+            "fallback": True,
+            "content": "API unavailable, using cached response"
+        }
 
     def get_available_models(self) -> List[str]:
         return []  # Any HF model

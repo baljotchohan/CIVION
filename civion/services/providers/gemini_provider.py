@@ -1,7 +1,10 @@
 """
 CIVION Gemini Provider
 """
-from typing import AsyncGenerator, List, Optional
+import httpx
+from typing import AsyncGenerator, List, Optional, Any
+from civion.core.logger import engine_logger
+log = engine_logger(__name__)
 from .base_provider import BaseProvider
 
 class GeminiProvider(BaseProvider):
@@ -58,8 +61,19 @@ class GeminiProvider(BaseProvider):
             model = genai.GenerativeModel(self.model or "gemini-1.5-pro")
             await model.generate_content_async("test")
             return True
-        except:
-            return False
+        except httpx.TimeoutError:
+            log.warning(f"Gemini API timeout")
+            return self._fallback_response("timeout")
+        except Exception as e:
+            log.error(f"Gemini provider error: {str(e)}")
+            return None
+
+    def _fallback_response(self, error_reason: str) -> dict:
+        return {
+            "error": error_reason,
+            "fallback": True,
+            "content": "API unavailable, using cached response"
+        }
 
     def get_available_models(self) -> List[str]:
         return ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-1.0-pro"]

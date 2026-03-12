@@ -1,11 +1,11 @@
 """
 CIVION Groq Provider
 """
-import logging
-from typing import AsyncGenerator, List, Optional
+from typing import AsyncGenerator, List, Optional, Dict, Any
 from .base_provider import BaseProvider
+from civion.core.logger import engine_logger
 
-log = logging.getLogger(__name__)
+log = engine_logger(__name__)
 
 class GroqProvider(BaseProvider):
     async def complete(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.7) -> str:
@@ -68,6 +68,14 @@ class GroqProvider(BaseProvider):
         except Exception as e:
             log.error(f"Groq connection test failed: {e}")
             return False
+
+    def _fallback_response(self, error_msg: str) -> Dict[str, Any]:
+        """Return standardized error structure."""
+        return {
+            "error": error_msg,
+            "fallback": True,
+            "content": "Groq service currently unavailable."
+        }
 
     def get_available_models(self) -> List[str]:
         return ["llama-3.1-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"]

@@ -2,11 +2,11 @@
 CIVION Ollama Provider
 100% Local AI.
 """
-import logging
-from typing import AsyncGenerator, List, Optional
+from typing import AsyncGenerator, List, Optional, Dict, Any
 from .base_provider import BaseProvider
+from civion.core.logger import engine_logger
 
-log = logging.getLogger(__name__)
+log = engine_logger(__name__)
 
 class OllamaProvider(BaseProvider):
     async def complete(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.7) -> str:
@@ -59,6 +59,14 @@ class OllamaProvider(BaseProvider):
         except Exception as e:
             log.error(f"Ollama connection test failed: {e}")
             return False
+
+    def _fallback_response(self, error_msg: str) -> Dict[str, Any]:
+        """Return standardized error structure."""
+        return {
+            "error": error_msg,
+            "fallback": True,
+            "content": "Ollama service currently unavailable."
+        }
 
     def get_available_models(self) -> List[str]:
         # Ideally would call client.list() but let's return common models

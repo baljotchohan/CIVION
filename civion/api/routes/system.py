@@ -5,11 +5,9 @@ import time
 import requests
 import asyncio
 import logging
-from civion.core.config import settings
-from civion.services.llm_service import LLMService
+from civion.core.logger import engine_logger
 
-router = APIRouter(prefix="/system", tags=["System"])
-log = logging.getLogger(__name__)
+log = engine_logger(__name__)
 
 SYSTEM_START_TIME = time.time()
 

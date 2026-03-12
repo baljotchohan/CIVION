@@ -79,5 +79,15 @@ class CyberThreatAgent(BaseAgent):
             {"cve": {"id": "CVE-2026-9012", "descriptions": [{"value": "Authentication bypass in cloud service API"}], "severity": "HIGH", "score": 7.5}},
         ]
 
+    def _fallback_response(self, error_msg: str) -> Dict[str, Any]:
+        """Return fallback response on error"""
+        return {
+            "agent": self.name,
+            "analysis": f"Cyber threat analysis unavailable: {error_msg}",
+            "confidence": 0.3,
+            "data": {"error": error_msg},
+            "position": "neutral"
+        }
+
 
 cyber_threat_agent = CyberThreatAgent()

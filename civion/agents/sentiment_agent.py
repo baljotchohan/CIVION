@@ -82,5 +82,15 @@ class SentimentAgent(BaseAgent):
 
         return AgentResult(agent_name=self.name, insights=insights, signals=signals)
 
+    def _fallback_response(self, error_msg: str) -> Dict[str, Any]:
+        """Return fallback response on error"""
+        return {
+            "agent": self.name,
+            "analysis": f"Sentiment analysis unavailable: {error_msg}",
+            "confidence": 0.3,
+            "data": {"error": error_msg},
+            "position": "neutral"
+        }
+
 
 sentiment_agent = SentimentAgent()

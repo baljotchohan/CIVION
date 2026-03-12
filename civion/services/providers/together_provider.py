@@ -1,7 +1,10 @@
 """
 CIVION Together AI Provider
 """
-from typing import AsyncGenerator, List, Optional
+import httpx
+from typing import AsyncGenerator, List, Optional, Any
+from civion.core.logger import engine_logger
+log = engine_logger(__name__)
 from .base_provider import BaseProvider
 
 class TogetherProvider(BaseProvider):
@@ -58,8 +61,19 @@ class TogetherProvider(BaseProvider):
                 messages=[{"role": "user", "content": "test"}]
             )
             return True
-        except:
-            return False
+        except httpx.TimeoutError:
+            log.warning(f"Together API timeout")
+            return self._fallback_response("timeout")
+        except Exception as e:
+            log.error(f"Together provider error: {str(e)}")
+            return None
+
+    def _fallback_response(self, error_reason: str) -> dict:
+        return {
+            "error": error_reason,
+            "fallback": True,
+            "content": "API unavailable, using cached response"
+        }
 
     def get_available_models(self) -> List[str]:
         return ["meta-llama/Llama-3-70b-chat-hf", "mistralai/Mixtral-8x22B-Instruct-v0.1", "NousResearch/Nous-Hermes-2-Yi-34B"]

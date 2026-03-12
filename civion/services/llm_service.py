@@ -3,6 +3,8 @@ CIVION Universal LLM Service
 Managed all providers and handles fallbacks.
 """
 import logging
+from civion.core.logger import engine_logger
+log = engine_logger(__name__)
 from typing import AsyncGenerator, Dict, List, Optional, Any
 
 from civion.core.config import config
@@ -100,7 +102,8 @@ class LLMService:
                 svc = cls(provider=name)
                 provider = svc._get_provider(name)
                 results[name] = await provider.test_connection()
-            except:
+            except Exception as e:
+                log.error(f"LLM service error testing provider {name}: {str(e)}")
                 results[name] = False
         return results
 

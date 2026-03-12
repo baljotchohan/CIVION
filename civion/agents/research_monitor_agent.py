@@ -105,5 +105,15 @@ class ResearchMonitorAgent(BaseAgent):
              "summary": "First unified model for vision, language, and motor control in robotic systems.", "source": "arxiv"},
         ]
 
+    def _fallback_response(self, error_msg: str) -> Dict[str, Any]:
+        """Return fallback response on error"""
+        return {
+            "agent": self.name,
+            "analysis": f"Research monitoring unavailable: {error_msg}",
+            "confidence": 0.3,
+            "data": {"error": error_msg},
+            "position": "neutral"
+        }
+
 
 research_monitor_agent = ResearchMonitorAgent()

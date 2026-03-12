@@ -88,5 +88,15 @@ class StartupRadarAgent(BaseAgent):
             {"title": "YC W24: Our picks for the most interesting startups", "score": 410, "url": "https://example.com/5"},
         ]
 
+    def _fallback_response(self, error_msg: str) -> Dict[str, Any]:
+        """Return fallback response on error"""
+        return {
+            "agent": self.name,
+            "analysis": f"Startup radar unavailable: {error_msg}",
+            "confidence": 0.3,
+            "data": {"error": error_msg},
+            "position": "neutral"
+        }
+
 
 startup_radar_agent = StartupRadarAgent()

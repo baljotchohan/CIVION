@@ -85,5 +85,15 @@ class MarketSignalAgent(BaseAgent):
             {"name": "Cardano", "symbol": "ada", "current_price": 0.95, "price_change_percentage_24h": -8.3, "market_cap": 33000000000},
         ]
 
+    def _fallback_response(self, error_msg: str) -> Dict[str, Any]:
+        """Return fallback response on error"""
+        return {
+            "agent": self.name,
+            "analysis": f"Market signal analysis unavailable: {error_msg}",
+            "confidence": 0.3,
+            "data": {"error": error_msg},
+            "position": "neutral"
+        }
+
 
 market_signal_agent = MarketSignalAgent()

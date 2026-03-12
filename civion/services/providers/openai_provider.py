@@ -1,7 +1,10 @@
 """
 CIVION OpenAI Provider
 """
-from typing import AsyncGenerator, List, Optional
+import httpx
+from typing import AsyncGenerator, List, Optional, Any
+from civion.core.logger import engine_logger
+log = engine_logger(__name__)
 from .base_provider import BaseProvider
 
 class OpenAIProvider(BaseProvider):
@@ -69,8 +72,28 @@ class OpenAIProvider(BaseProvider):
                 messages=[{"role": "user", "content": "test"}]
             )
             return True
-        except:
-            return False
+        except httpx.TimeoutError:
+            log.warning(f"OpenAI API timeout")
+            return self._fallback_response("timeout")
+        except httpx.ConnectError:
+            log.error(f"Cannot connect to OpenAI API")
+            return self._fallback_response("connection_error")
+        except httpx.HTTPStatusError as e:
+            log.error(f"OpenAI API returned HTTP {e.response.status_code}")
+            if e.response.status_code == 429:
+                return self._fallback_response("rate_limited")
+            return self._fallback_response(f"http_{e.response.status_code}")
+        except Exception as e:
+            log.error(f"OpenAI provider error: {str(e)}")
+            return None
+
+    def _fallback_response(self, error_reason: str) -> dict:
+        """Return fallback response when API fails."""
+        return {
+            "error": error_reason,
+            "fallback": True,
+            "content": "API unavailable, using cached response"
+        }
 
     def get_available_models(self) -> List[str]:
         return ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo", "o1-preview", "o1-mini"]

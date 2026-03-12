@@ -17,17 +17,39 @@ log = engine_logger("reasoning_loop")
 
 @dataclass
 class ReasoningArgument:
+    """A single argument from an agent in the reasoning debate.
+    
+    Attributes:
+        agent (str): Name of the agent providing the argument.
+        position (str): Position taken ("support", "challenge", "neutral").
+        argument (str): Content of the argument.
+        confidence (float): Confidence score between 0 and 1.
+    """
     agent: str = ""
     position: str = "support"
     argument: str = ""
     confidence: float = 0.5
 
-    def dict(self):
+    def dict(self) -> Dict[str, Any]:
+        """Convert argument to dictionary."""
         return {"agent": self.agent, "position": self.position, "argument": self.argument, "confidence": self.confidence}
 
 
 @dataclass
 class ReasoningLoop:
+    """Encapsulates a full debate cycle for a specific hypothesis.
+    
+    Attributes:
+        id (str): Unique identifier for the loop.
+        topic (str): The subject being debated.
+        hypothesis (str): The specific claim being tested.
+        arguments (List[ReasoningArgument]): Collected agent arguments.
+        consensus (str): Final synthesized statement.
+        final_confidence (float): Aggregate confidence score.
+        state (str): Current loop state (debating, consensus, error).
+        active_goal (Any): Associated goal object if applicable.
+        created_at (str): ISO timestamp of creation.
+    """
     id: str = ""
     topic: str = ""
     hypothesis: str = ""
@@ -38,7 +60,8 @@ class ReasoningLoop:
     active_goal: Any = None
     created_at: str = ""
 
-    def dict(self):
+    def dict(self) -> Dict[str, Any]:
+        """Serialize the entire reasoning loop to a dictionary."""
         return {
             "id": self.id, "topic": self.topic, "hypothesis": self.hypothesis,
             "arguments": [a.dict() for a in self.arguments],
@@ -48,21 +71,25 @@ class ReasoningLoop:
             "created_at": self.created_at,
         }
 
-    async def run_cycle(self, *args, **kwargs):
+    async def run_cycle(self, *args, **kwargs) -> None:
         """Execute one cycle of the reasoning loop."""
         return None
 
-    def set_active_goal(self, goal: Any, *args, **kwargs):
-        """Set the active goal for the reasoning loop."""
+    def set_active_goal(self, goal: Any, *args, **kwargs) -> None:
+        """Set the active goal for the reasoning loop.
+        
+        Args:
+            goal: The goal object to associate with this debate.
+        """
         self.active_goal = goal
         if hasattr(goal, 'title'):
             self.topic = goal.title
 
-    def get_state(self, *args, **kwargs) -> dict:
+    def get_state(self, *args, **kwargs) -> Dict[str, Any]:
         """Get the current state of the reasoning loop."""
         return {"state": self.state, "active_goal": self.active_goal}
 
-    def clear_debate(self):
+    def clear_debate(self) -> None:
         """Clear the current active goal."""
         self.active_goal = None
 
@@ -74,13 +101,18 @@ from civion.api.websocket import manager
 from civion.core.constants import ReasoningState
 
 class ReasoningEngine:
-    """Multi-agent reasoning and debate engine."""
+    """Orchestrates multi-agent reasoning debates.
+    
+    Manages the lifecycle of ReasoningLoop objects, initiating
+    agent analysis and synthesizing consensus.
+    """
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """Initialize reasoning engine and seed mock data."""
         self.loops: List[ReasoningLoop] = []
         self._seed_mock_data()
 
-    def _seed_mock_data(self):
+    def _seed_mock_data(self) -> None:
         """Seed initial reasoning loop for demonstration/testing."""
         loop = ReasoningLoop(
             id=generate_id("rl"),
@@ -102,7 +134,15 @@ class ReasoningEngine:
         self.loops.append(loop)
 
     async def start_reasoning_loop(self, insight: str, topic: str) -> ReasoningLoop:
-        """Start reasoning with real agents"""
+        """Start a new reasoning loop with real agent analysis.
+        
+        Args:
+            insight: The hypothesis to test.
+            topic: The topic of discussion.
+            
+        Returns:
+            The created ReasoningLoop object.
+        """
         
         # Create reasoning loop ID
         loop_id = generate_id("rl")
@@ -218,8 +258,15 @@ class ReasoningEngine:
         log.info(f"Reasoning loop completed: {topic}")
         return loop
     
-    async def _synthesize_consensus(self, arguments: list) -> str:
-        """Use LLM to synthesize consensus"""
+    async def _synthesize_consensus(self, arguments: List[Dict[str, Any]]) -> str:
+        """Use LLM to synthesize consensus from agent arguments.
+        
+        Args:
+            arguments: List of argument dictionaries.
+            
+        Returns:
+            A synthesized consensus statement string.
+        """
         from civion.services.llm_service import llm_service
         
         args_text = "\n".join([f"- {arg['agent']}: {arg['argument']}" for arg in arguments])
@@ -237,8 +284,15 @@ class ReasoningEngine:
     async def get_loop(self, loop_id: str) -> Optional[ReasoningLoop]:
         return next((l for l in self.loops if l.id == loop_id), None)
 
-    async def display_reasoning_loop(self, loop: ReasoningLoop) -> dict:
-        """Serialize loop for display."""
+    async def display_reasoning_loop(self, loop: ReasoningLoop) -> Dict[str, Any]:
+        """Serialize a reasoning loop for API display.
+        
+        Args:
+            loop: The ReasoningLoop object to serialize.
+            
+        Returns:
+            Dictionary representation of the loop.
+        """
         return loop.dict()
 
 

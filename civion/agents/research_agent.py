@@ -3,35 +3,47 @@ import httpx
 import feedparser
 import logging
 from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Any
 from civion.agents.base_agent import BaseAgent
 from civion.core.config import config
 
 log = logging.getLogger(__name__)
 
 class ResearchAgent(BaseAgent):
-    """
-    Analyzes academic research papers on arXiv for technology signals.
+    """Analyzes academic research trends and scientific consensus.
     
-    This agent monitors arXiv submissions to identify:
-    - New research papers in specific domains
-    - Emerging research trends and categories
-    - Key active research areas
+    Monitors arXiv and academic publications to identify research
+    trends and scientific consensus on topics.
+    
+    Attributes:
+        api_url (str): arXiv API query endpoint.
     """
     
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize research agent with arXiv API endpoint."""
         super().__init__("ResearchAgent")
         self.api_url = "http://export.arxiv.org/api/query"
     
-    async def analyze(self, topic: str) -> dict:
-        """
-        Analyze research trends for a given topic.
+    async def analyze(self, topic: str) -> Dict[str, Any]:
+        """Analyze research trends for a given topic.
+        
+        Fetches paper data from arXiv API, analyzes metrics,
+        and synthesizes analysis using LLM.
         
         Args:
-            topic: Search term for arXiv papers
-            
+            topic: Search term for arXiv papers.
+                Example: "quantum computing", "natural language processing"
+        
         Returns:
-            dict: Agent result with analysis and confidence score
+            Dictionary with analysis results:
+            - agent (str): Agent name
+            - analysis (str): LLM synthesis of findings
+            - confidence (float): Confidence score 0-1
+            - data (dict): Raw metrics (paper count, categories, etc)
+            - position (str): "support" or "challenge"
+        
+        Raises:
+            No exceptions raised; returns fallback on error
         """
         try:
             # Fetch arXiv data
@@ -81,8 +93,15 @@ class ResearchAgent(BaseAgent):
             log.error(f"Research agent error: {str(e)}")
             return self._fallback_response(f"Research analysis error: {str(e)}")
     
-    async def _fetch_arxiv_data(self, topic: str) -> dict:
-        """Fetch from arXiv API"""
+    async def _fetch_arxiv_data(self, topic: str) -> Optional[Dict[str, Any]]:
+        """Fetch data from arXiv API.
+        
+        Args:
+            topic: The research topic to search for.
+            
+        Returns:
+            Optional dictionary containing list of entries from arXiv.
+        """
         try:
             async with httpx.AsyncClient() as client:
                 url = f"{self.api_url}?search_query=all:{topic}&max_results=30&sortBy=submittedDate&sortOrder=descending"
@@ -106,7 +125,14 @@ class ResearchAgent(BaseAgent):
             return None
     
     def _is_recent(self, date_str: str) -> bool:
-        """Check if date is within last 30 days"""
+        """Check if date is within last 30 days.
+        
+        Args:
+            date_str: ISO format date string.
+            
+        Returns:
+            True if date is within 30 days, False otherwise.
+        """
         if not date_str:
             return False
         try:
@@ -119,8 +145,15 @@ class ResearchAgent(BaseAgent):
             log.error(f"Date parsing error: {str(e)}")
             return False
     
-    def _fallback_response(self, error_msg: str) -> dict:
-        """Return fallback response on error"""
+    def _fallback_response(self, error_msg: str) -> Dict[str, Any]:
+        """Return fallback response when analysis fails.
+        
+        Args:
+            error_msg: Reason for fallback (timeout, error, etc)
+        
+        Returns:
+            Dictionary with fallback analysis
+        """
         return {
             "agent": "ResearchAgent",
             "analysis": f"Research analysis unavailable: {error_msg}",

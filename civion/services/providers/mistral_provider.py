@@ -1,7 +1,10 @@
 """
 CIVION Mistral Provider
 """
-from typing import AsyncGenerator, List, Optional
+import httpx
+from typing import AsyncGenerator, List, Optional, Any
+from civion.core.logger import engine_logger
+log = engine_logger(__name__)
 from .base_provider import BaseProvider
 
 class MistralProvider(BaseProvider):
@@ -55,8 +58,19 @@ class MistralProvider(BaseProvider):
             client = MistralAsyncClient(api_key=self.api_key)
             await client.chat(model=self.model or "mistral-large-latest", messages=[{"role": "user", "content": "test"}], max_tokens=1)
             return True
-        except:
-            return False
+        except httpx.TimeoutError:
+            log.warning(f"Mistral API timeout")
+            return self._fallback_response("timeout")
+        except Exception as e:
+            log.error(f"Mistral provider error: {str(e)}")
+            return None
+
+    def _fallback_response(self, error_reason: str) -> dict:
+        return {
+            "error": error_reason,
+            "fallback": True,
+            "content": "API unavailable, using cached response"
+        }
 
     def get_available_models(self) -> List[str]:
         return ["mistral-large-latest", "mistral-medium-latest", "mistral-small-latest", "codestral-latest"]

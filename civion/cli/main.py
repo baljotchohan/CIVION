@@ -194,9 +194,6 @@ def gateway_health():
     table.add_row("Database", "[green]OK[/green]" if db_exists else "[yellow]Initializing[/yellow]", str(config.db_path))
     
     # Try API
-    try:
-        res = requests.get(f"http://localhost:{config.port}/api/health", timeout=2)
-        api_status = "[green]ONLINE[/green]" if res.status_code == 200 else "[red]ERROR[/red]"
     except requests.exceptions.RequestException:
         api_status = "[gray]OFFLINE[/gray]"
     table.add_row("API Gateway", api_status, f"port {config.port}")
@@ -225,9 +222,6 @@ def gateway_doctor():
             
         # Check Port
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            s.bind(("127.0.0.1", config.port))
-            live.console.print(f"  ✓ Port {config.port} is available")
         except socket.error:
             live.console.print(f"  ✗ Port {config.port} in use")
         finally:

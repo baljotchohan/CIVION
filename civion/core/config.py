@@ -1,92 +1,151 @@
 """
 CIVION Core Configuration
-Manages system settings and secrets stored in ~/.civion/
+Manages system settings and secrets with validation.
 """
 import os
 import json
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from pydantic import Field, field_validator, ConfigDict
+from pydantic_settings import BaseSettings
 
-class CivionConfig:
-    """Universal configuration manager for CIVION"""
+class Settings(BaseSettings):
+    """Application settings with validation."""
     
-    # Storage paths
+    model_config = ConfigDict(
+        env_file=".env", 
+        env_file_encoding="utf-8",
+        extra="allow",
+        validate_assignment=True
+    )
+    
+    # Storage paths (pre-computed)
     config_dir: Path = Path.home() / ".civion"
-    config_file: Path = config_dir / "config.json"
-    secrets_file: Path = config_dir / ".secrets"
-    db_path: Path = config_dir / "civion.db"
-    logs_dir: Path = config_dir / "logs"
+    config_file: Path = Path.home() / ".civion" / "config.json"
+    secrets_file: Path = Path.home() / ".civion" / ".secrets"
+    db_path: Path = Path.home() / ".civion" / "civion.db"
+    logs_dir: Path = Path.home() / ".civion" / "logs"
     
-    def __init__(self):
-        # Default settings
-        self.llm_provider: str = "anthropic"
-        self.llm_model: str = "claude-sonnet-4-5"
-        self.llm_fallback_providers: List[str] = []
-        
-        self.port: int = 8000
-        self.host: str = "0.0.0.0"
-        self.auto_open_browser: bool = True
-        
-        self.max_concurrent_agents: int = 5
-        self.agent_refresh_interval: int = 60
-        
-        self.enable_p2p_network: bool = True
-        self.mock_mode: bool = False
-        self.debug: bool = False
-        self.network_enabled: bool = True
-        self.autonomous_enabled: bool = False
-        self.log_level: str = "INFO"
-        
-        # Ensure directories exist
+    # API Configuration
+    api_host: str = Field(default="0.0.0.0", description="API host address")
+    api_port: int = Field(
+        default=8000,
+        ge=1024,
+        le=65535,
+        description="API port (must be 1024-65535)"
+    )
+    
+    # Compatibility aliases
+    @property
+    def host(self) -> str: return self.api_host
+    @property
+    def port(self) -> int: return self.api_port
+    
+    # Worker Configuration
+    max_workers: int = Field(default=4, ge=1, le=100)
+    max_concurrent_agents: int = Field(default=5, ge=1, le=50)
+    
+    # Timeout Configuration
+    timeout: int = Field(default=30, ge=5, le=300)
+    
+    # LLM Configuration
+    llm_provider: str = Field(default="anthropic")
+    llm_model: str = Field(default="claude-3-5-sonnet-20240620")
+    llm_fallback_providers: List[str] = Field(default_factory=list)
+    
+    # API Keys
+    anthropic_api_key: Optional[str] = Field(default=None)
+    openai_api_key: Optional[str] = Field(default=None)
+    google_api_key: Optional[str] = Field(default=None)
+    github_token: Optional[str] = Field(default=None)
+    news_api_key: Optional[str] = Field(default=None)
+    coingecko_api_key: Optional[str] = Field(default=None)
+    
+    # Features
+    debug: bool = Field(default=False)
+    network_enabled: bool = Field(default=True)
+    autonomous_enabled: bool = Field(default=False)
+    auto_open_browser: bool = Field(default=True)
+    mock_mode: bool = Field(default=False)
+    
+    # Logging
+    log_level: str = Field(default="INFO")
+    
+    @field_validator('api_port')
+    @classmethod
+    def validate_port(cls, v: int) -> int:
+        if not 1024 <= v <= 65535:
+            raise ValueError("Port must be between 1024 and 65535")
+        return v
+    
+    @field_validator('llm_provider')
+    @classmethod
+    def validate_llm_provider(cls, v: str) -> str:
+        valid_providers = [
+            "anthropic", "openai", "gemini", "mistral", 
+            "azure", "cohere", "bedrock", "huggingface", "together", "now", "mock"
+        ]
+        if v.lower() not in valid_providers:
+            raise ValueError(f"Invalid LLM provider. Must be one of: {', '.join(valid_providers)}")
+        return v.lower()
+    
+    @field_validator('log_level')
+    @classmethod
+    def validate_log_level(cls, v: str) -> str:
+        valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        if v.upper() not in valid_levels:
+            raise ValueError(f"Invalid log level. Must be one of: {', '.join(valid_levels)}")
+        return v.upper()
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.config_dir.mkdir(parents=True, exist_ok=True)
         self.logs_dir.mkdir(parents=True, exist_ok=True)
-        
-        # If config exists, load it
-        if self.config_exists():
-            self._load_from_file()
+        self._load_legacy_config()
+        self._load_secrets()
 
-    def _load_from_file(self):
-        """Load settings from config.json"""
-        try:
-            if self.config_file.exists():
+    def _load_legacy_config(self):
+        """Compatibility for old config.json"""
+        if self.config_file.exists():
+            try:
                 with open(self.config_file, 'r') as f:
                     data = json.load(f)
-                    for key, value in data.items():
-                        if hasattr(self, key):
-                            setattr(self, key, value)
-        except Exception as e:
-            logging.error(f"Failed to load config: {e}")
+                    # Mapping old names to new ones if necessary
+                    if "port" in data: data["api_port"] = data.pop("port")
+                    if "host" in data: data["api_host"] = data.pop("host")
+                    
+                    for k, v in data.items():
+                        if hasattr(self, k):
+                            setattr(self, k, v)
+            except Exception as e:
+                logging.error(f"Failed to load legacy config: {e}")
+
+    def _load_secrets(self):
+        """Load from .secrets file"""
+        if self.secrets_file.exists():
+            try:
+                with open(self.secrets_file, 'r') as f:
+                    secrets = json.load(f)
+                    for k, v in secrets.items():
+                        attr_name = k.lower()
+                        if hasattr(self, attr_name):
+                            setattr(self, attr_name, v)
+            except Exception as e:
+                logging.error(f"Failed to load secrets: {e}")
 
     def save(self):
         """Save settings to config.json"""
         try:
-            self.config_dir.mkdir(parents=True, exist_ok=True)
+            data = self.model_dump(exclude={"config_dir", "config_file", "secrets_file", "db_path", "logs_dir"})
+            # Revert aliases for saving if needed, or just save as is
             with open(self.config_file, 'w') as f:
-                json.dump(self.to_dict(), f, indent=2)
+                json.dump(data, f, indent=2)
         except Exception as e:
             logging.error(f"Failed to save config: {e}")
 
-    @classmethod
-    def load(cls) -> "CivionConfig":
-        """Factory method to load config"""
-        return cls()
-
-    def get_secret(self, key: str) -> Optional[str]:
-        """Get secret from .secrets file"""
-        try:
-            if not self.secrets_file.exists():
-                return os.environ.get(key)
-            
-            with open(self.secrets_file, 'r') as f:
-                secrets = json.load(f)
-                return secrets.get(key) or os.environ.get(key)
-        except Exception as e:
-            logging.error(f"Failed to read secrets: {e}")
-            return os.environ.get(key)
-
     def set_secret(self, key: str, value: str):
-        """Save secret to .secrets file with restricted permissions"""
+        """Compatibility method for saving secrets"""
         try:
             secrets = {}
             if self.secrets_file.exists():
@@ -94,99 +153,33 @@ class CivionConfig:
                     secrets = json.load(f)
             
             secrets[key] = value
-            
-            # Write with restricted permissions
             with open(self.secrets_file, 'w') as f:
                 json.dump(secrets, f, indent=2)
-            
-            # chmod 600
             os.chmod(self.secrets_file, 0o600)
+            
+            # Also update current instance
+            attr_name = key.lower()
+            if hasattr(self, attr_name):
+                setattr(self, attr_name, value)
         except Exception as e:
             logging.error(f"Failed to save secret: {e}")
 
-    def config_exists(self) -> bool:
-        """Check if config file exists"""
-        return self.config_file.exists()
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert settings to dict (excluding paths and methods)"""
-        return {
-            "llm_provider": self.llm_provider,
-            "llm_model": self.llm_model,
-            "llm_fallback_providers": self.llm_fallback_providers,
-            "port": self.port,
-            "host": self.host,
-            "auto_open_browser": self.auto_open_browser,
-            "max_concurrent_agents": self.max_concurrent_agents,
-            "agent_refresh_interval": self.agent_refresh_interval,
-            "enable_p2p_network": self.enable_p2p_network,
-            "mock_mode": self.mock_mode,
-            "debug": self.debug,
-            "network_enabled": self.network_enabled,
-            "autonomous_enabled": self.autonomous_enabled,
-            "log_level": self.log_level
-        }
-
-# Global config instance
-config = CivionConfig()
-
-# Add dynamic attribute lookup to handle legacy LLM_PROVIDER etc if needed
-# But better to just alias the common ones
-
-# Add properties with setters for keys that were in the pydantic model
-def get_legacy_secret(self, key):
-    return self.get_secret(key)
-
-# Define properties with both getters and setters for compatibility with setup_wizard
-class CivionConfigWithSetters(CivionConfig):
-    @property
-    def openai_api_key(self): return self.get_secret("OPENAI_API_KEY")
-    @openai_api_key.setter
-    def openai_api_key(self, value): self.set_secret("OPENAI_API_KEY", value)
+    def get_secret(self, key: str) -> Optional[str]:
+        """Compatibility method for getting secrets"""
+        attr_name = key.lower()
+        if hasattr(self, attr_name):
+            return getattr(self, attr_name)
+        return os.environ.get(key)
 
     @property
-    def anthropic_api_key(self): return self.get_secret("ANTHROPIC_API_KEY")
-    @anthropic_api_key.setter
-    def anthropic_api_key(self, value): self.set_secret("ANTHROPIC_API_KEY", value)
+    def database_url(self) -> str:
+        return f"sqlite+aiosqlite:///{self.db_path}"
 
-    @property
-    def google_api_key(self): return self.get_secret("GOOGLE_API_KEY")
-    @google_api_key.setter
-    def google_api_key(self, value): self.set_secret("GOOGLE_API_KEY", value)
-
-    @property
-    def github_token(self): return self.get_secret("GITHUB_TOKEN")
-    @github_token.setter
-    def github_token(self, value): self.set_secret("GITHUB_TOKEN", value)
-
-    @property
-    def news_api_key(self): return self.get_secret("NEWS_API_KEY")
-    @news_api_key.setter
-    def news_api_key(self, value): self.set_secret("NEWS_API_KEY", value)
-
-    @property
-    def coingecko_api_key(self): return self.get_secret("COINGECKO_API_KEY")
-    @coingecko_api_key.setter
-    def coingecko_api_key(self, value): self.set_secret("COINGECKO_API_KEY", value)
-
-    @property
-    def frontend_url(self): return f"http://localhost:{self.port}"
-    @property
-    def database_url(self): return f"sqlite+aiosqlite:///{self.db_path}"
-
-# Re-instantiate with setters
-config = CivionConfigWithSetters()
-settings = config
-
-# API Timeouts
-config.AGENT_TIMEOUT = 10  # seconds for individual agent APIs
-config.CLI_TIMEOUT = 60    # seconds for CLI operations
-
-# Metadata
-config.app_name = "CIVION"
-config.app_version = "2.0.0"
+# Re-instantiate singleton
+settings = Settings()
+config = settings
 
 def _save_env_file(data: dict):
-    """Helper to save multiple secrets at once, used by CLI"""
+    """Helper for CLI"""
     for k, v in data.items():
-        config.set_secret(k, v)
+        settings.set_secret(k, v)

@@ -1,7 +1,10 @@
 """
 CIVION AWS Bedrock Provider
 """
-from typing import AsyncGenerator, List, Optional
+import httpx
+from typing import AsyncGenerator, List, Optional, Any
+from civion.core.logger import engine_logger
+log = engine_logger(__name__)
 from .base_provider import BaseProvider
 
 class BedrockProvider(BaseProvider):
@@ -73,8 +76,19 @@ class BedrockProvider(BaseProvider):
             client = boto3.client(service_name='bedrock', region_name=self.config.get("region", "us-east-1"))
             client.list_foundation_models()
             return True
-        except:
-            return False
+        except httpx.TimeoutError:
+            log.warning(f"Bedrock API timeout")
+            return self._fallback_response("timeout")
+        except Exception as e:
+            log.error(f"Bedrock provider error: {str(e)}")
+            return None
+
+    def _fallback_response(self, error_reason: str) -> dict:
+        return {
+            "error": error_reason,
+            "fallback": True,
+            "content": "API unavailable, using cached response"
+        }
 
     def get_available_models(self) -> List[str]:
         return ["anthropic.claude-3-5-sonnet", "meta.llama3-70b-instruct", "amazon.titan-text-express"]

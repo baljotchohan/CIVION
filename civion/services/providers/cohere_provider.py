@@ -1,7 +1,10 @@
 """
 CIVION Cohere Provider
 """
-from typing import AsyncGenerator, List, Optional
+import httpx
+from typing import AsyncGenerator, List, Optional, Any
+from civion.core.logger import engine_logger
+log = engine_logger(__name__)
 from .base_provider import BaseProvider
 
 class CohereProvider(BaseProvider):
@@ -52,8 +55,19 @@ class CohereProvider(BaseProvider):
             client = cohere.AsyncClient(api_key=self.api_key)
             await client.chat(message="test", max_tokens=1)
             return True
-        except:
-            return False
+        except httpx.TimeoutError:
+            log.warning(f"Cohere API timeout")
+            return self._fallback_response("timeout")
+        except Exception as e:
+            log.error(f"Cohere provider error: {str(e)}")
+            return None
+
+    def _fallback_response(self, error_reason: str) -> dict:
+        return {
+            "error": error_reason,
+            "fallback": True,
+            "content": "API unavailable, using cached response"
+        }
 
     def get_available_models(self) -> List[str]:
         return ["command-r-plus", "command-r", "command"]

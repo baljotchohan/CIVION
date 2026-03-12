@@ -2,35 +2,47 @@
 import httpx
 import logging
 import os
+from typing import Dict, List, Optional, Any
 from civion.agents.base_agent import BaseAgent
 from civion.core.config import config
 
 log = logging.getLogger(__name__)
 
 class MarketAgent(BaseAgent):
-    """
-    Analyzes market signals from news for technology trends.
+    """Analyzes market sentiment and industry trends from news.
     
-    This agent monitors news articles to identify:
-    - Market sentiment (positive/negative/neutral)
-    - Key industry trends and growth indicators
-    - Top news sources for specific domains
+    Monitors global news sources to identify market sentiment
+    and key indicators of technological shifts.
+    
+    Attributes:
+        api_url (str): NewsAPI endpoint.
     """
     
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize market agent with NewsAPI endpoint."""
         super().__init__("MarketAgent")
         self.api_url = "https://newsapi.org/v2/everything"
     
-    async def analyze(self, topic: str) -> dict:
-        """
-        Analyze market signals for a given topic.
+    async def analyze(self, topic: str) -> Dict[str, Any]:
+        """Analyze market signals for a given topic.
+        
+        Fetches news articles, calculates sentiment, and
+        synthesizes market analysis using LLM.
         
         Args:
-            topic: Search term for market news
-            
+            topic: Search term for market news.
+                Example: "artificial intelligence", "green energy"
+        
         Returns:
-            dict: Agent result with analysis and confidence score
+            Dictionary with analysis results:
+            - agent (str): Agent name
+            - analysis (str): LLM synthesis of findings
+            - confidence (float): Confidence score 0-1
+            - data (dict): Raw metrics (article count, sentiment ratio, etc)
+            - position (str): "support", "challenge", or "neutral"
+        
+        Raises:
+            No exceptions raised; returns fallback on error
         """
         try:
             # Fetch news data
@@ -75,8 +87,15 @@ class MarketAgent(BaseAgent):
             log.error(f"Market agent error: {str(e)}")
             return self._fallback_response(f"Market analysis error: {str(e)}")
     
-    async def _fetch_news_data(self, topic: str) -> dict:
-        """Fetch from NewsAPI"""
+    async def _fetch_news_data(self, topic: str) -> Optional[Dict[str, Any]]:
+        """Fetch news data from NewsAPI or mock fallback.
+        
+        Args:
+            topic: The market topic to search for.
+            
+        Returns:
+            Optional dictionary containing list of articles.
+        """
         try:
             api_key = os.getenv('NEWSAPI_KEY', '')
             
@@ -104,7 +123,14 @@ class MarketAgent(BaseAgent):
             return self._get_mock_news_data(topic)
     
     def _is_positive_sentiment(self, text: str) -> bool:
-        """Simple sentiment detection"""
+        """Simple keyword-based sentiment detection.
+        
+        Args:
+            text: Text to analyze.
+            
+        Returns:
+            True if positive words outweigh negative, False otherwise.
+        """
         positive_words = ['great', 'excellent', 'boom', 'surge', 'growth', 'rise', 'gain', 'win', 'success', 'up', 'breakthrough']
         negative_words = ['crash', 'fall', 'loss', 'decline', 'down', 'fail', 'bad', 'poor', 'drop', 'warning']
         
@@ -114,8 +140,15 @@ class MarketAgent(BaseAgent):
         
         return pos_count > neg_count
     
-    def _fallback_response(self, error_msg: str) -> dict:
-        """Return fallback response on error"""
+    def _fallback_response(self, error_msg: str) -> Dict[str, Any]:
+        """Return fallback response when analysis fails.
+        
+        Args:
+            error_msg: Reason for fallback.
+        
+        Returns:
+            Dictionary with fallback analysis results.
+        """
         return {
             "agent": "MarketAgent",
             "analysis": f"Market analysis unavailable: {error_msg}",
@@ -124,8 +157,15 @@ class MarketAgent(BaseAgent):
             "position": "neutral"
         }
 
-    def _get_mock_news_data(self, topic: str) -> dict:
-        """Mock news data for fallback"""
+    def _get_mock_news_data(self, topic: str) -> Dict[str, Any]:
+        """Get pre-defined mock news data for fallback.
+        
+        Args:
+            topic: Search topic for mock content.
+            
+        Returns:
+            Dictionary with mock articles.
+        """
         return {
             "articles": [
                 {

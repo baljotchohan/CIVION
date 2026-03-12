@@ -1,7 +1,10 @@
 """
 CIVION Azure OpenAI Provider
 """
-from typing import AsyncGenerator, List, Optional
+import httpx
+from typing import AsyncGenerator, List, Optional, Any
+from civion.core.logger import engine_logger
+log = engine_logger(__name__)
 from .base_provider import BaseProvider
 
 class AzureOpenAIProvider(BaseProvider):
@@ -70,8 +73,22 @@ class AzureOpenAIProvider(BaseProvider):
                 messages=[{"role": "user", "content": "test"}]
             )
             return True
-        except:
-            return False
+        except httpx.TimeoutError:
+            log.warning(f"Azure API timeout")
+            return self._fallback_response("timeout")
+        except httpx.ConnectError:
+            log.error(f"Cannot connect to Azure API")
+            return self._fallback_response("connection_error")
+        except Exception as e:
+            log.error(f"Azure provider error: {str(e)}")
+            return None
+
+    def _fallback_response(self, error_reason: str) -> dict:
+        return {
+            "error": error_reason,
+            "fallback": True,
+            "content": "API unavailable, using cached response"
+        }
 
     def get_available_models(self) -> List[str]:
         return []  # Managed by user's Azure deployment

@@ -2,35 +2,56 @@
 import httpx
 import logging
 from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Any
 from civion.agents.base_agent import BaseAgent
 from civion.core.config import config
 
 log = logging.getLogger(__name__)
 
 class GitHubAgent(BaseAgent):
-    """
-    Analyzes GitHub repository trends for technology signals.
+    """Analyzes GitHub repository trends and development activity.
     
-    This agent monitors GitHub trending repositories to identify:
+    This agent monitors GitHub to identify:
     - Emerging technologies and frameworks
-    - Language popularity trends
-    - Active development in specific domains
+    - Developer activity trends
+    - Popular programming languages
+    - Repository growth patterns
+    
+    Attributes:
+        api_url (str): GitHub API search endpoint
     """
     
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize GitHub agent with API endpoint."""
         super().__init__("GitHubAgent")
         self.api_url = "https://api.github.com/search/repositories"
     
-    async def analyze(self, topic: str) -> dict:
-        """
-        Analyze GitHub trends for a given topic.
+    async def analyze(self, topic: str) -> Dict[str, Any]:
+        """Analyze GitHub trends for a given topic.
+        
+        Fetches repository data from GitHub API, analyzes metrics,
+        and synthesizes analysis using LLM.
         
         Args:
             topic: Search term for GitHub repositories
-            
+                Example: "machine learning", "web framework"
+        
         Returns:
-            dict: Agent result with analysis and confidence score
+            Dictionary with analysis results:
+            - agent (str): Agent name
+            - analysis (str): LLM synthesis of findings
+            - confidence (float): Confidence score 0-1
+            - data (dict): Raw metrics (star count, languages, etc)
+            - position (str): "support" or "challenge"
+        
+        Raises:
+            No exceptions raised; returns fallback on error
+        
+        Example:
+            >>> agent = GitHubAgent()
+            >>> result = await agent.analyze("rust")
+            >>> # print(result['confidence'])
+            0.85
         """
         try:
             # Fetch GitHub data
@@ -76,8 +97,15 @@ class GitHubAgent(BaseAgent):
             log.error(f"GitHub agent error: {str(e)}")
             return self._fallback_response(f"GitHub analysis error: {str(e)}")
     
-    async def _fetch_github_data(self, topic: str) -> dict:
-        """Fetch from GitHub API"""
+    async def _fetch_github_data(self, topic: str) -> Optional[Dict[str, Any]]:
+        """Fetch data from GitHub API.
+        
+        Args:
+            topic: The topic to search for.
+            
+        Returns:
+            Optional dictionary containing GitHub search results.
+        """
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(
@@ -106,7 +134,14 @@ class GitHubAgent(BaseAgent):
             return None
     
     def _is_recent(self, date_str: str) -> bool:
-        """Check if date is within last 30 days"""
+        """Check if date is within last 30 days.
+        
+        Args:
+            date_str: ISO format date string.
+            
+        Returns:
+            True if date is within 30 days, False otherwise.
+        """
         if not date_str:
             return False
         try:
@@ -119,16 +154,30 @@ class GitHubAgent(BaseAgent):
             log.error(f"Date parsing error: {str(e)}")
             return False
     
-    def _get_top_language(self, repos: list) -> str:
-        """Get most common language"""
+    def _get_top_language(self, repos: List[Dict[str, Any]]) -> Optional[str]:
+        """Get most common language from a list of repositories.
+        
+        Args:
+            repos: List of repository data dictionaries.
+            
+        Returns:
+            The name of the most frequent language or None.
+        """
         languages = [r.get('language') for r in repos if r.get('language')]
         if not languages:
             return "Unknown"
         from collections import Counter
         return Counter(languages).most_common(1)[0][0]
     
-    def _fallback_response(self, error_msg: str) -> dict:
-        """Return fallback response on error"""
+    def _fallback_response(self, error_msg: str) -> Dict[str, Any]:
+        """Return fallback response when analysis fails.
+        
+        Args:
+            error_msg: Reason for fallback (timeout, error, etc)
+        
+        Returns:
+            Dictionary with fallback analysis
+        """
         return {
             "agent": "GitHubAgent",
             "analysis": f"GitHub analysis unavailable: {error_msg}",
