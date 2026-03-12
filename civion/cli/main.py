@@ -2,7 +2,7 @@
 CIVION CLI - Production Grade Command Interface
 
 Architecture:
-- Typer framework (like OpenClaw's CLI)
+- Typer framework (like a production-grade CLI)
 - Rich UI for beautiful terminal output
 - Async commands for real-time feedback
 - Sub-commands grouped by feature
@@ -65,7 +65,7 @@ PID_FILE = CIVION_DIR / "civion.pid"
 def onboard(
     install_daemon: bool = typer.Option(False, help="Install system daemon (NYI)"),
 ):
-    """Interactive setup wizard (like OpenClaw's onboard)"""
+    """Interactive CIVION setup wizard"""
     asyncio.run(run_setup())
 
 @app.command(deprecated=True)

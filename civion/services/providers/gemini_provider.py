@@ -61,7 +61,7 @@ class GeminiProvider(BaseProvider):
             model = genai.GenerativeModel(self.model or "gemini-1.5-pro")
             await model.generate_content_async("test")
             return True
-        except httpx.TimeoutError:
+        except (httpx.TimeoutException, httpx.HTTPError):
             log.warning(f"Gemini API timeout")
             return self._fallback_response("timeout")
         except Exception as e:

@@ -20,7 +20,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.9,<4.0"
 
 dependencies = [
   "fastapi>=0.104.0",
@@ -76,9 +76,9 @@ dev = [
 civion = "civion.cli.main:app"
 
 [project.urls]
-Homepage = "https://openclaw.ai"
+Homepage = "https://civion.ai"
 Repository = "https://github.com/civion/civion"
-Documentation = "https://docs.openclaw.ai"
+Documentation = "https://docs.civion.ai"
 "Bug Tracker" = "https://github.com/civion/civion/issues"
 "Install Guide" = "https://github.com/baljotchohan/CIVION#installation"
 
