@@ -32,7 +32,12 @@ class DataService:
         return goal["id"]
 
     async def get_goal(self, goal_id: str) -> Optional[Dict]:
-        return self._goals.get(goal_id)
+        if goal_id in self._goals:
+            return self._goals[goal_id]
+        
+        # Try prefix match for truncated CLI IDs
+        matches = [g for i, g in self._goals.items() if i.startswith(goal_id)]
+        return matches[0] if matches else None
 
     async def list_goals(self) -> List[Dict]:
         return list(self._goals.values())

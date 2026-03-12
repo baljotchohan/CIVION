@@ -76,7 +76,7 @@ class BedrockProvider(BaseProvider):
             client = boto3.client(service_name='bedrock', region_name=self.config.get("region", "us-east-1"))
             client.list_foundation_models()
             return True
-        except httpx.TimeoutError:
+        except httpx.TimeoutException:
             log.warning(f"Bedrock API timeout")
             return self._fallback_response("timeout")
         except Exception as e:

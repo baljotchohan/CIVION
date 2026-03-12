@@ -114,5 +114,7 @@ class BaseAgent(ABC):
         Provide a 2-3 sentence analysis of key findings and trends.
         """
         
+        log.info(f"Requesting LLM analysis for {context}...")
         response = await llm_service.complete(prompt)
+        log.info(f"Received LLM analysis for {context} ({len(response)} chars)")
         return response

@@ -61,7 +61,7 @@ class TogetherProvider(BaseProvider):
                 messages=[{"role": "user", "content": "test"}]
             )
             return True
-        except httpx.TimeoutError:
+        except httpx.TimeoutException:
             log.warning(f"Together API timeout")
             return self._fallback_response("timeout")
         except Exception as e:

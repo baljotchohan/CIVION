@@ -58,7 +58,7 @@ class MistralProvider(BaseProvider):
             client = MistralAsyncClient(api_key=self.api_key)
             await client.chat(model=self.model or "mistral-large-latest", messages=[{"role": "user", "content": "test"}], max_tokens=1)
             return True
-        except httpx.TimeoutError:
+        except httpx.TimeoutException:
             log.warning(f"Mistral API timeout")
             return self._fallback_response("timeout")
         except Exception as e:

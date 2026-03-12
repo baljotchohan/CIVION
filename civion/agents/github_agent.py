@@ -116,11 +116,12 @@ class GitHubAgent(BaseAgent):
                         "order": "desc",
                         "per_page": 30
                     },
-                    timeout=config.AGENT_TIMEOUT
+                    timeout=config.AGENT_TIMEOUT,
+                    follow_redirects=True
                 )
                 response.raise_for_status()
                 return response.json()
-        except httpx.TimeoutError:
+        except httpx.TimeoutException:
             log.error(f"GitHub API timeout while searching '{topic}'")
             return None
         except httpx.ConnectError:

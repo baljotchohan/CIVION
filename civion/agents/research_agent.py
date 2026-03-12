@@ -22,7 +22,7 @@ class ResearchAgent(BaseAgent):
     def __init__(self) -> None:
         """Initialize research agent with arXiv API endpoint."""
         super().__init__("ResearchAgent")
-        self.api_url = "http://export.arxiv.org/api/query"
+        self.api_url = "https://export.arxiv.org/api/query"
     
     async def analyze(self, topic: str) -> Dict[str, Any]:
         """Analyze research trends for a given topic.
@@ -105,13 +105,13 @@ class ResearchAgent(BaseAgent):
         try:
             async with httpx.AsyncClient() as client:
                 url = f"{self.api_url}?search_query=all:{topic}&max_results=30&sortBy=submittedDate&sortOrder=descending"
-                response = await client.get(url, timeout=config.AGENT_TIMEOUT)
+                response = await client.get(url, timeout=config.AGENT_TIMEOUT, follow_redirects=True)
                 response.raise_for_status()
                 
                 # Parse RSS feed
                 feed = feedparser.parse(response.text)
                 return {'entries': feed.entries}
-        except httpx.TimeoutError:
+        except httpx.TimeoutException:
             log.error(f"arXiv API timeout while searching '{topic}'")
             return None
         except httpx.ConnectError:

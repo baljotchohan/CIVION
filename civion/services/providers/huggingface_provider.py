@@ -50,7 +50,7 @@ class HuggingFaceProvider(BaseProvider):
             async with httpx.AsyncClient() as client:
                 response = await client.post(api_url, headers=headers, json={"inputs": "test"}, timeout=10.0)
                 return response.status_code == 200
-        except httpx.TimeoutError:
+        except httpx.TimeoutException:
             log.warning(f"HuggingFace API timeout")
             return self._fallback_response("timeout")
         except Exception as e:

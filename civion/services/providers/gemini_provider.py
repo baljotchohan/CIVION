@@ -20,7 +20,11 @@ class GeminiProvider(BaseProvider):
                     temperature=temperature
                 )
             )
-            return response.text
+            if response and response.text:
+                log.info(f"Gemini generation successful ({len(response.text)} chars)")
+                return response.text
+            log.warning("Gemini returned empty response")
+            return "Error: Empty response from Gemini"
         except ImportError:
             return "Google Generative AI package not installed. Run 'pip install google-generativeai'."
         except Exception as e:

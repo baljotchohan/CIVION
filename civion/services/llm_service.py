@@ -68,6 +68,10 @@ class LLMService:
         
         return f"All LLM providers failed. Last error: {last_error}"
 
+    async def generate(self, prompt: str, **kwargs) -> str:
+        """Alias for complete() for backward compatibility"""
+        return await self.complete(prompt, **kwargs)
+
     async def stream(
         self,
         prompt: str,

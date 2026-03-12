@@ -72,7 +72,7 @@ class OpenAIProvider(BaseProvider):
                 messages=[{"role": "user", "content": "test"}]
             )
             return True
-        except httpx.TimeoutError:
+        except httpx.TimeoutException:
             log.warning(f"OpenAI API timeout")
             return self._fallback_response("timeout")
         except httpx.ConnectError:

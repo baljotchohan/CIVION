@@ -3,7 +3,7 @@
 set -e
 
 echo "╔════════════════════════════════════════════════════════════════════════╗"
-echo "║                     CIVION INSTALLATION                           🕷️   ║"
+echo "║                     CIVION INSTALLATION                                ║"
 echo "║                     Universal Setup Script                             ║"
 echo "╚════════════════════════════════════════════════════════════════════════╝"
 echo ""

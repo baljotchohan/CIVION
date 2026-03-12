@@ -64,7 +64,7 @@ class AnthropicProvider(BaseProvider):
                 messages=[{"role": "user", "content": "test"}]
             )
             return True
-        except httpx.TimeoutError:
+        except httpx.TimeoutException:
             log.warning(f"Anthropic API timeout")
             return self._fallback_response("timeout")
         except httpx.ConnectError:

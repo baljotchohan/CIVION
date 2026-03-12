@@ -15,13 +15,14 @@ def map_agent_to_frontend_type(agent: Any) -> Dict[str, Any]:
     # Handle dict (from older implementation) or object
     if isinstance(agent, dict):
         agent_dict = agent
-        state = agent_dict.get("state", "idle")
+        # BaseAgent.to_dict() uses 'status' for AgentState value and 'is_running' for bool
+        state_val = agent_dict.get("status", "idle")
         status = "stopped"
-        if agent_dict.get("running"):
+        if agent_dict.get("is_running"):
             status = "running"
-        if state == "error":
+        if state_val == "error":
             status = "error"
-        elif state == "paused":
+        elif state_val == "paused":
             status = "paused"
             
         return {
@@ -29,10 +30,12 @@ def map_agent_to_frontend_type(agent: Any) -> Dict[str, Any]:
             "name": agent_dict.get("name", "Unknown Agent"),
             "type": "analysis",
             "status": status,
-            "last_active": agent_dict.get("last_run", ""),
-            "signals_found": agent_dict.get("total_signals", 0),
-            "current_task": agent_dict.get("description", ""),
-            "uptime_seconds": agent_dict.get("uptime_seconds", 0)
+            "state": state_val, # Add for CLI compat
+            "last_active": agent_dict.get("last_active", ""),
+            "signals_found": agent_dict.get("signals_found", 0),
+            "current_task": agent_dict.get("current_task", ""),
+            "uptime_seconds": agent_dict.get("uptime_seconds", 0),
+            "running": agent_dict.get("is_running", False) # Add for CLI compat
         }
     else:
         # It's an Agent object from controller

@@ -5,11 +5,10 @@ import './globals.css';
 import { ThemeProvider } from '../lib/theme';
 import { SystemStateProvider } from '../contexts/SystemStateContext';
 import { AssistantProvider } from '../contexts/AssistantContext';
-import { ToastProvider, ToastContainer } from '../components/ui/Toast';
+import { ToastProvider } from '../components/ui/Toast';
 
 import { Sidebar } from '../components/layout/Sidebar';
 import { TopBar } from '../components/layout/TopBar';
-import { NickButton } from '../components/nick/NickButton';
 import { NickPanel } from '../components/nick/NickPanel';
 import { GlobalLayoutClient } from './GlobalLayoutClient';
 import { OnboardingGuard } from '../components/layout/OnboardingGuard';
@@ -47,13 +46,17 @@ export default function RootLayout({
                                     <Sidebar />
                                     <div className="flex-1 flex flex-col min-w-0">
                                         <TopBar />
-                                        <main className="flex-1 overflow-y-auto overflow-x-hidden relative">
-                                            <OnboardingGuard>
-                                                <div className="p-6 lg:p-10 max-w-7xl w-full">
-                                                    {children}
-                                                </div>
-                                            </OnboardingGuard>
-                                        </main>
+                                        <div className="flex-1 flex overflow-hidden">
+                                            <main className="flex-1 overflow-y-auto overflow-x-hidden relative">
+                                                <OnboardingGuard>
+                                                    <div className="p-6 lg:p-10 max-w-full w-full">
+                                                        {children}
+                                                    </div>
+                                                </OnboardingGuard>
+                                            </main>
+                                            {/* Persistent Assistant Side Panel */}
+                                            <NickPanel />
+                                        </div>
                                     </div>
                                     <GlobalLayoutClient />
                                 </div>

@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 
 export type NickState = 'idle' | 'talking' | 'thinking' | 'happy' | 'sleeping';
 export type NickSize = 'sm' | 'md' | 'lg';
@@ -10,7 +9,7 @@ export interface NickCharacterProps {
     className?: string;
 }
 
-export function NickCharacter({ state = 'idle', size = 'md', className = '' }: NickCharacterProps) {
+export function NickCharacter({ size = 'md', className = '' }: NickCharacterProps) {
     // Size mapping
     const scaleMap = {
         sm: 0.6,
@@ -19,50 +18,10 @@ export function NickCharacter({ state = 'idle', size = 'md', className = '' }: N
     };
     const scale = scaleMap[size];
 
-    // Animation variants
-    const variants = {
-        idle: {
-            y: [0, -8, 0],
-            transition: { duration: 3, repeat: Infinity, ease: 'easeInOut' }
-        },
-        talking: {
-            y: [0, -4, 0],
-            rotate: [-5, 5, -5],
-            transition: { duration: 0.8, repeat: Infinity, repeatType: 'reverse' as const }
-        },
-        thinking: {
-            rotate: 5,
-            y: -5,
-            transition: { duration: 0.5, ease: 'easeOut' }
-        },
-        happy: {
-            scale: [1, 1.1, 1],
-            y: [0, -15, 0],
-            transition: { duration: 0.6, type: 'spring', bounce: 0.6 }
-        },
-        sleeping: {
-            y: 5,
-            transition: { duration: 4, repeat: Infinity, ease: 'easeInOut' }
-        }
-    };
-
-    const eyesMap = {
-        idle: { cx1: 35, cx2: 65, cy: 45, r: 6, opacity: 1 },
-        talking: { cx1: 35, cx2: 65, cy: 45, r: 6, opacity: 1 },
-        thinking: { cx1: 45, cx2: 75, cy: 35, r: 6, opacity: 1 },
-        happy: { cx1: 35, cx2: 65, cy: 40, r: 6, opacity: 1 },
-        sleeping: { cx1: 35, cx2: 65, cy: 50, r: 0, opacity: 0 } // handled by rect below
-    };
-
-    const eyes = eyesMap[state];
-
     return (
-        <motion.div
+        <div 
             className={`relative inline-flex items-center justify-center select-none ${className}`}
             style={{ width: 100 * scale, height: 140 * scale }}
-            variants={variants}
-            animate={state}
-            initial="idle"
         >
             <svg
                 width="100%"
@@ -76,16 +35,11 @@ export function NickCharacter({ state = 'idle', size = 'md', className = '' }: N
                 <path d="M50 40 L50 20" stroke="var(--border-strong)" strokeWidth="2" strokeLinecap="round" />
 
                 {/* Antenna bulb */}
-                <motion.circle
+                <circle
                     cx="50"
                     cy="20"
                     r="4"
                     fill="var(--accent)"
-                    animate={{
-                        opacity: state === 'talking' ? [0.6, 1, 0.6] : 1,
-                        scale: state === 'happy' ? [1, 1.3, 1] : 1
-                    }}
-                    transition={{ duration: 0.5, repeat: state === 'talking' ? Infinity : 0 }}
                 />
 
                 {/* Head */}
@@ -96,24 +50,10 @@ export function NickCharacter({ state = 'idle', size = 'md', className = '' }: N
                     strokeWidth="1.5"
                 />
 
-                {/* Eyes */}
+                {/* Eyes - always idle/simple */}
                 <g fill="var(--text-primary)">
-                    {state === 'sleeping' ? (
-                        <>
-                            <path d="M30 48 Q35 52 40 48" stroke="var(--text-primary)" strokeWidth="2" fill="none" strokeLinecap="round" />
-                            <path d="M60 48 Q65 52 70 48" stroke="var(--text-primary)" strokeWidth="2" fill="none" strokeLinecap="round" />
-                        </>
-                    ) : state === 'happy' ? (
-                        <>
-                            <path d="M30 42 Q35 38 40 42" stroke="var(--text-primary)" strokeWidth="2" fill="none" strokeLinecap="round" />
-                            <path d="M60 42 Q65 38 70 42" stroke="var(--text-primary)" strokeWidth="2" fill="none" strokeLinecap="round" />
-                        </>
-                    ) : (
-                        <>
-                            <motion.circle cx={eyes.cx1} cy={eyes.cy} r={eyes.r} />
-                            <motion.circle cx={eyes.cx2} cy={eyes.cy} r={eyes.r} />
-                        </>
-                    )}
+                    <circle cx="35" cy="45" r="6" />
+                    <circle cx="65" cy="45" r="6" />
                 </g>
 
                 {/* Body */}
@@ -131,32 +71,20 @@ export function NickCharacter({ state = 'idle', size = 'md', className = '' }: N
                     <circle cx="26" cy="18" r="6" fill="var(--accent)" fillOpacity="0.8" />
                 </g>
 
-                {/* Arms */}
-                <motion.rect
+                {/* Arms - static */}
+                <rect
                     x="14" y="86" width="10" height="24" rx="4"
                     fill="var(--bg-card)"
                     stroke="var(--border-strong)"
                     strokeWidth="1.5"
-                    animate={{
-                        rotate: state === 'talking' ? [0, 15, 0] : 0,
-                        y: state === 'happy' ? -10 : 0
-                    }}
-                    transition={{ duration: 0.5, repeat: state === 'talking' ? Infinity : 0 }}
-                    style={{ originX: 0.5, originY: 0 }}
                 />
-                <motion.rect
+                <rect
                     x="76" y="86" width="10" height="24" rx="4"
                     fill="var(--bg-card)"
                     stroke="var(--border-strong)"
                     strokeWidth="1.5"
-                    animate={{
-                        rotate: state === 'talking' ? [0, -15, 0] : 0,
-                        y: state === 'happy' ? -10 : 0
-                    }}
-                    transition={{ duration: 0.5, repeat: state === 'talking' ? Infinity : 0 }}
-                    style={{ originX: 0.5, originY: 0 }}
                 />
             </svg>
-        </motion.div>
+        </div>
     );
 }

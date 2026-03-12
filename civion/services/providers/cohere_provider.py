@@ -55,7 +55,7 @@ class CohereProvider(BaseProvider):
             client = cohere.AsyncClient(api_key=self.api_key)
             await client.chat(message="test", max_tokens=1)
             return True
-        except httpx.TimeoutError:
+        except httpx.TimeoutException:
             log.warning(f"Cohere API timeout")
             return self._fallback_response("timeout")
         except Exception as e:

@@ -253,12 +253,14 @@ def agent_list():
         table.add_column("Signals Found")
         
         for agent in agents:
-            status_color = "green" if agent["running"] else "yellow"
+            is_running = agent.get("running", agent.get("status") == "alive")
+            status_label = agent.get("state", agent.get("status", "unknown"))
+            status_color = "green" if is_running else "yellow"
             table.add_row(
-                agent["name"],
-                f"[{status_color}]{agent['state']}[/{status_color}]",
-                f"{agent['total_insights']} insights",
-                str(agent["total_signals"])
+                agent.get("name", "unknown"),
+                f"[{status_color}]{status_label}[/{status_color}]",
+                f"{agent.get('total_insights', 0)} insights",
+                str(agent.get("total_signals", 0))
             )
         console.print(table)
     except requests.exceptions.RequestException:
@@ -374,10 +376,15 @@ def goal_execute_cmd(goal_id: str = typer.Argument(..., help="Goal ID to execute
                             f"{arg.get('confidence', 0):.0%}"
                         )
                     console.print(table)
-        except httpx.Timeout as e:
+        except httpx.TimeoutException:
             console.print(f"[red]✗ Timeout[/red] Analysis is taking longer than expected. Run 'goal list' to check status.")
+        except httpx.HTTPError as e:
+            if e.response is not None and e.response.status_code == 404:
+                console.print(f"[red]✗ Not Found[/red] Goal script or ID '{goal_id}' does not exist.")
+            else:
+                console.print(f"[red]✗ HTTP Error[/red] {str(e)}")
         except httpx.RequestError as e:
-            console.print(f"[red]✗ Error[/red] Could not connect to CIVION: {e}")
+            console.print(f"[red]✗ Connection Error[/red] Could not connect to CIVION: {e}")
         except Exception as e:
             console.print(f"[red]✗ Error[/red] {str(e)}")
             
