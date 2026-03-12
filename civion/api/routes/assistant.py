@@ -6,13 +6,13 @@ from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 from civion.services.assistant_context import AssistantContextBuilder
 from civion.services.llm_service import LLMService
-from civion.core.config import CivionConfig
+from civion.core.config import settings
 from civion.api.routes.nick import get_user_profile, get_nick_memory
 from civion.services.file_service import file_service
 
 router = APIRouter(prefix="/assistant", tags=["Assistant"])
 context_builder = AssistantContextBuilder()
-config = CivionConfig()
+config = settings
 
 class ChatMessagePayload(BaseModel):
     message: str

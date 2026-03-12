@@ -42,6 +42,15 @@ class Settings(BaseSettings):
     @property
     def port(self) -> int: return self.api_port
     
+    @property
+    def AGENT_TIMEOUT(self) -> int: return self.timeout
+    
+    @property
+    def CLI_TIMEOUT(self) -> int: return 300 # Longer for reasoning
+    
+    def config_exists(self) -> bool:
+        return self.config_file.exists() or self.secrets_file.exists()
+    
     # Worker Configuration
     max_workers: int = Field(default=4, ge=1, le=100)
     max_concurrent_agents: int = Field(default=5, ge=1, le=50)
