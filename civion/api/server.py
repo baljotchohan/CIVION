@@ -13,6 +13,7 @@ from civion.core.logger import get_logger, print_banner
 from civion.engine.agent_engine import agent_engine, register_default_agents
 from civion.engine.event_stream import event_stream
 from civion.api.websocket import manager
+from civion.services.internet_access import internet
 import asyncio
 
 
@@ -45,6 +46,10 @@ async def lifespan(app: FastAPI):
     # Start all agents
     await agent_engine.start_all()
 
+    # Initialize internet access service
+    await internet.init()
+    log.info("Internet access service initialized")
+
     # Start periodic health broadcaster
     health_task = asyncio.create_task(periodic_health_broadcast())
 
@@ -58,6 +63,7 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         pass
     await agent_engine.stop_all()
+    await internet.close()
 
 
 # ── App ──────────────────────────────────────────────

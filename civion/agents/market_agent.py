@@ -58,6 +58,9 @@ class MarketAgent(BaseAgent):
             positive_count = sum(1 for a in articles if self._is_positive_sentiment(a.get('description') or a.get('title') or ''))
             sentiment = "positive" if positive_count > total_articles * 0.6 else "negative" if positive_count < total_articles * 0.4 else "neutral"
             
+            # Fetch supplementary web data
+            web_data = await self._scrape_supplementary(topic)
+
             # Synthesize with LLM
             sources = list(set(a.get('source', {}).get('name', 'Unknown') for a in articles[:5]))
             data_summary = f"""
@@ -66,6 +69,7 @@ class MarketAgent(BaseAgent):
             - Positive sentiment articles: {positive_count}
             - Overall sentiment: {sentiment}
             - Top sources: {', '.join(sources)}
+            - Web context: {'; '.join(web_data.get('scraped_content', [])[:2])}
             """
             
             analysis = await self._get_llm_analysis("market signals", data_summary)
@@ -140,6 +144,22 @@ class MarketAgent(BaseAgent):
         
         return pos_count > neg_count
     
+    async def _scrape_supplementary(self, topic: str) -> Dict[str, Any]:
+        """Fetch supplementary web data for topic enrichment."""
+        try:
+            from civion.services.internet_access import internet
+            results = await internet.search_web(f"{topic} market news analysis")
+            scraped = []
+            for r in results[:3]:
+                if r.get('url'):
+                    page = await internet.scrape_webpage(r['url'])
+                    if page.get('success'):
+                        scraped.append(page['content'][:500])
+            return {"web_results": results, "scraped_content": scraped}
+        except Exception as e:
+            log.warning(f"Supplementary scrape failed: {e}")
+            return {"web_results": [], "scraped_content": []}
+
     def _fallback_response(self, error_msg: str) -> Dict[str, Any]:
         """Return fallback response when analysis fails.
         

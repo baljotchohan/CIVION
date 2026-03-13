@@ -65,6 +65,9 @@ class ResearchAgent(BaseAgent):
                 from collections import Counter
                 top_category = Counter(categories).most_common(1)[0][0]
             
+            # Fetch supplementary web data
+            web_data = await self._scrape_supplementary(topic)
+
             # Synthesize with LLM
             data_summary = f"""
             Academic Research Analysis for '{topic}':
@@ -72,6 +75,7 @@ class ResearchAgent(BaseAgent):
             - Recently published (30 days): {recent_papers}
             - Top research category: {top_category}
             - Active research areas: {', '.join(list(set(categories))[:3])}
+            - Web context: {'; '.join(web_data.get('scraped_content', [])[:2])}
             """
             
             analysis = await self._get_llm_analysis("research trends", data_summary)
@@ -145,6 +149,22 @@ class ResearchAgent(BaseAgent):
             log.error(f"Date parsing error: {str(e)}")
             return False
     
+    async def _scrape_supplementary(self, topic: str) -> Dict[str, Any]:
+        """Fetch supplementary web data for topic enrichment."""
+        try:
+            from civion.services.internet_access import internet
+            results = await internet.search_web(f"{topic} academic research papers")
+            scraped = []
+            for r in results[:3]:
+                if r.get('url'):
+                    page = await internet.scrape_webpage(r['url'])
+                    if page.get('success'):
+                        scraped.append(page['content'][:500])
+            return {"web_results": results, "scraped_content": scraped}
+        except Exception as e:
+            log.warning(f"Supplementary scrape failed: {e}")
+            return {"web_results": [], "scraped_content": []}
+
     def _fallback_response(self, error_msg: str) -> Dict[str, Any]:
         """Return fallback response when analysis fails.
         

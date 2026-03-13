@@ -68,6 +68,9 @@ class GitHubAgent(BaseAgent):
             avg_stars = sum(r.get('stargazers_count', 0) for r in repos) / len(repos) if repos else 0
             recent_repos = sum(1 for r in repos if self._is_recent(r.get('updated_at')))
             
+            # Fetch supplementary web data
+            web_data = await self._scrape_supplementary(topic)
+
             # Synthesize with LLM
             data_summary = f"""
             GitHub Repository Analysis for '{topic}':
@@ -76,6 +79,7 @@ class GitHubAgent(BaseAgent):
             - Average stars per repo: {avg_stars:.0f}
             - Recently updated (30 days): {recent_repos}
             - Top language: {self._get_top_language(repos)}
+            - Web context: {'; '.join(web_data.get('scraped_content', [])[:2])}
             """
             
             analysis = await self._get_llm_analysis("GitHub trends", data_summary)
@@ -170,6 +174,22 @@ class GitHubAgent(BaseAgent):
         from collections import Counter
         return Counter(languages).most_common(1)[0][0]
     
+    async def _scrape_supplementary(self, topic: str) -> Dict[str, Any]:
+        """Fetch supplementary web data for topic enrichment."""
+        try:
+            from civion.services.internet_access import internet
+            results = await internet.search_web(f"{topic} github repositories trends")
+            scraped = []
+            for r in results[:3]:
+                if r.get('url'):
+                    page = await internet.scrape_webpage(r['url'])
+                    if page.get('success'):
+                        scraped.append(page['content'][:500])
+            return {"web_results": results, "scraped_content": scraped}
+        except Exception as e:
+            log.warning(f"Supplementary scrape failed: {e}")
+            return {"web_results": [], "scraped_content": []}
+
     def _fallback_response(self, error_msg: str) -> Dict[str, Any]:
         """Return fallback response when analysis fails.
         

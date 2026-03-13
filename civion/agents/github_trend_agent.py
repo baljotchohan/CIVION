@@ -107,5 +107,20 @@ class GitHubTrendAgent(BaseAgent):
             "position": "neutral"
         }
 
+    async def _scrape_supplementary(self, topic: str = "github trending") -> Dict[str, Any]:
+        """Fetch supplementary web data for trend enrichment."""
+        try:
+            from civion.services.internet_access import internet
+            results = await internet.search_web(f"{topic} open source trending repositories")
+            scraped = []
+            for r in results[:3]:
+                if r.get('url'):
+                    page = await internet.scrape_webpage(r['url'])
+                    if page.get('success'):
+                        scraped.append(page['content'][:500])
+            return {"web_results": results, "scraped_content": scraped}
+        except Exception as e:
+            return {"web_results": [], "scraped_content": []}
+
 
 github_trend_agent = GitHubTrendAgent()
