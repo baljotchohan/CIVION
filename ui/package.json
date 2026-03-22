@@ -1,35 +1,30 @@
 {
-    "name": "civion-ui",
-    "version": "2.0.0",
+    "name": "civion-v1",
+    "version": "1.0.0",
+    "description": "CIVION — Personal AI Intelligence Network (Standalone Frontend)",
     "private": true,
     "scripts": {
         "dev": "next dev",
         "build": "next build",
         "start": "next start",
-        "lint": "next lint",
-        "test": "jest"
+        "lint": "next lint"
     },
     "dependencies": {
+        "@anthropic-ai/sdk": "^0.39.0",
         "framer-motion": "^10.16.4",
         "lucide-react": "^0.292.0",
         "next": "14.0.0",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
-        "recharts": "^3.8.0"
+        "zustand": "^4.4.0"
     },
     "devDependencies": {
-        "@testing-library/jest-dom": "^6.1.4",
-        "@testing-library/react": "^14.1.2",
-        "@types/jest": "^29.5.10",
         "@types/node": "^20",
         "@types/react": "^18",
         "@types/react-dom": "^18",
         "autoprefixer": "^10",
-        "jest": "^29.7.0",
-        "jest-environment-jsdom": "^29.7.0",
         "postcss": "^8",
         "tailwindcss": "^3",
-        "ts-jest": "^29.1.1",
         "typescript": "^5"
     }
 }

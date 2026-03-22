@@ -1,5 +1,3 @@
-import { SignalSource } from '../types';
-
 export function formatConfidence(score: number): string {
     return `${(score * 100).toFixed(1)}%`;
 }
@@ -34,30 +32,6 @@ export function formatRelativeTime(ts: string): string {
         return `${diffInDays} days ago`;
     } catch {
         return ts;
-    }
-}
-
-export function getSourceIcon(source: SignalSource): string {
-    switch (source.toLowerCase()) {
-        case 'github': return '🐙';
-        case 'arxiv': return '📄';
-        case 'market': return '📈';
-        case 'security': return '🛡️';
-        case 'news': return '📰';
-        case 'network': return '🌐';
-        default: return '📡';
-    }
-}
-
-export function getSourceColor(source: SignalSource): string {
-    switch (source.toLowerCase()) {
-        case 'github': return '#00ff88';
-        case 'arxiv': return '#00d4ff';
-        case 'market': return '#ff006e';
-        case 'security': return '#ff9900';
-        case 'news': return '#9b59b6';
-        case 'network': return '#ffffff';
-        default: return '#a0a0a0';
     }
 }
 

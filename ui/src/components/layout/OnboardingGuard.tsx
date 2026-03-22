@@ -1,6 +1,7 @@
 'use client';
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { storage } from '@/services/storage';
 
 export function OnboardingGuard({
     children
@@ -14,22 +15,10 @@ export function OnboardingGuard({
         // Skip check if already on onboarding
         if (pathname === '/onboarding') return;
 
-        // Check if user has completed onboarding
-        const onboarded = localStorage.getItem('civion_onboarded');
+        // Check localStorage for onboarding status
+        const onboarded = storage.isOnboarded();
         if (!onboarded) {
-            // Verify with backend
-            fetch('/api/v1/nick/profile')
-                .then(r => r.json())
-                .then(data => {
-                    if (!data.name) {
-                        router.push('/onboarding');
-                    } else {
-                        localStorage.setItem('civion_onboarded', '1');
-                    }
-                })
-                .catch(() => {
-                    // Backend offline — don't redirect
-                });
+            router.push('/onboarding');
         }
     }, [pathname, router]);
 

@@ -1,20 +1,13 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { NickCharacter, NickState } from './NickCharacter';
-import { Card } from '../ui/Card';
-import { useSystemState } from '../../contexts/SystemStateContext';
-import { Badge } from '../ui/Badge';
-import { useAssistant } from '../../hooks/useAssistant';
-
-export interface NickPanelProps {
-    isOpen: boolean;
-    onClose: () => void;
-}
+import { NickCharacter } from './NickCharacter';
+import { useAgentStore } from '@/store/agentStore';
+import { useUserStore } from '@/store/userStore';
 
 export function NickPanel() {
-    const { health, activeAgents, signalCount, confidenceAvg } = useSystemState();
-    const { messages, sendMessage, isThinking: isLoading } = useAssistant();
+    const { conversation: messages, sendMessage, isThinking: isLoading, claude } = useAgentStore();
+    const { hasApiKey } = useUserStore();
     const [inputValue, setInputValue] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -26,12 +19,13 @@ export function NickPanel() {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!inputValue.trim() || isLoading) return;
+        if (!inputValue.trim() || isLoading || !claude) return;
         sendMessage(inputValue);
         setInputValue('');
     };
 
     const handleShortcut = (text: string) => {
+        if (!claude) return;
         sendMessage(text);
     };
 
@@ -45,21 +39,15 @@ export function NickPanel() {
                         <NickCharacter size="sm" />
                     </div>
                     <div>
-                        <h3 className="font-semibold text-text-primary text-sm uppercase tracking-wider">System Assistant</h3>
+                        <h3 className="font-semibold text-text-primary text-sm uppercase tracking-wider">Personal Agent</h3>
                         <div className="flex items-center gap-1.5">
-                            <span className={`w-1.5 h-1.5 rounded-full ${health === 'alive' ? 'bg-success' : 'bg-text-muted'}`} />
+                            <span className={`w-1.5 h-1.5 rounded-full ${hasApiKey ? 'bg-success' : 'bg-text-muted'}`} />
                             <span className="text-[10px] uppercase font-medium text-text-secondary">
-                                {health === 'alive' ? 'Active' : 'Offline'}
+                                {hasApiKey ? 'Ready' : 'No API Key'}
                             </span>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            {/* CONTEXT BAR */}
-            <div className="flex px-4 py-2 gap-2 overflow-x-auto bg-bg-subtle border-b border-border noscrollbar">
-                <Badge size="sm" color="blue">{activeAgents.length} Agents</Badge>
-                <Badge size="sm" color="green">{Math.round((confidenceAvg || 0) * 100)}% Conf</Badge>
             </div>
 
             {/* MESSAGES */}
@@ -69,17 +57,24 @@ export function NickPanel() {
                         <div className="opacity-20 grayscale mb-4">
                             <NickCharacter size="md" />
                         </div>
-                        <h4 className="text-sm font-medium text-text-primary mb-1">System Operation</h4>
-                        <p className="text-xs text-text-secondary mb-6">Ask for status, analysis, or agent controls.</p>
+                        <h4 className="text-sm font-medium text-text-primary mb-1">Personal Agent</h4>
+                        <p className="text-xs text-text-secondary mb-6">
+                            {hasApiKey
+                                ? "Ask me anything about your goals and business."
+                                : "Set up your API key in onboarding to start chatting."
+                            }
+                        </p>
 
-                        <div className="flex flex-col gap-1.5 w-full">
-                            <button onClick={() => handleShortcut("System status?")} className="text-[11px] text-left px-3 py-2 bg-bg-subtle border border-border rounded-md hover:border-text-muted transition-colors">
-                                System status?
-                            </button>
-                            <button onClick={() => handleShortcut("Recent signals")} className="text-[11px] text-left px-3 py-2 bg-bg-subtle border border-border rounded-md hover:border-text-muted transition-colors">
-                                Recent signals
-                            </button>
-                        </div>
+                        {hasApiKey && (
+                            <div className="flex flex-col gap-1.5 w-full">
+                                <button onClick={() => handleShortcut("What should I focus on today?")} className="text-[11px] text-left px-3 py-2 bg-bg-subtle border border-border rounded-md hover:border-text-muted transition-colors">
+                                    What should I focus on today?
+                                </button>
+                                <button onClick={() => handleShortcut("Help me break down my goals")} className="text-[11px] text-left px-3 py-2 bg-bg-subtle border border-border rounded-md hover:border-text-muted transition-colors">
+                                    Help me break down my goals
+                                </button>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     messages.map((m, i) => (
@@ -113,13 +108,13 @@ export function NickPanel() {
                         type="text"
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
-                        placeholder="Command..."
+                        placeholder={hasApiKey ? "Ask your agent..." : "Set up API key first"}
                         className="w-full bg-bg-subtle border border-border rounded-md pl-3 pr-10 py-2 text-xs focus:outline-none focus:border-accent transition-all"
-                        disabled={isLoading}
+                        disabled={isLoading || !hasApiKey}
                     />
                     <button
                         type="submit"
-                        disabled={!inputValue.trim() || isLoading}
+                        disabled={!inputValue.trim() || isLoading || !hasApiKey}
                         className="absolute right-1 w-7 h-7 flex items-center justify-center rounded-md bg-accent text-white disabled:opacity-50 disabled:bg-text-muted transition-colors"
                     >
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -1,3 +1,0 @@
-"""
-CIVION Static Assets
-"""

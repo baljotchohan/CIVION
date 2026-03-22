@@ -1,162 +1,154 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { useTheme } from '@/lib/theme';
-import { useToast } from '@/components/ui/Toast';
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { useUserStore } from "@/store/userStore";
+import { useAgentStore } from "@/store/agentStore";
+import { storage } from "@/services/storage";
 
 export default function SettingsPage() {
-    const { theme, setTheme } = useTheme();
-    const { addToast } = useToast();
-    const [saving, setSaving] = useState(false);
+    const { profile, hasApiKey, clearAll } = useUserStore();
+    const { clearConversation } = useAgentStore();
+    const [name, setName] = useState("");
+    const [business, setBusiness] = useState("");
+    const [occupation, setOccupation] = useState("");
+    const [industry, setIndustry] = useState("");
+    const [newApiKey, setNewApiKey] = useState("");
+    const [testing, setTesting] = useState(false);
+    const [saved, setSaved] = useState(false);
+    const [apiMessage, setApiMessage] = useState("");
 
-    // Mock settings state
-    const [settings, setSettings] = useState({
-        api_openai: 'sk-proj-...',
-        api_anthropic: '',
-        api_x: '',
-        log_level: 'info',
-        auto_start: true
-    });
+    useEffect(() => {
+        if (profile) {
+            setName(profile.name);
+            setBusiness(profile.business);
+            setOccupation(profile.occupation);
+            setIndustry(profile.industry);
+        }
+    }, [profile]);
 
-    const handleSave = async () => {
-        setSaving(true);
-        // Real implementation would submit to backend
-        await new Promise(r => setTimeout(r, 800));
-        setSaving(false);
-        addToast('success', 'Settings Saved', 'Configuration updated successfully.');
+    const handleSaveProfile = () => {
+        if (!name.trim()) return;
+        storage.saveUserProfile({
+            name,
+            business,
+            occupation,
+            industry,
+            goals: profile?.goals || [],
+            useCase: profile?.useCase || "",
+        });
+        useUserStore.getState().loadFromStorage();
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+    };
+
+    const handleUpdateApiKey = async () => {
+        if (!newApiKey.trim()) return;
+        setTesting(true);
+        setApiMessage("");
+
+        try {
+            const { ClaudeClient } = await import("@/services/claude-api");
+            const claude = new ClaudeClient(newApiKey);
+            const ok = await claude.testConnection();
+            if (ok) {
+                storage.saveApiKey(newApiKey);
+                useUserStore.getState().loadFromStorage();
+                setApiMessage("✓ API key updated successfully");
+                setNewApiKey("");
+            } else {
+                setApiMessage("✗ Connection test failed. Check your key.");
+            }
+        } catch {
+            setApiMessage("✗ Invalid API key");
+        } finally {
+            setTesting(false);
+        }
+    };
+
+    const handleClearData = () => {
+        if (!confirm("This will erase all your data (profile, conversations, debates, goals). Are you sure?")) return;
+        clearAll();
+        clearConversation();
+        window.location.href = "/onboarding";
     };
 
     return (
-        <div className="space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-500 max-w-4xl mx-auto pb-20">
-
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-text-primary tracking-tight">System Configuration</h1>
-                    <p className="text-sm text-text-secondary mt-1">Manage API keys, system behavior, and internal settings.</p>
-                </div>
-
-                <div>
-                    <Button variant="primary" onClick={handleSave} loading={saving}>
-                        Save Changes
-                    </Button>
-                </div>
+        <div className="space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
+            <div>
+                <h1 className="text-2xl font-bold text-text-primary tracking-tight">Settings</h1>
+                <p className="text-text-secondary mt-1">Manage your profile, API key, and data.</p>
             </div>
 
+            {/* Profile */}
             <Card>
-                <CardHeader>
-                    <h3 className="font-semibold text-text-primary">API Integrations</h3>
-                </CardHeader>
-                <CardContent className="p-6 space-y-5">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                        <label className="text-sm font-medium text-text-primary">OpenAI API Key</label>
-                        <div className="md:col-span-2">
-                            <input
-                                type="password"
-                                value={settings.api_openai}
-                                onChange={e => setSettings({ ...settings, api_openai: e.target.value })}
-                                className="w-full bg-bg-subtle border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent"
-                                placeholder="sk-..."
-                            />
+                <CardContent className="p-6">
+                    <h2 className="text-lg font-semibold text-text-primary mb-4">Profile</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-medium text-text-secondary mb-1.5">Name</label>
+                            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-bg-subtle border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent transition-all" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-text-secondary mb-1.5">Business</label>
+                            <input type="text" value={business} onChange={(e) => setBusiness(e.target.value)} className="w-full bg-bg-subtle border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent transition-all" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-text-secondary mb-1.5">Role</label>
+                            <input type="text" value={occupation} onChange={(e) => setOccupation(e.target.value)} className="w-full bg-bg-subtle border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent transition-all" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-text-secondary mb-1.5">Industry</label>
+                            <input type="text" value={industry} onChange={(e) => setIndustry(e.target.value)} className="w-full bg-bg-subtle border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent transition-all" />
                         </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                        <label className="text-sm font-medium text-text-primary">Anthropic API Key</label>
-                        <div className="md:col-span-2">
-                            <input
-                                type="password"
-                                value={settings.api_anthropic}
-                                onChange={e => setSettings({ ...settings, api_anthropic: e.target.value })}
-                                className="w-full bg-bg-subtle border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent"
-                                placeholder="sk-ant-..."
-                            />
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                        <label className="text-sm font-medium text-text-primary">X (Twitter) Bearer Token</label>
-                        <div className="md:col-span-2">
-                            <input
-                                type="password"
-                                value={settings.api_x}
-                                onChange={e => setSettings({ ...settings, api_x: e.target.value })}
-                                className="w-full bg-bg-subtle border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent"
-                                placeholder="AAAAAAAAAAAAAAAAAAAAA..."
-                            />
-                        </div>
+                    <div className="mt-4 flex items-center gap-3">
+                        <Button variant="primary" onClick={handleSaveProfile}>Save Profile</Button>
+                        {saved && <span className="text-sm text-success">✓ Saved</span>}
                     </div>
                 </CardContent>
             </Card>
 
+            {/* API Key */}
             <Card>
-                <CardHeader>
-                    <h3 className="font-semibold text-text-primary">Preferences</h3>
-                </CardHeader>
-                <CardContent className="p-6 space-y-5">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                        <label className="text-sm font-medium text-text-primary">Appearance</label>
-                        <div className="md:col-span-2 flex gap-3">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="radio" name="theme" value="light"
-                                    checked={theme === 'light'} onChange={() => setTheme('light')}
-                                    className="accent-accent"
-                                />
-                                <span className="text-sm">Light</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="radio" name="theme" value="dark"
-                                    checked={theme === 'dark'} onChange={() => setTheme('dark')}
-                                    className="accent-accent"
-                                />
-                                <span className="text-sm">Dark</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="radio" name="theme" value="system"
-                                    checked={theme === 'system'} onChange={() => setTheme('system')}
-                                    className="accent-accent"
-                                />
-                                <span className="text-sm">System</span>
-                            </label>
-                        </div>
+                <CardContent className="p-6">
+                    <h2 className="text-lg font-semibold text-text-primary mb-2">Claude API Key</h2>
+                    <p className="text-sm text-text-secondary mb-4">
+                        Status: {hasApiKey ? <span className="text-success font-medium">Connected ✓</span> : <span className="text-danger font-medium">Not set</span>}
+                    </p>
+                    <div className="flex gap-3">
+                        <input
+                            type="password"
+                            value={newApiKey}
+                            onChange={(e) => setNewApiKey(e.target.value)}
+                            placeholder="sk-ant-..."
+                            className="flex-1 bg-bg-subtle border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent transition-all font-mono"
+                        />
+                        <Button variant="secondary" onClick={handleUpdateApiKey} disabled={testing || !newApiKey.trim()}>
+                            {testing ? "Testing..." : "Update Key"}
+                        </Button>
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                        <label className="text-sm font-medium text-text-primary flex items-center h-full">Log Level</label>
-                        <div className="md:col-span-2">
-                            <select
-                                value={settings.log_level}
-                                onChange={e => setSettings({ ...settings, log_level: e.target.value })}
-                                className="bg-bg-subtle border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent w-48"
-                            >
-                                <option value="debug">Debug (Verbose)</option>
-                                <option value="info">Info (Standard)</option>
-                                <option value="warn">Warnings Only</option>
-                                <option value="error">Errors Only</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                        <label className="text-sm font-medium text-text-primary flex items-center h-full">Auto-Start Agents</label>
-                        <div className="md:col-span-2">
-                            <label className="relative inline-flex items-center cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    className="sr-only peer"
-                                    checked={settings.auto_start}
-                                    onChange={e => setSettings({ ...settings, auto_start: e.target.checked })}
-                                />
-                                <div className="w-11 h-6 bg-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
-                                <span className="ml-3 text-sm text-text-secondary">Start root agents automatically with system</span>
-                            </label>
-                        </div>
-                    </div>
+                    {apiMessage && (
+                        <p className={`text-sm mt-2 ${apiMessage.startsWith("✓") ? "text-success" : "text-danger"}`}>
+                            {apiMessage}
+                        </p>
+                    )}
                 </CardContent>
             </Card>
 
+            {/* Danger Zone */}
+            <Card>
+                <CardContent className="p-6">
+                    <h2 className="text-lg font-semibold text-danger mb-2">Danger Zone</h2>
+                    <p className="text-sm text-text-secondary mb-4">
+                        Clear all local data including your profile, conversations, goals, and debates. This cannot be undone.
+                    </p>
+                    <Button variant="danger" onClick={handleClearData}>
+                        Clear All Data & Reset
+                    </Button>
+                </CardContent>
+            </Card>
         </div>
     );
 }
