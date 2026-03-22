@@ -19,9 +19,13 @@ Provide:
 2. Key milestones (3-5)
 3. Estimated timeline
 4. Success metrics
-5. Feasibility assessment (1-10 scale)
+5.Analyze the feasibility and breakdown of this topic: "${topic}".
 
-Be specific, actionable, and concise.`;
+Format your output STRICTLY:
+- Use **bold** for major themes.
+- Provide a concise numbered list of required steps.
+- Keep paragraphs to 1-2 lines.
+- Be specific, actionable, and completely objective.`;
 
     const analysis = await this.gemini.generate(prompt);
     return {

@@ -11,17 +11,12 @@ export class AnalysisAgent {
   }
 
   async analyze(topic: string): Promise<AgentResponse> {
-    const prompt = `As an Analysis Agent, provide deep analysis on:
-"${topic}"
+    const prompt = `As an Analyze the pros, cons, and risks of this topic: "${topic}".
 
-Cover:
-1. Key patterns and underlying dynamics
-2. Root causes and driving factors
-3. Comparative analysis (vs. alternatives or benchmarks)
-4. Risk assessment and potential pitfalls
-5. Data-driven insights and actionable takeaways
-
-Be analytical and precise. Focus on patterns others might miss.`;
+Format your output STRICTLY:
+- Create sections for **Pros**, **Cons**, and **Risks**.
+- Use succinct bullet points.
+- Stay analytical, detached, and data-driven. Keep it under 100 words.`;
 
     const analysis = await this.gemini.generate(prompt);
     return {

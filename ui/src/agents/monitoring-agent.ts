@@ -12,16 +12,12 @@ export class MonitoringAgent {
 
   async analyze(topic: string): Promise<AgentResponse> {
     const prompt = `As a Monitoring Agent, assess progress and health for:
-"${topic}"
+Identify potential roadblocks and trackable metrics for this topic: "${topic}".
 
-Provide:
-1. Current status assessment (vs. expected targets)
-2. Trend analysis — improving, stable, or declining
-3. Health indicators and warning signs
-4. Key alerts that need attention
-5. Recommended adjustments to stay on track
-
-Be vigilant and proactive. Flag risks early.`;
+Format your output STRICTLY:
+- List 2-3 **Key Risks**.
+- List 1-2 **Success Metrics**.
+- Be vigilant and proactive. Flag issues clearly and concisely.`;
 
     const analysis = await this.gemini.generate(prompt);
     return {

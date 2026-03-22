@@ -11,17 +11,12 @@ export class ResearchAgent {
   }
 
   async analyze(topic: string): Promise<AgentResponse> {
-    const prompt = `As a Research Agent, investigate this topic:
-"${topic}"
+    const prompt = `Analyze the market trends and external factors for this topic: "${topic}".
 
-Provide:
-1. Current landscape and state of affairs
-2. Key trends and developments
-3. Best practices and proven approaches
-4. Opportunities and untapped areas
-5. Actionable recommendations
-
-Be thorough but concise. Focus on practical insights.`;
+Format your output STRICTLY:
+- Use a bulleted list to highlight 2-3 key trends.
+- Use **bold** for specific statistics or core insights.
+- Write like a concise intelligence report. Be objective and direct.`;
 
     const analysis = await this.gemini.generate(prompt);
     return {

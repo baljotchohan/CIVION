@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { NickCharacter } from './NickCharacter';
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 import { useAgentStore } from '@/store/agentStore';
 import { useUserStore } from '@/store/userStore';
 
@@ -79,11 +80,15 @@ export function NickPanel() {
                 ) : (
                     messages.map((m, i) => (
                         <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-[90%] rounded-xl px-3 py-2 text-xs leading-relaxed ${m.role === 'user'
+                            <div className={`max-w-[90%] rounded-xl px-4 py-3 text-sm leading-relaxed ${m.role === 'user'
                                     ? 'bg-accent text-white'
                                     : 'bg-bg-subtle border border-border text-text-primary'
                                 }`}>
-                                {m.content}
+                                {m.role === 'user' ? (
+                                    m.content
+                                ) : (
+                                    <MarkdownRenderer content={m.content} />
+                                )}
                             </div>
                         </div>
                     ))

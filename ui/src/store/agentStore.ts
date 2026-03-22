@@ -5,7 +5,7 @@ import { GeminiClient } from "@/services/gemini-api";
 import { PersonalAgent } from "@/agents/personal-agent";
 import { DebateEngine } from "@/agents/debate-engine";
 import { storage, ConversationMessage } from "@/services/storage";
-import { UserProfile, DebateResult } from "@/agents/types";
+import { UserProfile, DebateResult, AgentResponse } from "@/agents/types";
 
 interface AgentState {
   // Claude client
@@ -20,6 +20,8 @@ interface AgentState {
   debates: DebateResult[];
   isDebating: boolean;
   currentDebate: DebateResult | null;
+  liveDebateAnalyses: AgentResponse[];
+  liveDebateSynthesizing: boolean;
 
   // Actions
   initAgents: (apiKey: string, profile: UserProfile) => void;
@@ -37,6 +39,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   debates: [],
   isDebating: false,
   currentDebate: null,
+  liveDebateAnalyses: [],
+  liveDebateSynthesizing: false,
 
   initAgents: (apiKey: string, profile: UserProfile) => {
     const gemini = new GeminiClient(apiKey);
@@ -100,11 +104,15 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     const { gemini } = get();
     if (!gemini) return null;
 
-    set({ isDebating: true, currentDebate: null });
+    set({ isDebating: true, currentDebate: null, liveDebateAnalyses: [], liveDebateSynthesizing: false });
 
     try {
       const engine = new DebateEngine(gemini);
-      const result = await engine.runDebate(topic);
+      const result = await engine.runDebate(
+        topic,
+        (response) => set((state) => ({ liveDebateAnalyses: [...state.liveDebateAnalyses, response] })),
+        () => set({ liveDebateSynthesizing: true })
+      );
 
       set((state) => ({
         debates: [result, ...state.debates],

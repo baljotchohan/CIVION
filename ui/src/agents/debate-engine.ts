@@ -23,16 +23,23 @@ export class DebateEngine {
     ];
   }
 
-  async runDebate(topic: string): Promise<DebateResult> {
+  async runDebate(topic: string, onProgress?: (response: AgentResponse) => void, onSynthesizing?: () => void): Promise<DebateResult> {
     // All 5 agents analyze in parallel
     const analyses = await Promise.all(
-      this.agents.map((agent) => agent.analyze(topic))
+      this.agents.map(async (agent) => {
+        const result = await agent.analyze(topic);
+        if (onProgress) onProgress(result);
+        return result;
+      })
     );
 
     // Calculate average confidence
     const confidences = analyses.map((a) => a.confidence);
     const avgConfidence =
       confidences.reduce((sum, c) => sum + c, 0) / confidences.length;
+
+    // Notify that synthesis is starting
+    if (onSynthesizing) onSynthesizing();
 
     // Synthesize using Gemini
     const synthesisPrompt = `You are the Synthesis Engine for a 5-agent debate on:

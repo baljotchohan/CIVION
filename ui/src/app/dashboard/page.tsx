@@ -6,10 +6,11 @@ import { useUserStore } from "@/store/userStore";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { DebateResult } from "@/agents/types";
+import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
 
 export default function DashboardPage() {
     const { profile } = useUserStore();
-    const { debates, startDebate, isDebating, currentDebate } = useAgentStore();
+    const { debates, startDebate, isDebating, currentDebate, liveDebateAnalyses, liveDebateSynthesizing } = useAgentStore();
     const [debateTopic, setDebateTopic] = useState("");
     const [showDebateInput, setShowDebateInput] = useState(false);
     const [expandedDebate, setExpandedDebate] = useState<string | null>(null);
@@ -92,12 +93,56 @@ export default function DashboardPage() {
                         </p>
 
                         {isDebating ? (
-                            <div className="flex items-center gap-3 py-4 text-accent">
-                                <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                </svg>
-                                <span className="text-sm font-medium">5 agents debating...</span>
+                            <div className="space-y-6 py-2">
+                                <div className="flex items-center gap-3 text-accent">
+                                    <svg className="animate-spin w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                    </svg>
+                                    <span className="text-sm font-medium">Debate in progress on: "{debateTopic || "Topic"}"</span>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {["Goal Agent", "Research Agent", "Analysis Agent", "Execution Agent", "Monitoring Agent"].map((agentName) => {
+                                        const result = liveDebateAnalyses.find(a => a.agent === agentName);
+                                        return (
+                                            <div key={agentName} className="bg-bg-subtle border border-border rounded-lg p-4 flex flex-col h-full">
+                                                <div className="flex items-center justify-between mb-3 border-b border-border pb-2">
+                                                    <h4 className="text-sm font-semibold text-text-primary">{agentName}</h4>
+                                                    {result ? (
+                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-success-soft text-success uppercase">
+                                                            Done
+                                                        </span>
+                                                    ) : (
+                                                        <span className="flex items-center gap-1.5">
+                                                            <span className="w-1.5 h-1.5 bg-accent rounded-full animate-ping"></span>
+                                                            <span className="text-[10px] font-medium text-text-muted uppercase tracking-wider">Thinking</span>
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="flex-1 overflow-y-auto max-h-48 text-sm pristine-scroll">
+                                                    {result ? (
+                                                        <MarkdownRenderer content={result.analysis} />
+                                                    ) : (
+                                                        <div className="h-full flex items-center justify-center text-text-muted italic text-xs">
+                                                            Analyzing factors...
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {liveDebateSynthesizing && (
+                                    <div className="p-4 bg-accent-soft/30 border border-accent/20 rounded-lg flex items-center gap-3 animate-pulse">
+                                        <span className="text-2xl">🦞</span>
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-accent">Synthesis Engine</h4>
+                                            <p className="text-xs text-text-secondary mt-0.5">Merging 5 perspectives into a final consensus...</p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ) : showDebateInput ? (
                             <div className="space-y-3">
@@ -144,8 +189,8 @@ export default function DashboardPage() {
                             <p className="text-sm font-medium text-text-secondary mb-3">
                                 Topic: {currentDebate.topic}
                             </p>
-                            <div className="text-sm text-text-primary bg-bg-subtle rounded-lg p-4 max-h-48 overflow-y-auto leading-relaxed whitespace-pre-wrap">
-                                {currentDebate.synthesis}
+                            <div className="text-sm text-text-primary bg-bg-subtle border border-border rounded-lg p-5 max-h-96 overflow-y-auto">
+                                <MarkdownRenderer content={currentDebate.synthesis} />
                             </div>
                         </CardContent>
                     </Card>
@@ -177,8 +222,8 @@ export default function DashboardPage() {
                                         </div>
                                     </button>
                                     {expandedDebate === debate.id && (
-                                        <div className="mt-3 pt-3 border-t border-border text-sm text-text-primary bg-bg-subtle rounded-lg p-3 max-h-64 overflow-y-auto whitespace-pre-wrap">
-                                            {debate.synthesis}
+                                        <div className="mt-3 pt-4 border-t border-border text-sm text-text-primary bg-bg-base rounded-lg p-4 max-h-96 overflow-y-auto">
+                                            <MarkdownRenderer content={debate.synthesis} />
                                         </div>
                                     )}
                                 </CardContent>

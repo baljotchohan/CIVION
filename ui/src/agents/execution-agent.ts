@@ -11,17 +11,12 @@ export class ExecutionAgent {
   }
 
   async analyze(topic: string): Promise<AgentResponse> {
-    const prompt = `As an Execution Agent, create an actionable plan for:
-"${topic}"
+    const prompt = `As an Execution Agent, provide an execution plan for this topic: "${topic}".
 
-Include:
-1. Step-by-step implementation actions
-2. Timeline with specific phases
-3. Resources and tools needed
-4. Potential blockers and mitigations
-5. Quick wins to build momentum
-
-Be practical and execution-focused. Prioritize speed and impact.`;
+Format your output STRICTLY:
+- Provide a clear, ordered list of **Action Items**.
+- Highlight resource needs or immediate next steps in **bold**.
+- Be pragmatic, direct, and focused on delivery.`;
 
     const analysis = await this.gemini.generate(prompt);
     return {
