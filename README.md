@@ -7,7 +7,6 @@ A standalone frontend-only app that gives you a personal AI intelligence network
 ## Quick Start
 
 ```bash
-cd ui
 npm install
 npm run dev
 ```
