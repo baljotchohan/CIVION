@@ -6,7 +6,7 @@ import { useAgentStore } from '@/store/agentStore';
 import { useUserStore } from '@/store/userStore';
 
 export function NickPanel() {
-    const { conversation: messages, sendMessage, isThinking: isLoading, claude } = useAgentStore();
+    const { conversation: messages, sendMessage, isThinking: isLoading, gemini } = useAgentStore();
     const { hasApiKey } = useUserStore();
     const [inputValue, setInputValue] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -19,13 +19,13 @@ export function NickPanel() {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!inputValue.trim() || isLoading || !claude) return;
+        if (!inputValue.trim() || isLoading || !gemini) return;
         sendMessage(inputValue);
         setInputValue('');
     };
 
     const handleShortcut = (text: string) => {
-        if (!claude) return;
+        if (!gemini) return;
         sendMessage(text);
     };
 

@@ -1,14 +1,14 @@
 // Personal Agent — the user's primary assistant in CIVION
 
-import { ClaudeClient } from "@/services/claude-api";
+import { GeminiClient } from "@/services/gemini-api";
 import { UserProfile } from "./types";
 
 export class PersonalAgent {
-  private claude: ClaudeClient;
+  private gemini: GeminiClient;
   private userProfile: UserProfile;
 
-  constructor(claude: ClaudeClient, userProfile: UserProfile) {
-    this.claude = claude;
+  constructor(gemini: GeminiClient, userProfile: UserProfile) {
+    this.gemini = gemini;
     this.userProfile = userProfile;
   }
 
@@ -45,18 +45,18 @@ The greeting should:
 
 Keep it under 80 words. Be warm but not overly effusive.`;
 
-    return await this.claude.generate(prompt, this.systemPrompt);
+    return await this.gemini.generate(prompt, this.systemPrompt);
   }
 
   async respondToUser(message: string): Promise<string> {
-    return await this.claude.generate(message, this.systemPrompt);
+    return await this.gemini.generate(message, this.systemPrompt);
   }
 
   async streamResponse(
     message: string,
     onToken: (token: string) => void
   ): Promise<string> {
-    return await this.claude.generateStream(
+    return await this.gemini.generateStream(
       message,
       this.systemPrompt,
       onToken

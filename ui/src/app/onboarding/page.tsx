@@ -52,9 +52,9 @@ export default function OnboardingPage() {
         setError('');
 
         try {
-            const { ClaudeClient } = await import('@/services/claude-api');
-            const claude = new ClaudeClient(apiKey);
-            const isValid = await claude.testConnection();
+            const { GeminiClient } = await import('@/services/gemini-api');
+            const gemini = new GeminiClient(apiKey);
+            const isValid = await gemini.testConnection();
 
             if (!isValid) {
                 setError('Could not connect — please check your API key.');
@@ -90,7 +90,7 @@ export default function OnboardingPage() {
                     </h1>
                     <p className="mt-2 text-text-secondary">
                         {step === 1 && "Tell us about yourself so your agents can work for you."}
-                        {step === 2 && "Provide your Claude API key to power your agents."}
+                        {step === 2 && "Provide your Gemini API key to power your agents."}
                         {step === 3 && "Your personal intelligence network is initialized."}
                     </p>
 
@@ -174,21 +174,21 @@ export default function OnboardingPage() {
                                 <div className="bg-accent-soft border border-accent/20 rounded-lg p-4">
                                     <p className="text-sm text-text-primary">
                                         <strong>Get your API key:</strong>{' '}
-                                        <a href="https://console.anthropic.com" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
-                                            console.anthropic.com
+                                        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
+                                            aistudio.google.com
                                         </a>
                                     </p>
                                     <p className="text-xs text-text-secondary mt-1">
-                                        Your key stays in your browser&apos;s localStorage. Never sent anywhere except Anthropic.
+                                        Your key stays in your browser&apos;s localStorage. Never sent anywhere except Google.
                                     </p>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-text-primary mb-2">Claude API Key</label>
+                                    <label className="block text-sm font-medium text-text-primary mb-2">Gemini API Key</label>
                                     <input
                                         type="password"
                                         value={apiKey}
                                         onChange={e => setApiKey(e.target.value)}
-                                        placeholder="sk-ant-..."
+                                        placeholder="AIza..."
                                         className="w-full bg-bg-subtle border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all font-mono text-sm"
                                     />
                                 </div>

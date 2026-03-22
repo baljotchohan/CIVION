@@ -7,7 +7,7 @@ import { storage, SavedGoal } from "@/services/storage";
 import { useAgentStore } from "@/store/agentStore";
 
 export default function GoalsPage() {
-    const { claude } = useAgentStore();
+    const { gemini } = useAgentStore();
     const [goals, setGoals] = useState<SavedGoal[]>([]);
     const [newGoal, setNewGoal] = useState("");
     const [analyzing, setAnalyzing] = useState<string | null>(null);
@@ -33,12 +33,12 @@ export default function GoalsPage() {
     };
 
     const handleAnalyze = async (goal: SavedGoal) => {
-        if (!claude || analyzing) return;
+        if (!gemini || analyzing) return;
 
         setAnalyzing(goal.id);
         try {
             const { GoalAgent } = await import("@/agents/goal-agent");
-            const agent = new GoalAgent(claude);
+            const agent = new GoalAgent(gemini);
             const analysis = await agent.analyzeGoal(goal.text);
 
             const updated = { ...goal, analysis };
@@ -122,7 +122,7 @@ export default function GoalsPage() {
                                             <Button
                                                 variant="secondary"
                                                 onClick={() => handleAnalyze(goal)}
-                                                disabled={!claude || analyzing === goal.id}
+                                                disabled={!gemini || analyzing === goal.id}
                                             >
                                                 {analyzing === goal.id ? (
                                                     <span className="flex items-center gap-2">

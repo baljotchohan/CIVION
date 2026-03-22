@@ -1,13 +1,13 @@
 // Research Agent — provides research and trend analysis
 
-import { ClaudeClient } from "@/services/claude-api";
+import { GeminiClient } from "@/services/gemini-api";
 import { AgentResponse } from "./types";
 
 export class ResearchAgent {
-  private claude: ClaudeClient;
+  private gemini: GeminiClient;
 
-  constructor(claude: ClaudeClient) {
-    this.claude = claude;
+  constructor(gemini: GeminiClient) {
+    this.gemini = gemini;
   }
 
   async analyze(topic: string): Promise<AgentResponse> {
@@ -23,7 +23,7 @@ Provide:
 
 Be thorough but concise. Focus on practical insights.`;
 
-    const analysis = await this.claude.generate(prompt);
+    const analysis = await this.gemini.generate(prompt);
     return {
       agent: "Research Agent",
       analysis,

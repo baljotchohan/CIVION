@@ -1,13 +1,13 @@
 // Monitoring Agent — tracks progress and provides status assessments
 
-import { ClaudeClient } from "@/services/claude-api";
+import { GeminiClient } from "@/services/gemini-api";
 import { AgentResponse } from "./types";
 
 export class MonitoringAgent {
-  private claude: ClaudeClient;
+  private gemini: GeminiClient;
 
-  constructor(claude: ClaudeClient) {
-    this.claude = claude;
+  constructor(gemini: GeminiClient) {
+    this.gemini = gemini;
   }
 
   async analyze(topic: string): Promise<AgentResponse> {
@@ -23,7 +23,7 @@ Provide:
 
 Be vigilant and proactive. Flag risks early.`;
 
-    const analysis = await this.claude.generate(prompt);
+    const analysis = await this.gemini.generate(prompt);
     return {
       agent: "Monitoring Agent",
       analysis,

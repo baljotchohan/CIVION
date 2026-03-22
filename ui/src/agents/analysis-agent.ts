@@ -1,13 +1,13 @@
 // Analysis Agent — provides deep analytical insights
 
-import { ClaudeClient } from "@/services/claude-api";
+import { GeminiClient } from "@/services/gemini-api";
 import { AgentResponse } from "./types";
 
 export class AnalysisAgent {
-  private claude: ClaudeClient;
+  private gemini: GeminiClient;
 
-  constructor(claude: ClaudeClient) {
-    this.claude = claude;
+  constructor(gemini: GeminiClient) {
+    this.gemini = gemini;
   }
 
   async analyze(topic: string): Promise<AgentResponse> {
@@ -23,7 +23,7 @@ Cover:
 
 Be analytical and precise. Focus on patterns others might miss.`;
 
-    const analysis = await this.claude.generate(prompt);
+    const analysis = await this.gemini.generate(prompt);
     return {
       agent: "Analysis Agent",
       analysis,

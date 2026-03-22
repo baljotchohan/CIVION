@@ -18,7 +18,9 @@ export function StoreHydrator() {
     loadFromStorage();
   }, [loadFromStorage]);
 
-  // Initialize agents after profile loads
+  /**
+   * Initializes GeminiClient and PersonalAgent when API key and profile are available.
+   */
   useEffect(() => {
     const apiKey = storage.getApiKey();
     const userProfile = storage.getUserProfile();

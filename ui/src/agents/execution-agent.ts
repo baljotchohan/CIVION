@@ -1,13 +1,13 @@
 // Execution Agent — creates concrete action plans
 
-import { ClaudeClient } from "@/services/claude-api";
+import { GeminiClient } from "@/services/gemini-api";
 import { AgentResponse } from "./types";
 
 export class ExecutionAgent {
-  private claude: ClaudeClient;
+  private gemini: GeminiClient;
 
-  constructor(claude: ClaudeClient) {
-    this.claude = claude;
+  constructor(gemini: GeminiClient) {
+    this.gemini = gemini;
   }
 
   async analyze(topic: string): Promise<AgentResponse> {
@@ -23,7 +23,7 @@ Include:
 
 Be practical and execution-focused. Prioritize speed and impact.`;
 
-    const analysis = await this.claude.generate(prompt);
+    const analysis = await this.gemini.generate(prompt);
     return {
       agent: "Execution Agent",
       analysis,

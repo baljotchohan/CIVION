@@ -1,7 +1,7 @@
 // Zustand store for agent interactions: chat and debates
 
 import { create } from "zustand";
-import { ClaudeClient } from "@/services/claude-api";
+import { GeminiClient } from "@/services/gemini-api";
 import { PersonalAgent } from "@/agents/personal-agent";
 import { DebateEngine } from "@/agents/debate-engine";
 import { storage, ConversationMessage } from "@/services/storage";
@@ -9,7 +9,7 @@ import { UserProfile, DebateResult } from "@/agents/types";
 
 interface AgentState {
   // Claude client
-  claude: ClaudeClient | null;
+  gemini: GeminiClient | null;
   personalAgent: PersonalAgent | null;
 
   // Chat
@@ -30,7 +30,7 @@ interface AgentState {
 }
 
 export const useAgentStore = create<AgentState>((set, get) => ({
-  claude: null,
+  gemini: null,
   personalAgent: null,
   conversation: [],
   isThinking: false,
@@ -39,9 +39,9 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   currentDebate: null,
 
   initAgents: (apiKey: string, profile: UserProfile) => {
-    const claude = new ClaudeClient(apiKey);
-    const personalAgent = new PersonalAgent(claude, profile);
-    set({ claude, personalAgent });
+    const gemini = new GeminiClient(apiKey);
+    const personalAgent = new PersonalAgent(gemini, profile);
+    set({ gemini, personalAgent });
   },
 
   loadHistory: () => {
@@ -97,13 +97,13 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   },
 
   startDebate: async (topic: string) => {
-    const { claude } = get();
-    if (!claude) return null;
+    const { gemini } = get();
+    if (!gemini) return null;
 
     set({ isDebating: true, currentDebate: null });
 
     try {
-      const engine = new DebateEngine(claude);
+      const engine = new DebateEngine(gemini);
       const result = await engine.runDebate(topic);
 
       set((state) => ({

@@ -1,13 +1,13 @@
 // Goal Agent — analyzes and breaks down user goals
 
-import { ClaudeClient } from "@/services/claude-api";
+import { GeminiClient } from "@/services/gemini-api";
 import { AgentResponse } from "./types";
 
 export class GoalAgent {
-  private claude: ClaudeClient;
+  private gemini: GeminiClient;
 
-  constructor(claude: ClaudeClient) {
-    this.claude = claude;
+  constructor(gemini: GeminiClient) {
+    this.gemini = gemini;
   }
 
   async analyze(topic: string): Promise<AgentResponse> {
@@ -23,7 +23,7 @@ Provide:
 
 Be specific, actionable, and concise.`;
 
-    const analysis = await this.claude.generate(prompt);
+    const analysis = await this.gemini.generate(prompt);
     return {
       agent: "Goal Agent",
       analysis,
@@ -44,6 +44,6 @@ Provide a structured breakdown with:
 
 Be actionable and specific.`;
 
-    return await this.claude.generate(prompt);
+    return await this.gemini.generate(prompt);
   }
 }

@@ -33,7 +33,7 @@ export interface ConversationMessage {
 
 interface StorageData {
   userProfile: UserProfile | null;
-  claudeApiKey: string | null; // Base64 encoded
+  geminiApiKey: string | null; // Base64 encoded
   conversationHistory: ConversationMessage[];
   savedGoals: SavedGoal[];
   debates: SavedDebate[];
@@ -71,12 +71,12 @@ class StorageManager {
   // ── API Key (Base64 "encrypted") ─────────────────────
   saveApiKey(key: string): void {
     const data = this.getData();
-    data.claudeApiKey = btoa(key);
+    data.geminiApiKey = btoa(key);
     this.persist(data);
   }
 
   getApiKey(): string | null {
-    const encoded = this.getData().claudeApiKey;
+    const encoded = this.getData().geminiApiKey;
     if (!encoded) return null;
     try {
       return atob(encoded);

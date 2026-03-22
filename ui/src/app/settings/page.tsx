@@ -49,9 +49,9 @@ export default function SettingsPage() {
         setApiMessage("");
 
         try {
-            const { ClaudeClient } = await import("@/services/claude-api");
-            const claude = new ClaudeClient(newApiKey);
-            const ok = await claude.testConnection();
+            const { GeminiClient } = await import("@/services/gemini-api");
+            const gemini = new GeminiClient(newApiKey);
+            const ok = await gemini.testConnection();
             if (ok) {
                 storage.saveApiKey(newApiKey);
                 useUserStore.getState().loadFromStorage();
@@ -113,7 +113,7 @@ export default function SettingsPage() {
             {/* API Key */}
             <Card>
                 <CardContent className="p-6">
-                    <h2 className="text-lg font-semibold text-text-primary mb-2">Claude API Key</h2>
+                    <h2 className="text-lg font-semibold text-text-primary mb-2">Gemini API Key</h2>
                     <p className="text-sm text-text-secondary mb-4">
                         Status: {hasApiKey ? <span className="text-success font-medium">Connected ✓</span> : <span className="text-danger font-medium">Not set</span>}
                     </p>
@@ -122,7 +122,7 @@ export default function SettingsPage() {
                             type="password"
                             value={newApiKey}
                             onChange={(e) => setNewApiKey(e.target.value)}
-                            placeholder="sk-ant-..."
+                            placeholder="AIza..."
                             className="flex-1 bg-bg-subtle border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent transition-all font-mono"
                         />
                         <Button variant="secondary" onClick={handleUpdateApiKey} disabled={testing || !newApiKey.trim()}>

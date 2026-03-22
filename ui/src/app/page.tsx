@@ -1,21 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { storage } from "@/services/storage";
-
 export default function HomePage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    const onboarded = storage.isOnboarded();
-    if (onboarded) {
-      router.replace("/dashboard");
-    } else {
-      router.replace("/onboarding");
-    }
-  }, [router]);
-
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="flex items-center gap-3 text-text-muted">

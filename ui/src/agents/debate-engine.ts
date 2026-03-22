@@ -1,6 +1,6 @@
 // Debate Engine — orchestrates 5-agent parallel debate on any topic
 
-import { ClaudeClient } from "@/services/claude-api";
+import { GeminiClient } from "@/services/gemini-api";
 import { GoalAgent } from "./goal-agent";
 import { ResearchAgent } from "./research-agent";
 import { AnalysisAgent } from "./analysis-agent";
@@ -9,17 +9,17 @@ import { MonitoringAgent } from "./monitoring-agent";
 import { AgentResponse, DebateResult } from "./types";
 
 export class DebateEngine {
-  private claude: ClaudeClient;
+  private gemini: GeminiClient;
   private agents: { analyze: (topic: string) => Promise<AgentResponse> }[];
 
-  constructor(claude: ClaudeClient) {
-    this.claude = claude;
+  constructor(gemini: GeminiClient) {
+    this.gemini = gemini;
     this.agents = [
-      new GoalAgent(claude),
-      new ResearchAgent(claude),
-      new AnalysisAgent(claude),
-      new ExecutionAgent(claude),
-      new MonitoringAgent(claude),
+      new GoalAgent(gemini),
+      new ResearchAgent(gemini),
+      new AnalysisAgent(gemini),
+      new ExecutionAgent(gemini),
+      new MonitoringAgent(gemini),
     ];
   }
 
@@ -34,7 +34,7 @@ export class DebateEngine {
     const avgConfidence =
       confidences.reduce((sum, c) => sum + c, 0) / confidences.length;
 
-    // Synthesize using Claude
+    // Synthesize using Gemini
     const synthesisPrompt = `You are the Synthesis Engine for a 5-agent debate on:
 "${topic}"
 
@@ -55,7 +55,7 @@ Provide a final synthesis that:
 
 Be concise and decisive. Average confidence across agents: ${(avgConfidence * 100).toFixed(0)}%.`;
 
-    const synthesis = await this.claude.generate(synthesisPrompt);
+    const synthesis = await this.gemini.generate(synthesisPrompt);
 
     return {
       id: crypto.randomUUID(),

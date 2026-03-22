@@ -18,7 +18,7 @@ export function OnboardingGuard({
         // Check localStorage for onboarding status
         const onboarded = storage.isOnboarded();
         if (!onboarded) {
-            router.push('/onboarding');
+            router.replace('/onboarding');
         }
     }, [pathname, router]);
 
