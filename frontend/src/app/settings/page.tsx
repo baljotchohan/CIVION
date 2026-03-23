@@ -18,6 +18,7 @@ export default function SettingsPage() {
     const [testing, setTesting] = useState(false);
     const [saved, setSaved] = useState(false);
     const [apiMessage, setApiMessage] = useState("");
+    const [persistKey, setPersistKey] = useState(true);
 
     useEffect(() => {
         if (profile) {
@@ -53,9 +54,9 @@ export default function SettingsPage() {
             const gemini = new GeminiClient(newApiKey);
             const ok = await gemini.testConnection();
             if (ok) {
-                storage.saveApiKey(newApiKey);
+                storage.saveApiKey(newApiKey, persistKey);
                 useUserStore.getState().loadFromStorage();
-                setApiMessage("✓ API key updated successfully");
+                setApiMessage("✓ API key updated successfully" + (persistKey ? "" : " (Session only)"));
                 setNewApiKey("");
             } else {
                 setApiMessage("✗ Connection test failed. Check your key.");
@@ -81,10 +82,51 @@ export default function SettingsPage() {
                 <p className="text-text-secondary mt-1">Manage your profile, API key, and data.</p>
             </div>
 
+            {/* API Key */}
+            <Card>
+                <CardContent className="p-6">
+                    <h2 className="text-lg font-semibold text-text-primary mb-2">Gemini API Key</h2>
+                    <p className="text-sm text-text-secondary mb-4">
+                        Status: {hasApiKey ? <span className="text-success font-medium">Connected ✓</span> : <span className="text-danger font-medium">Not set</span>}
+                    </p>
+                    <div className="flex flex-col gap-3">
+                        <div className="flex gap-3">
+                            <input
+                                type="password"
+                                value={newApiKey}
+                                onChange={(e) => setNewApiKey(e.target.value)}
+                                placeholder="Update API key (AIza...)"
+                                className="flex-1 bg-bg-subtle border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent transition-all font-mono"
+                            />
+                            <Button variant="secondary" onClick={handleUpdateApiKey} disabled={testing || !newApiKey.trim()}>
+                                {testing ? "Testing..." : "Update Key"}
+                            </Button>
+                        </div>
+                        <div className="flex items-center gap-2 px-1">
+                            <input 
+                                type="checkbox" 
+                                id="persist-key-settings"
+                                checked={persistKey} 
+                                onChange={e => setPersistKey(e.target.checked)}
+                                className="w-4 h-4 rounded border-border text-accent focus:ring-accent bg-bg-subtle"
+                            />
+                            <label htmlFor="persist-key-settings" className="text-xs text-text-secondary cursor-pointer border-border-strong select-none">
+                                Persist key in this browser (Recommended)
+                            </label>
+                        </div>
+                    </div>
+                    {apiMessage && (
+                        <p className={`text-sm mt-2 ${apiMessage.startsWith("✓") ? "text-success" : "text-danger"}`}>
+                            {apiMessage}
+                        </p>
+                    )}
+                </CardContent>
+            </Card>
+
             {/* Profile */}
             <Card>
                 <CardContent className="p-6">
-                    <h2 className="text-lg font-semibold text-text-primary mb-4">Profile</h2>
+                    <h2 className="text-lg font-semibold text-text-primary mb-4">Profile Details (Optional)</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-medium text-text-secondary mb-1.5">Name</label>
@@ -107,33 +149,6 @@ export default function SettingsPage() {
                         <Button variant="primary" onClick={handleSaveProfile}>Save Profile</Button>
                         {saved && <span className="text-sm text-success">✓ Saved</span>}
                     </div>
-                </CardContent>
-            </Card>
-
-            {/* API Key */}
-            <Card>
-                <CardContent className="p-6">
-                    <h2 className="text-lg font-semibold text-text-primary mb-2">Gemini API Key</h2>
-                    <p className="text-sm text-text-secondary mb-4">
-                        Status: {hasApiKey ? <span className="text-success font-medium">Connected ✓</span> : <span className="text-danger font-medium">Not set</span>}
-                    </p>
-                    <div className="flex gap-3">
-                        <input
-                            type="password"
-                            value={newApiKey}
-                            onChange={(e) => setNewApiKey(e.target.value)}
-                            placeholder="AIza..."
-                            className="flex-1 bg-bg-subtle border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent transition-all font-mono"
-                        />
-                        <Button variant="secondary" onClick={handleUpdateApiKey} disabled={testing || !newApiKey.trim()}>
-                            {testing ? "Testing..." : "Update Key"}
-                        </Button>
-                    </div>
-                    {apiMessage && (
-                        <p className={`text-sm mt-2 ${apiMessage.startsWith("✓") ? "text-success" : "text-danger"}`}>
-                            {apiMessage}
-                        </p>
-                    )}
                 </CardContent>
             </Card>
 

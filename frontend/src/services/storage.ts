@@ -46,6 +46,8 @@ const STORAGE_KEY =
   "civion_v1_data";
 
 class StorageManager {
+  private inMemoryApiKey: string | null = null;
+
   // ── Read ─────────────────────────────────────────────
   getData(): Partial<StorageData> {
     if (typeof window === "undefined") return {};
@@ -69,13 +71,19 @@ class StorageManager {
   }
 
   // ── API Key (Base64 "encrypted") ─────────────────────
-  saveApiKey(key: string): void {
-    const data = this.getData();
-    data.geminiApiKey = btoa(key);
-    this.persist(data);
+  saveApiKey(key: string, persist: boolean = true): void {
+    if (persist) {
+      const data = this.getData();
+      data.geminiApiKey = btoa(key);
+      this.persist(data);
+    } else {
+      this.inMemoryApiKey = key;
+    }
   }
 
   getApiKey(): string | null {
+    if (this.inMemoryApiKey) return this.inMemoryApiKey;
+
     const encoded = this.getData().geminiApiKey;
     if (!encoded) return null;
     try {

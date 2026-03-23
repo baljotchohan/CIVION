@@ -9,14 +9,15 @@ import { storage } from '@/services/storage';
 
 export default function OnboardingPage() {
     const router = useRouter();
-    const [step, setStep] = useState(1);
+    const [step, setStep] = useState(2);
+    const [persistKey, setPersistKey] = useState(true);
     const [formData, setFormData] = useState({
-        name: '',
-        business: '',
-        occupation: '',
-        industry: '',
-        goals: ['', '', ''],
-        useCase: ''
+        name: 'CIVION User',
+        business: 'Personal Workspace',
+        occupation: 'AI Strategist',
+        industry: 'General',
+        goals: ['Optimize workflow', 'Automate research', 'Scale intelligence'],
+        useCase: 'Productivity'
     });
     const [apiKey, setApiKey] = useState('');
     const [loading, setLoading] = useState(false);
@@ -62,7 +63,19 @@ export default function OnboardingPage() {
                 return;
             }
 
-            storage.saveApiKey(apiKey);
+            // Save default profile if none exists
+            if (!storage.getUserProfile()) {
+                storage.saveUserProfile({
+                    name: formData.name,
+                    business: formData.business,
+                    occupation: formData.occupation,
+                    industry: formData.industry,
+                    goals: formData.goals.filter(g => g.trim()),
+                    useCase: formData.useCase,
+                });
+            }
+
+            storage.saveApiKey(apiKey, persistKey);
             setStep(3);
         } catch (err: unknown) {
             const error = err as { message?: string };
@@ -191,6 +204,18 @@ export default function OnboardingPage() {
                                         placeholder="AIza..."
                                         className="w-full bg-bg-subtle border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all font-mono text-sm"
                                     />
+                                </div>
+                                <div className="flex items-center gap-2 px-1">
+                                    <input 
+                                        type="checkbox" 
+                                        id="persist-key"
+                                        checked={persistKey} 
+                                        onChange={e => setPersistKey(e.target.checked)}
+                                        className="w-4 h-4 rounded border-border text-accent focus:ring-accent bg-bg-subtle"
+                                    />
+                                    <label htmlFor="persist-key" className="text-xs text-text-secondary cursor-pointer border-border-strong select-none">
+                                        Persist key in this browser (Recommended)
+                                    </label>
                                 </div>
                             </div>
                         )}

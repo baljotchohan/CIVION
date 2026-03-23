@@ -1,39 +1,22 @@
 {
-    "name": "civion-v1",
-    "version": "1.0.0",
-    "description": "CIVION — Personal AI Intelligence Network (Standalone Frontend)",
-    "private": true,
-    "scripts": {
-        "dev": "next dev",
-        "build": "next build",
-        "start": "next start",
-        "lint": "next lint"
-    },
-    "dependencies": {
-        "@google/generative-ai": "^0.24.1",
-        "@types/bcryptjs": "^2.4.6",
-        "@types/jsonwebtoken": "^9.0.10",
-        "axios": "^1.13.6",
-        "bcryptjs": "^3.0.3",
-        "firebase-admin": "^13.7.0",
-        "framer-motion": "^10.16.4",
-        "jsonwebtoken": "^9.0.3",
-        "lucide-react": "^0.292.0",
-        "next": "^16.2.1",
-        "react": "^19.2.4",
-        "react-dom": "^19.2.4",
-        "react-markdown": "^10.1.0",
-        "remark-gfm": "^4.0.1",
-        "zod": "^4.3.6",
-        "zustand": "^4.4.0"
-    },
-    "devDependencies": {
-        "@types/node": "^20",
-        "@types/react": "^18",
-        "@types/react-dom": "^18",
-        "autoprefixer": "^10",
-        "postcss": "^8",
-        "tailwindcss": "^3",
-        "typescript": "^5"
-    }
+  "name": "civion",
+  "version": "2.0.0",
+  "description": "AI Workforce Platform - The Spider Network",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm -w backend run dev\" \"npm -w frontend run dev\"",
+    "build": "npm -w backend run build && npm -w frontend run build",
+    "start": "npm -w backend start",
+    "test": "npm -w backend run test && npm -w frontend run test",
+    "backend": "npm -w backend run dev",
+    "frontend": "npm -w frontend run dev",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
 }

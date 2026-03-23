@@ -53,7 +53,7 @@ export function NickPanel() {
 
             {/* MESSAGES */}
             <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 bg-bg-base scroll-smooth">
-                {messages.length === 0 ? (
+                {(messages || []).length === 0 ? (
                     <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
                         <div className="opacity-20 grayscale mb-4">
                             <NickCharacter size="md" />
