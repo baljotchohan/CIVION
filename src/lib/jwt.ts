@@ -6,13 +6,13 @@ const SECRET = process.env.JWT_SECRET || 'civion_dev_secret_change_in_production
 const EXPIRATION = (process.env.JWT_EXPIRATION as string) || '7d';
 
 export interface DecodedToken {
-  userId: number;
+  userId: string;
   email: string;
   iat: number;
   exp: number;
 }
 
-export function createToken(userId: number, email: string): string {
+export function createToken(userId: string, email: string): string {
   return jwt.sign({ userId, email }, SECRET, { expiresIn: EXPIRATION } as jwt.SignOptions);
 }
 

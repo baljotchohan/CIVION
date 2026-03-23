@@ -1,22 +1,23 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { db } from '@/lib/firebase-admin';
 import { withAuth } from '@/lib/middleware';
 
-async function getUserCreditsHandler(req: Request, user: { userId: number }) {
+async function getUserCreditsHandler(req: Request, user: { userId: string }) {
   try {
-    const result = await query(
-      'SELECT available_credits, total_credits, earned_credits, spent_credits FROM user_credits WHERE user_id = $1',
-      [user.userId]
-    );
+    const creditsRef = db.collection('user_credits').doc(user.userId);
+    const snapshot = await creditsRef.get();
 
     // If user has no credits row yet, return default free amount
-    if (result.rows.length === 0) {
+    if (!snapshot.exists) {
       // Create default wallet
-      await query(
-        `INSERT INTO user_credits (user_id, total_credits, available_credits) 
-         VALUES ($1, 1000, 1000) ON CONFLICT(user_id) DO NOTHING`,
-        [user.userId]
-      );
+      await creditsRef.set({
+        user_id: user.userId,
+        total_credits: 1000,
+        available_credits: 1000,
+        earned_credits: 0,
+        spent_credits: 0,
+        updated_at: new Date()
+      });
       
       return NextResponse.json({ 
         availableCredits: 1000,
@@ -26,11 +27,11 @@ async function getUserCreditsHandler(req: Request, user: { userId: number }) {
       });
     }
 
-    const wallet = result.rows[0];
+    const wallet = snapshot.data()!;
     return NextResponse.json({
       availableCredits: parseFloat(wallet.available_credits),
       totalCredits: parseFloat(wallet.total_credits),
-      earnedCredits: parseFloat(wallet.earned_credits),
+      earnedCredits: parseFloat(wallet.earned_credits || 0),
       spentCredits: parseFloat(wallet.spent_credits),
     });
   } catch (error) {

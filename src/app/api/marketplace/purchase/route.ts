@@ -1,71 +1,90 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { db } from '@/lib/firebase-admin';
 import { withAuth } from '@/lib/middleware';
 
-async function purchaseAgentHandler(req: Request, user: { userId: number }) {
+async function purchaseAgentHandler(req: Request, user: { userId: string }) {
   try {
     const body = await req.json();
     const { templateId, customName } = body;
 
-    // Get agent template
-    const templateResult = await query(
-      'SELECT * FROM agent_templates WHERE id = $1',
-      [templateId]
-    );
-
-    if (templateResult.rows.length === 0) {
-      return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+    if (!templateId) {
+      return NextResponse.json({ error: 'Missing templateId' }, { status: 400 });
     }
 
-    const template = templateResult.rows[0];
+    const templateRef = db.collection('agent_templates').doc(templateId);
+    const userCreditsRef = db.collection('user_credits').doc(user.userId);
+    const purchasedAgentsRef = db.collection('purchased_agents');
+    const transactionsRef = db.collection('credit_transactions');
 
-    // Check user credits
-    const creditsResult = await query(
-      'SELECT available_credits FROM user_credits WHERE user_id = $1',
-      [user.userId]
-    );
+    const result = await db.runTransaction(async (t) => {
+      // 1. Get agent template
+      const templateDoc = await t.get(templateRef);
+      if (!templateDoc.exists) {
+        throw new Error('Agent template not found');
+      }
+      
+      const templateData = templateDoc.data()!;
+      const price = templateData.price_credits || 0;
 
-    const availableCredits = creditsResult.rows[0]?.available_credits || 0;
+      // 2. Get user credits
+      let userCreditsDoc = await t.get(userCreditsRef);
+      let availableCredits = 0;
+      let spentCredits = 0;
 
-    if (availableCredits < template.price_credits) {
-      return NextResponse.json({ error: 'Insufficient credits' }, { status: 400 });
-    }
+      if (!userCreditsDoc.exists) {
+        // Initial setup 1000 credits if they don't have a wallet
+        availableCredits = 1000;
+        spentCredits = 0;
+      } else {
+        const data = userCreditsDoc.data()!;
+        availableCredits = data.available_credits || 0;
+        spentCredits = data.spent_credits || 0;
+      }
 
-    // Begin pseudo-transaction setup:
-    // 1. Deduct credits
-    await query(
-      `UPDATE user_credits 
-       SET available_credits = available_credits - $1,
-           spent_credits = spent_credits + $1
-       WHERE user_id = $2`,
-      [template.price_credits, user.userId]
-    );
+      // 3. Check funds
+      if (availableCredits < price) {
+        throw new Error('Insufficient credits');
+      }
 
-    // 2. Add purchased agent
-    const purchaseResult = await query(
-      `INSERT INTO purchased_agents 
-       (user_id, template_id, custom_name)
-       VALUES ($1, $2, $3)
-       RETURNING id`,
-      [user.userId, templateId, customName || template.name]
-    );
+      // 4. Set/Update user credits
+      t.set(userCreditsRef, {
+        user_id: user.userId,
+        total_credits: userCreditsDoc.exists ? userCreditsDoc.data()!.total_credits : 1000,
+        available_credits: availableCredits - price,
+        spent_credits: spentCredits + price,
+        updated_at: new Date()
+      }, { merge: true });
 
-    // 3. Log transaction
-    await query(
-      `INSERT INTO credit_transactions 
-       (user_id, transaction_type, amount, description)
-       VALUES ($1, $2, $3, $4)`,
-      [
-        user.userId,
-        'purchase',
-        template.price_credits,
-        `Purchased agent: ${template.name}`,
-      ]
-    );
+      // 5. Add to purchased agents
+      const newPurchasedAgentRef = purchasedAgentsRef.doc();
+      t.set(newPurchasedAgentRef, {
+        user_id: user.userId,
+        template_id: templateId,
+        custom_name: customName || templateData.name,
+        activation_status: 'inactive',
+        performance_score: 0,
+        purchased_at: new Date()
+      });
 
-    return NextResponse.json({ purchasedAgentId: purchaseResult.rows[0].id }, { status: 201 });
-  } catch (error) {
+      // 6. Log transaction
+      const newTransactionRef = transactionsRef.doc();
+      t.set(newTransactionRef, {
+        user_id: user.userId,
+        transaction_type: 'purchase',
+        amount: price,
+        description: `Purchased agent: ${templateData.name}`,
+        transaction_date: new Date()
+      });
+
+      return newPurchasedAgentRef.id;
+    });
+
+    return NextResponse.json({ purchasedAgentId: result }, { status: 201 });
+  } catch (error: any) {
     console.error('[POST /api/marketplace/purchase]', error);
+    if (error.message === 'Agent template not found' || error.message === 'Insufficient credits') {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ error: 'Purchase failed' }, { status: 500 });
   }
 }

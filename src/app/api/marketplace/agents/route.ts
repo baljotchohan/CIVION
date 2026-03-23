@@ -1,64 +1,116 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { db } from '@/lib/firebase-admin';
 import { withAuth } from '@/lib/middleware';
 
-async function getAgentsHandler(req: Request, user: { userId: number }) {
+async function getAgentsHandler(req: Request, user: { userId: string }) {
   try {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get('type');
     const minRating = parseFloat(searchParams.get('minRating') || '0');
-    const sortBy = searchParams.get('sortBy') || 'downloads';
+    const sortBy = searchParams.get('sortBy') || 'downloads'; // 'price' or 'downloads'
 
-    let queryStr = `
-      SELECT 
-        id, name, type, description, base_capability, 
-        price_credits, rating, downloads, is_verified,
-        creator_id, created_at
-      FROM agent_templates
-      WHERE rating >= $1
-    `;
-    const params: any[] = [minRating];
+    const templatesRef = db.collection('agent_templates');
+    let queryRef: FirebaseFirestore.Query = templatesRef;
 
     if (type && type !== 'all') {
-      params.push(type);
-      queryStr += ` AND type = $${params.length}`;
+      queryRef = queryRef.where('type', '==', type);
     }
 
-    queryStr += `
-      ORDER BY ${sortBy === 'price' ? 'price_credits' : 'downloads'} DESC
-      LIMIT 50
-    `;
+    if (minRating > 0) {
+      queryRef = queryRef.where('rating', '>=', minRating);
+    }
 
-    const result = await query(queryStr, params);
-    return NextResponse.json({ agents: result.rows });
+    // Sort constraints
+    if (sortBy === 'price') {
+      queryRef = queryRef.orderBy('price_credits', 'desc');
+    } else {
+      queryRef = queryRef.orderBy('downloads', 'desc');
+    }
+
+    const snapshot = await queryRef.limit(50).get();
+
+    const agents = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    // If the database is completely empty (no templates seeded yet),
+    // let's seed the default ones!
+    if (agents.length === 0 && (!type || type === 'all')) {
+      const defaultAgents = [
+        {
+          name: 'Deep Stock Researcher',
+          type: 'research',
+          description: 'Specializes in pulling diverse financial APIs to evaluate market health',
+          base_capability: 'Financial Analysis 24/7',
+          price_credits: 250,
+          is_verified: true,
+          rating: 5,
+          downloads: 120
+        },
+        {
+          name: 'Social Trends Monitor',
+          type: 'monitoring',
+          description: 'Constantly sweeps social feeds mapping out viral keywords and trends',
+          base_capability: 'Social Media Scraping',
+          price_credits: 150,
+          is_verified: true,
+          rating: 4.8,
+          downloads: 340
+        },
+        {
+          name: 'Ruthless Executioner',
+          type: 'execution',
+          description: 'Will break a massive goal into extreme micro-granular tasks with timeline constraints',
+          base_capability: 'Timeline enforcement',
+          price_credits: 400,
+          is_verified: true,
+          rating: 4.9,
+          downloads: 85
+        }
+      ];
+
+      for (const agent of defaultAgents) {
+        const docRef = await templatesRef.add({
+          ...agent,
+          creator_id: 'system',
+          created_at: new Date()
+        });
+        agents.push({ id: docRef.id, ...agent });
+      }
+    }
+
+    return NextResponse.json({ agents });
   } catch (error) {
     console.error('[GET /api/marketplace/agents]', error);
     return NextResponse.json({ error: 'Failed to fetch agents' }, { status: 500 });
   }
 }
 
-async function createAgentHandler(req: Request, user: { userId: number }) {
+async function createAgentHandler(req: Request, user: { userId: string }) {
   try {
     const body = await req.json();
     const { name, type, description, base_capability, special_abilities, price_credits } = body;
 
-    const result = await query(
-      `INSERT INTO agent_templates 
-       (creator_id, name, type, description, base_capability, special_abilities, price_credits)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id`,
-      [
-        user.userId,
-        name,
-        type,
-        description,
-        base_capability,
-        JSON.stringify(special_abilities || {}),
-        price_credits,
-      ]
-    );
+    const templatesRef = db.collection('agent_templates');
+    const newDoc = {
+      creator_id: user.userId,
+      name,
+      type,
+      description,
+      base_capability,
+      special_abilities: special_abilities || {},
+      price_credits: Number(price_credits),
+      rating: 0,
+      downloads: 0,
+      is_verified: false,
+      created_at: new Date(),
+      updated_at: new Date()
+    };
 
-    return NextResponse.json({ id: result.rows[0].id }, { status: 201 });
+    const docRef = await templatesRef.add(newDoc);
+
+    return NextResponse.json({ id: docRef.id }, { status: 201 });
   } catch (error) {
     console.error('[POST /api/marketplace/agents]', error);
     return NextResponse.json({ error: 'Failed to create agent schema' }, { status: 500 });

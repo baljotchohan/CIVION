@@ -1,8 +1,8 @@
-// POST /api/auth/signup — create a new CIVION user
+// POST /api/auth/signup — create a new CIVION user using Firestore
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { query } from '@/lib/db';
+import { db } from '@/lib/firebase-admin';
 import { hashPassword } from '@/lib/hash';
 import { createToken } from '@/lib/jwt';
 
@@ -17,24 +17,29 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { email, password, username } = signupSchema.parse(body);
 
+    const usersRef = db.collection('users');
+
     // Check if user already exists
-    const existing = await query('SELECT id FROM users WHERE email = $1', [email]);
-    if (existing.rows.length > 0) {
+    const existing = await usersRef.where('email', '==', email).limit(1).get();
+    
+    if (!existing.empty) {
       return NextResponse.json({ error: 'An account with this email already exists' }, { status: 400 });
     }
 
     // Hash password and create user
     const passwordHash = await hashPassword(password);
-    const result = await query(
-      'INSERT INTO users (email, password_hash, username) VALUES ($1, $2, $3) RETURNING id, email, username',
-      [email, passwordHash, username || email.split('@')[0]]
-    );
+    
+    const docRef = await usersRef.add({
+      email,
+      password_hash: passwordHash,
+      username: username || email.split('@')[0],
+      created_at: new Date()
+    });
 
-    const user = result.rows[0];
-    const token = createToken(user.id, user.email);
+    const token = createToken(docRef.id, email);
 
     return NextResponse.json(
-      { user: { id: user.id, email: user.email, username: user.username }, token },
+      { user: { id: docRef.id, email, username: username || email.split('@')[0] }, token },
       { status: 201 }
     );
   } catch (error) {

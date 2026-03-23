@@ -1,55 +1,37 @@
-// POST /api/debate — save a debate result to the database
-
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { db } from '@/lib/firebase-admin';
 import { withAuth } from '@/lib/middleware';
-import { query } from '@/lib/db';
-import { DecodedToken } from '@/lib/jwt';
 
-export const POST = withAuth(async (req: NextRequest, user: DecodedToken) => {
+async function saveDebateResultHandler(req: Request, user: { userId: string }) {
   try {
     const body = await req.json();
-    const { conversationId, debateTopic, consensus, disagreements, recommendation, confidenceScore } =
-      body as {
-        conversationId?: number;
-        debateTopic: string;
-        consensus: string;
-        disagreements?: Record<string, string[]>;
-        recommendation?: string;
-        confidenceScore?: number;
-      };
+    const { topic, consensus, disagreements, agentResponses, overallConfidence } = body;
 
-    if (!debateTopic || !consensus) {
-      return NextResponse.json({ error: 'debateTopic and consensus are required' }, { status: 400 });
+    if (!topic || !consensus || !agentResponses) {
+      return NextResponse.json({ error: 'Missing required debate tracking fields' }, { status: 400 });
     }
 
-    // If no conversationId provided, create a placeholder conversation
-    let convId = conversationId;
-    if (!convId) {
-      const conv = await query(
-        'INSERT INTO conversations (user_id, title) VALUES ($1, $2) RETURNING id',
-        [user.userId, `Debate: ${debateTopic.slice(0, 60)}`]
-      );
-      convId = conv.rows[0].id;
-    }
+    const debatesRef = db.collection('debates');
+    const newDoc = {
+      user_id: user.userId,
+      topic,
+      consensus: JSON.stringify(consensus),
+      disagreements: JSON.stringify(disagreements || []),
+      agent_responses: JSON.stringify(agentResponses),
+      overall_confidence: overallConfidence || 0,
+      created_at: new Date()
+    };
 
-    const result = await query(
-      `INSERT INTO debate_results
-       (conversation_id, debate_topic, consensus, disagreements, recommendation, confidence_score)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id`,
-      [
-        convId,
-        debateTopic,
-        consensus,
-        JSON.stringify(disagreements || {}),
-        recommendation || consensus,
-        confidenceScore ?? 0.5,
-      ]
+    const docRef = await debatesRef.add(newDoc);
+
+    return NextResponse.json(
+      { debate: { id: docRef.id, ...newDoc } },
+      { status: 201 }
     );
-
-    return NextResponse.json({ debateId: result.rows[0].id, conversationId: convId }, { status: 201 });
   } catch (error) {
-    console.error('[debate POST]', error);
+    console.error('[POST /api/debate]', error);
     return NextResponse.json({ error: 'Failed to save debate result' }, { status: 500 });
   }
-});
+}
+
+export const POST = withAuth(saveDebateResultHandler);

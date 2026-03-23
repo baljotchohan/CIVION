@@ -404,19 +404,15 @@ YOUR RESPONSIBILITY:
     try {
       if (typeof window !== 'undefined') return; // Don't crash on client side context if ran directly
       
-      // In a real app we would use parameterization like $1, $2
-      await this.db.query(
-        `INSERT INTO agent_memory (user_id, agent_name, memory_type, content, importance, expires_at)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [
-          this.userId,
-          this.name,
-          memory.type,
-          memory.content,
-          memory.importance,
-          memory.expiresAt,
-        ]
-      );
+      await this.db.collection('agent_memory').add({
+        user_id: this.userId,
+        agent_name: this.name,
+        memory_type: memory.type,
+        content: memory.content,
+        importance: memory.importance,
+        expires_at: memory.expiresAt || null,
+        created_at: new Date()
+      });
     } catch (error) {
       console.error('Failed to persist memory:', error);
     }

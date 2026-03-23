@@ -1,8 +1,8 @@
-// POST /api/auth/login — authenticate a CIVION user
+// POST /api/auth/login — authenticate a user using Firestore
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { query } from '@/lib/db';
+import { db } from '@/lib/firebase-admin';
 import { verifyPassword } from '@/lib/hash';
 import { createToken } from '@/lib/jwt';
 
@@ -16,17 +16,16 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { email, password } = loginSchema.parse(body);
 
-    // Find user
-    const result = await query(
-      'SELECT id, email, password_hash, username FROM users WHERE email = $1',
-      [email]
-    );
+    // Find user by email
+    const usersRef = db.collection('users');
+    const snapshot = await usersRef.where('email', '==', email).limit(1).get();
 
-    if (result.rows.length === 0) {
+    if (snapshot.empty) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 
-    const user = result.rows[0];
+    const userDoc = snapshot.docs[0];
+    const user = userDoc.data();
 
     // Verify password
     const isValid = await verifyPassword(password, user.password_hash);
@@ -34,12 +33,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 
-    const token = createToken(user.id, user.email);
+    const token = createToken(userDoc.id, user.email);
 
-    return NextResponse.json({
-      user: { id: user.id, email: user.email, username: user.username },
-      token,
-    });
+    return NextResponse.json(
+      { user: { id: userDoc.id, email: user.email, username: user.username }, token },
+      { status: 200 }
+    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues[0].message }, { status: 400 });
