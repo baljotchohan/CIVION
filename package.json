@@ -10,9 +10,11 @@
         "lint": "next lint"
     },
     "dependencies": {
+        "@google/generative-ai": "^0.24.1",
         "@types/bcryptjs": "^2.4.6",
         "@types/jsonwebtoken": "^9.0.10",
         "@types/pg": "^8.20.0",
+        "axios": "^1.13.6",
         "bcryptjs": "^3.0.3",
         "framer-motion": "^10.16.4",
         "jsonwebtoken": "^9.0.3",
