@@ -7,9 +7,7 @@ if (!admin.apps.length) {
     // Replace literal '\n' with actual newlines for the private key
     const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
-    if (!projectId || !clientEmail || !privateKey) {
-      console.warn('Firebase Admin credentials missing. Firestore will not connect.');
-    } else {
+    if (projectId && clientEmail && privateKey) {
       admin.initializeApp({
         credential: admin.credential.cert({
           projectId,
@@ -18,6 +16,9 @@ if (!admin.apps.length) {
         }),
       });
       console.log('Firebase Admin initialized successfully.');
+    } else {
+      console.warn('Firebase Admin credentials missing. Initializing dummy app for build step.');
+      admin.initializeApp({ projectId: 'demo-project-build' });
     }
   } catch (error) {
     console.error('Firebase Admin initialization error', error);
